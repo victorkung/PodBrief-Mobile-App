@@ -1,68 +1,148 @@
 import React from "react";
+import { View, StyleSheet } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet } from "react-native";
-import HomeStackNavigator from "@/navigation/HomeStackNavigator";
-import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import { Feather } from "@expo/vector-icons";
+
 import { useTheme } from "@/hooks/useTheme";
+import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
+import { MiniPlayer } from "@/components/MiniPlayer";
+import { Spacing, BorderRadius } from "@/constants/theme";
+
+import DiscoverScreen from "@/screens/DiscoverScreen";
+import ShowsScreen from "@/screens/ShowsScreen";
+import LibraryScreen from "@/screens/LibraryScreen";
+import DownloadsScreen from "@/screens/DownloadsScreen";
+import ProfileScreen from "@/screens/ProfileScreen";
 
 export type MainTabParamList = {
-  HomeTab: undefined;
+  DiscoverTab: undefined;
+  ShowsTab: undefined;
+  LibraryTab: undefined;
+  DownloadsTab: undefined;
   ProfileTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-export default function MainTabNavigator() {
-  const { theme, isDark } = useTheme();
+function TabBarIcon({
+  name,
+  color,
+}: {
+  name: React.ComponentProps<typeof Feather>["name"];
+  color: string;
+}) {
+  return <Feather name={name} size={22} color={color} />;
+}
+
+export function MainTabNavigator({
+  onMiniPlayerPress,
+}: {
+  onMiniPlayerPress?: () => void;
+}) {
+  const { theme } = useTheme();
+  const { currentItem } = useAudioPlayerContext();
 
   return (
-    <Tab.Navigator
-      initialRouteName="HomeTab"
-      screenOptions={{
-        tabBarActiveTintColor: theme.tabIconSelected,
-        tabBarInactiveTintColor: theme.tabIconDefault,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: Platform.select({
-            ios: "transparent",
-            android: theme.backgroundRoot,
-          }),
-          borderTopWidth: 0,
-          elevation: 0,
-        },
-        tabBarBackground: () =>
-          Platform.OS === "ios" ? (
+    <View style={styles.container}>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: true,
+          headerTransparent: true,
+          headerTintColor: theme.text,
+          headerStyle: {
+            backgroundColor: "transparent",
+          },
+          headerTitleStyle: {
+            fontWeight: "600",
+            fontSize: 17,
+          },
+          headerBackground: () => (
             <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
+              intensity={80}
+              tint="dark"
               style={StyleSheet.absoluteFill}
             />
-          ) : null,
-        headerShown: false,
-      }}
-    >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
+          ),
+          tabBarActiveTintColor: theme.gold,
+          tabBarInactiveTintColor: theme.tabIconDefault,
+          tabBarShowLabel: true,
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: "500",
+            marginTop: -4,
+          },
+          tabBarStyle: {
+            position: "absolute",
+            backgroundColor: "rgba(0,0,0,0.9)",
+            borderTopWidth: 0,
+            paddingTop: currentItem ? Spacing.miniPlayerHeight : 0,
+            height: currentItem ? 90 + Spacing.miniPlayerHeight : 90,
+          },
+          tabBarBackground: () => (
+            <BlurView
+              intensity={80}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
           ),
         }}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackNavigator}
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
+      >
+        <Tab.Screen
+          name="DiscoverTab"
+          component={DiscoverScreen}
+          options={{
+            headerTitle: "",
+            tabBarLabel: "Discover",
+            tabBarIcon: ({ color }) => <TabBarIcon name="search" color={color} />,
+          }}
+        />
+        <Tab.Screen
+          name="ShowsTab"
+          component={ShowsScreen}
+          options={{
+            headerTitle: "",
+            tabBarLabel: "Shows",
+            tabBarIcon: ({ color }) => <TabBarIcon name="radio" color={color} />,
+          }}
+        />
+        <Tab.Screen
+          name="LibraryTab"
+          component={LibraryScreen}
+          options={{
+            headerTitle: "",
+            tabBarLabel: "Library",
+            tabBarIcon: ({ color }) => <TabBarIcon name="bookmark" color={color} />,
+          }}
+        />
+        <Tab.Screen
+          name="DownloadsTab"
+          component={DownloadsScreen}
+          options={{
+            headerTitle: "",
+            tabBarLabel: "Downloads",
+            tabBarIcon: ({ color }) => (
+              <TabBarIcon name="download" color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="ProfileTab"
+          component={ProfileScreen}
+          options={{
+            headerTitle: "",
+            tabBarLabel: "Profile",
+            tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+          }}
+        />
+      </Tab.Navigator>
+      {currentItem ? <MiniPlayer onPress={onMiniPlayerPress} /> : null}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

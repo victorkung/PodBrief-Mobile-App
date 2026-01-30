@@ -7,12 +7,13 @@ import {
   ScrollView,
   Text,
   Modal,
+  Image,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
+import { Spacing, BorderRadius, Fonts, Colors } from "@/constants/theme";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -41,7 +42,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={[styles.container, { backgroundColor: Colors.dark.backgroundRoot }]}>
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
@@ -58,12 +59,16 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
       ) : null}
 
       <View style={styles.content}>
+        <View style={[styles.iconContainer, { backgroundColor: theme.gold }]}>
+          <Feather name="alert-triangle" size={40} color={theme.buttonText} />
+        </View>
+
         <ThemedText type="h1" style={styles.title}>
-          Something went wrong
+          Oops! Something went wrong
         </ThemedText>
 
         <ThemedText type="body" style={styles.message}>
-          Please reload the app to continue.
+          PodBrief encountered an unexpected error. Tap below to restart and get back to your podcasts.
         </ThemedText>
 
         <Pressable
@@ -71,18 +76,16 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: theme.link,
+              backgroundColor: theme.gold,
               opacity: pressed ? 0.9 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
         >
-          <ThemedText
-            type="body"
-            style={[styles.buttonText, { color: theme.buttonText }]}
-          >
-            Try Again
-          </ThemedText>
+          <Feather name="refresh-cw" size={18} color={theme.buttonText} style={{ marginRight: 8 }} />
+          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+            Restart PodBrief
+          </Text>
         </Pressable>
       </View>
 
@@ -94,7 +97,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           onRequestClose={() => setIsModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <ThemedView style={styles.modalContainer}>
+            <View style={[styles.modalContainer, { backgroundColor: theme.backgroundDefault }]}>
               <View style={styles.modalHeader}>
                 <ThemedText type="h2" style={styles.modalTitle}>
                   Error Details
@@ -118,7 +121,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                 <View
                   style={[
                     styles.errorContainer,
-                    { backgroundColor: theme.backgroundDefault },
+                    { backgroundColor: theme.backgroundSecondary },
                   ]}
                 >
                   <Text
@@ -135,11 +138,11 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                   </Text>
                 </View>
               </ScrollView>
-            </ThemedView>
+            </View>
           </View>
         </Modal>
       ) : null}
-    </ThemedView>
+    </View>
   );
 }
 
@@ -159,14 +162,25 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 600,
   },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
   title: {
     textAlign: "center",
-    lineHeight: 40,
+    lineHeight: 36,
+    color: "#FFFFFF",
   },
   message: {
     textAlign: "center",
     opacity: 0.7,
     lineHeight: 24,
+    color: "#9CA3AF",
+    paddingHorizontal: Spacing.md,
   },
   topButton: {
     position: "absolute",
@@ -181,27 +195,22 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.lg,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing["2xl"],
     minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: Spacing.md,
   },
   buttonText: {
     fontWeight: "600",
-    textAlign: "center",
     fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     justifyContent: "flex-end",
   },
   modalContainer: {

@@ -9,8 +9,11 @@ import { StatusBar } from "expo-status-bar";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 
-import RootStackNavigator from "@/navigation/RootStackNavigator";
+import { RootStackNavigator } from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
+import { Colors } from "@/constants/theme";
 
 export default function App() {
   return (
@@ -19,10 +22,44 @@ export default function App() {
         <SafeAreaProvider>
           <GestureHandlerRootView style={styles.root}>
             <KeyboardProvider>
-              <NavigationContainer>
-                <RootStackNavigator />
-              </NavigationContainer>
-              <StatusBar style="auto" />
+              <AuthProvider>
+                <AudioPlayerProvider>
+                  <NavigationContainer
+                    theme={{
+                      dark: true,
+                      colors: {
+                        primary: Colors.dark.gold,
+                        background: Colors.dark.backgroundRoot,
+                        card: Colors.dark.backgroundDefault,
+                        text: Colors.dark.text,
+                        border: Colors.dark.border,
+                        notification: Colors.dark.gold,
+                      },
+                      fonts: {
+                        regular: {
+                          fontFamily: "System",
+                          fontWeight: "400",
+                        },
+                        medium: {
+                          fontFamily: "System",
+                          fontWeight: "500",
+                        },
+                        bold: {
+                          fontFamily: "System",
+                          fontWeight: "700",
+                        },
+                        heavy: {
+                          fontFamily: "System",
+                          fontWeight: "800",
+                        },
+                      },
+                    }}
+                  >
+                    <RootStackNavigator />
+                  </NavigationContainer>
+                  <StatusBar style="light" />
+                </AudioPlayerProvider>
+              </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </SafeAreaProvider>
@@ -34,5 +71,6 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: Colors.dark.backgroundRoot,
   },
 });

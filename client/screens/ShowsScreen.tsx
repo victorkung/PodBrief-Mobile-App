@@ -1,0 +1,305 @@
+import React, { useState, useCallback, useMemo } from "react";
+import {
+  FlatList,
+  View,
+  StyleSheet,
+  RefreshControl,
+  ScrollView,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
+
+import { SegmentedControl } from "@/components/SegmentedControl";
+import { PodcastCard } from "@/components/PodcastCard";
+import { EpisodeCard } from "@/components/EpisodeCard";
+import { EmptyState } from "@/components/EmptyState";
+import {
+  PodcastCardSkeleton,
+  EpisodeCardSkeleton,
+} from "@/components/SkeletonLoader";
+import { ThemedText } from "@/components/ThemedText";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
+import { supabase } from "@/lib/supabase";
+import { FollowedPodcast, TaddyEpisode, ShowsTabType, AudioItem } from "@/lib/types";
+import { Spacing } from "@/constants/theme";
+
+const emptyShowsImage = require("../../assets/images/empty-shows.png");
+
+export default function ShowsScreen() {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
+  const navigation = useNavigation();
+  const queryClient = useQueryClient();
+  const { user, profile } = useAuth();
+  const { play } = useAudioPlayerContext();
+
+  const [selectedTab, setSelectedTab] = useState<ShowsTabType>("shows");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const {
+    data: followedPodcasts,
+    isLoading: isLoadingPodcasts,
+    refetch: refetchPodcasts,
+  } = useQuery({
+    queryKey: ["followedPodcasts"],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("followed_podcasts")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("podcast_name");
+      if (error) throw error;
+      return data as FollowedPodcast[];
+    },
+    enabled: !!user,
+  });
+
+  const podcastUuids = useMemo(
+    () => followedPodcasts?.map((p) => p.taddy_podcast_uuid) || [],
+    [followedPodcasts]
+  );
+
+  const {
+    data: newEpisodes,
+    isLoading: isLoadingEpisodes,
+    refetch: refetchEpisodes,
+  } = useQuery({
+    queryKey: ["newEpisodes", podcastUuids],
+    queryFn: async () => {
+      if (podcastUuids.length === 0) return [];
+      const { data, error } = await supabase.functions.invoke(
+        "taddy-latest-episodes",
+        {
+          body: { uuids: podcastUuids, page: 1, limitPerPage: 30 },
+        }
+      );
+      if (error) throw error;
+      return data.episodes as TaddyEpisode[];
+    },
+    enabled: podcastUuids.length > 0,
+  });
+
+  const unfollowMutation = useMutation({
+    mutationFn: async (podcastUuid: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase
+        .from("followed_podcasts")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("taddy_podcast_uuid", podcastUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["followedPodcasts"] });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (episode: TaddyEpisode) => {
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase.from("saved_episodes").insert({
+        user_id: user.id,
+        taddy_episode_uuid: episode.uuid,
+        taddy_podcast_uuid: episode.podcastSeries?.uuid,
+        episode_name: episode.name,
+        podcast_name: episode.podcastSeries?.name,
+        episode_thumbnail: episode.imageUrl || episode.podcastSeries?.imageUrl,
+        episode_audio_url: episode.audioUrl,
+        episode_duration_seconds: episode.duration,
+        episode_published_at: new Date(episode.datePublished).toISOString(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+  });
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchPodcasts(), refetchEpisodes()]);
+    setRefreshing(false);
+  }, [refetchPodcasts, refetchEpisodes]);
+
+  const handlePlayEpisode = useCallback(
+    (episode: TaddyEpisode) => {
+      const audioItem: AudioItem = {
+        id: episode.uuid,
+        type: "episode",
+        title: episode.name,
+        podcast: episode.podcastSeries?.name || "",
+        artwork: episode.imageUrl || episode.podcastSeries?.imageUrl || null,
+        audioUrl: episode.audioUrl,
+        duration: episode.duration * 1000,
+        progress: 0,
+      };
+      play(audioItem);
+    },
+    [play]
+  );
+
+  const handleGenerateBrief = useCallback(
+    (episode: TaddyEpisode) => {
+      (navigation as any).navigate("GenerateBrief", { episode });
+    },
+    [navigation]
+  );
+
+  const handlePodcastPress = useCallback(
+    (podcast: FollowedPodcast) => {
+      (navigation as any).navigate("PodcastDetail", {
+        podcast: {
+          uuid: podcast.taddy_podcast_uuid,
+          name: podcast.podcast_name,
+          imageUrl: podcast.podcast_image_url,
+          authorName: podcast.author_name,
+          description: podcast.podcast_description,
+          totalEpisodesCount: podcast.total_episodes_count,
+        },
+      });
+    },
+    [navigation]
+  );
+
+  const segments = [
+    { key: "shows" as ShowsTabType, label: "Shows", count: followedPodcasts?.length || 0 },
+    { key: "newEpisodes" as ShowsTabType, label: "New Episodes" },
+  ];
+
+  const renderShowsEmpty = () => {
+    if (isLoadingPodcasts) {
+      return (
+        <View>
+          {[1, 2, 3, 4].map((i) => (
+            <PodcastCardSkeleton key={i} />
+          ))}
+        </View>
+      );
+    }
+    return (
+      <EmptyState
+        image={emptyShowsImage}
+        title="No Shows Yet"
+        subtitle="Search for podcasts and follow your favorites"
+      />
+    );
+  };
+
+  const renderEpisodesEmpty = () => {
+    if (isLoadingEpisodes) {
+      return (
+        <View>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <EpisodeCardSkeleton key={i} />
+          ))}
+        </View>
+      );
+    }
+    if (!followedPodcasts?.length) {
+      return (
+        <EmptyState
+          image={emptyShowsImage}
+          title="No Shows Followed"
+          subtitle="Follow some shows to see their latest episodes"
+        />
+      );
+    }
+    return (
+      <EmptyState
+        image={emptyShowsImage}
+        title="No New Episodes"
+        subtitle="Check back later for new content"
+      />
+    );
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <FlatList
+        data={selectedTab === "shows" ? followedPodcasts || [] : newEpisodes || []}
+        keyExtractor={(item) =>
+          "uuid" in item ? item.uuid : item.taddy_podcast_uuid
+        }
+        renderItem={({ item }) =>
+          selectedTab === "shows" ? (
+            <PodcastCard
+              podcast={item as FollowedPodcast}
+              isFollowed
+              onPress={() => handlePodcastPress(item as FollowedPodcast)}
+              onFollowPress={() =>
+                unfollowMutation.mutate((item as FollowedPodcast).taddy_podcast_uuid)
+              }
+            />
+          ) : (
+            <EpisodeCard
+              episode={item as TaddyEpisode}
+              onPlayPress={() => handlePlayEpisode(item as TaddyEpisode)}
+              onSavePress={() => saveMutation.mutate(item as TaddyEpisode)}
+              onGenerateBriefPress={() => handleGenerateBrief(item as TaddyEpisode)}
+            />
+          )
+        }
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <ThemedText type="h1" style={styles.title}>
+              {profile?.first_name ? `${profile.first_name}'s Shows` : "Your Shows"}
+            </ThemedText>
+            <ThemedText type="small" style={styles.subtitle}>
+              View your shows and their latest episodes
+            </ThemedText>
+            <SegmentedControl
+              segments={segments}
+              selectedKey={selectedTab}
+              onSelect={setSelectedTab}
+            />
+          </View>
+        }
+        ListEmptyComponent={
+          selectedTab === "shows" ? renderShowsEmpty() : renderEpisodesEmpty()
+        }
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.xl,
+          paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
+          paddingHorizontal: Spacing.lg,
+          flexGrow: 1,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.gold}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    marginBottom: Spacing.xl,
+  },
+  title: {
+    marginBottom: Spacing.xs,
+  },
+  subtitle: {
+    marginBottom: Spacing.lg,
+    opacity: 0.7,
+  },
+});
