@@ -1,0 +1,79 @@
+{
+  "colorScheme": "dark",
+  "fonts": [
+    {
+      "family": "Google Sans Flex",
+      "count": 34
+    },
+    {
+      "family": "sans-serif",
+      "count": 34
+    },
+    {
+      "family": "serif",
+      "count": 2
+    }
+  ],
+  "colors": {
+    "primary": "#394256",
+    "accent": "#98A1B3",
+    "background": "#000000",
+    "textPrimary": "#000000",
+    "link": "#98A1B3"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Google Sans Flex",
+      "heading": "Google Sans Flex"
+    },
+    "fontStacks": {
+      "body": [
+        "Google Sans Flex",
+        "sans-serif"
+      ],
+      "heading": [
+        "Google Sans Flex",
+        "sans-serif",
+        "serif"
+      ],
+      "paragraph": [
+        "Google Sans Flex",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "48px",
+      "h2": "20px",
+      "body": "16px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "4px"
+  },
+  "components": {},
+  "images": {
+    "logo": null,
+    "favicon": "https://podbrief.io/favicon.png",
+    "ogImage": "https://storage.googleapis.com/gpt-engineer-file-uploads/YlHIQ8eQHjTbHa0oreAwXYZfTgl1/social-images/social-1766550197607-podbrief-logo-square.png"
+  },
+  "__framework_hints": [],
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "LLM failed"
+    },
+    "secondary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "LLM failed"
+    },
+    "confidence": 0
+  },
+  "confidence": {
+    "buttons": 0,
+    "colors": 0,
+    "overall": 0
+  }
+}
