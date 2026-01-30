@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, ViewStyle, TextStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,7 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { GradientColors, Spacing, BorderRadius } from "@/constants/theme";
 
 interface ButtonProps {
   children: React.ReactNode;
@@ -35,20 +36,6 @@ export function Button({
     transform: [{ scale: scale.value }],
   }));
 
-  const getBackgroundColor = () => {
-    if (disabled) return theme.backgroundTertiary;
-    switch (variant) {
-      case "primary":
-        return theme.gold;
-      case "secondary":
-        return theme.backgroundSecondary;
-      case "ghost":
-        return "transparent";
-      default:
-        return theme.gold;
-    }
-  };
-
   const getTextColor = () => {
     if (disabled) return theme.textTertiary;
     switch (variant) {
@@ -62,6 +49,52 @@ export function Button({
     }
   };
 
+  if (variant === "primary") {
+    return (
+      <AnimatedPressable
+        onPress={onPress}
+        disabled={disabled}
+        onPressIn={() => (scale.value = withSpring(0.97))}
+        onPressOut={() => (scale.value = withSpring(1))}
+        style={[styles.button, animatedStyle, style]}
+      >
+        <LinearGradient
+          colors={
+            disabled
+              ? [theme.backgroundTertiary, theme.backgroundTertiary]
+              : GradientColors.gold
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        >
+          {typeof children === "string" ? (
+            <ThemedText
+              type="body"
+              style={[styles.text, { color: getTextColor() }, textStyle]}
+            >
+              {children}
+            </ThemedText>
+          ) : (
+            children
+          )}
+        </LinearGradient>
+      </AnimatedPressable>
+    );
+  }
+
+  const getBackgroundColor = () => {
+    if (disabled) return theme.backgroundTertiary;
+    switch (variant) {
+      case "secondary":
+        return theme.backgroundSecondary;
+      case "ghost":
+        return "transparent";
+      default:
+        return theme.backgroundSecondary;
+    }
+  };
+
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -70,6 +103,7 @@ export function Button({
       onPressOut={() => (scale.value = withSpring(1))}
       style={[
         styles.button,
+        styles.flatButton,
         { backgroundColor: getBackgroundColor() },
         animatedStyle,
         style,
@@ -91,13 +125,23 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
-    height: Spacing.buttonHeight,
     borderRadius: BorderRadius.md,
+    overflow: "hidden",
+  },
+  gradient: {
+    height: Spacing.buttonHeight,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
+  },
+  flatButton: {
+    height: Spacing.buttonHeight,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: Spacing.xl,
   },
   text: {
     fontWeight: "600",
+    fontFamily: "GoogleSansFlex",
   },
 });

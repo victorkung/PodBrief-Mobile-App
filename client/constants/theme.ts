@@ -7,15 +7,16 @@ export const Colors = {
     textTertiary: "#6B7280",
     buttonText: "#000000",
     tabIconDefault: "#6B7280",
-    tabIconSelected: "#F59E0B",
-    link: "#F59E0B",
-    gold: "#F59E0B",
+    tabIconSelected: "#E8BA30",
+    link: "#E8BA30",
+    gold: "#E8BA30",
+    goldEnd: "#DA840B",
     backgroundRoot: "#000000",
     backgroundDefault: "#1A1A1A",
     backgroundSecondary: "#2A2A2A",
     backgroundTertiary: "#353535",
     success: "#10B981",
-    warning: "#F59E0B",
+    warning: "#E8BA30",
     error: "#EF4444",
     border: "#333333",
   },
@@ -25,18 +26,24 @@ export const Colors = {
     textTertiary: "#6B7280",
     buttonText: "#000000",
     tabIconDefault: "#6B7280",
-    tabIconSelected: "#F59E0B",
-    link: "#F59E0B",
-    gold: "#F59E0B",
+    tabIconSelected: "#E8BA30",
+    link: "#E8BA30",
+    gold: "#E8BA30",
+    goldEnd: "#DA840B",
     backgroundRoot: "#000000",
     backgroundDefault: "#1A1A1A",
     backgroundSecondary: "#2A2A2A",
     backgroundTertiary: "#353535",
     success: "#10B981",
-    warning: "#F59E0B",
+    warning: "#E8BA30",
     error: "#EF4444",
     border: "#333333",
   },
+};
+
+export const GradientColors = {
+  gold: ["#E8BA30", "#DA840B"] as const,
+  goldReverse: ["#DA840B", "#E8BA30"] as const,
 };
 
 export const Spacing = {
@@ -74,65 +81,60 @@ export const Typography = {
     fontSize: 28,
     lineHeight: 36,
     fontWeight: "700" as const,
+    fontFamily: "GoogleSansFlex",
   },
   h2: {
     fontSize: 22,
     lineHeight: 28,
     fontWeight: "700" as const,
+    fontFamily: "GoogleSansFlex",
   },
   h3: {
     fontSize: 18,
     lineHeight: 24,
     fontWeight: "600" as const,
+    fontFamily: "GoogleSansFlex",
   },
   h4: {
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "600" as const,
+    fontFamily: "GoogleSansFlex",
   },
   body: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "400" as const,
+    fontFamily: "GoogleSansFlex",
   },
   small: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "400" as const,
+    fontFamily: "GoogleSansFlex",
   },
   caption: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "400" as const,
+    fontFamily: "GoogleSansFlex",
   },
   link: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "500" as const,
+    fontFamily: "GoogleSansFlex",
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: "system-ui",
-    serif: "ui-serif",
-    rounded: "ui-rounded",
-    mono: "ui-monospace",
-  },
-  default: {
-    sans: "normal",
-    serif: "serif",
-    rounded: "normal",
-    mono: "monospace",
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded:
-      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+export const Fonts = {
+  sans: "GoogleSansFlex",
+  mono: Platform.select({
+    ios: "Menlo",
+    android: "monospace",
+    default: "monospace",
+  }),
+};
 
 export const Shadows = {
   player: {

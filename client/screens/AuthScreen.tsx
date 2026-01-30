@@ -117,13 +117,10 @@ export default function AuthScreen() {
         >
           <View style={styles.header}>
             <Image
-              source={require("../../assets/images/icon.png")}
+              source={require("../../assets/images/logo.png")}
               style={styles.logo}
               resizeMode="contain"
             />
-            <ThemedText type="h1" style={styles.title}>
-              PodBrief
-            </ThemedText>
             <ThemedText type="body" style={styles.subtitle}>
               {mode === "signin"
                 ? "Sign in to access your library"
@@ -262,12 +259,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing["3xl"],
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 200,
+    height: 60,
     marginBottom: Spacing.lg,
-  },
-  title: {
-    marginBottom: Spacing.sm,
   },
   subtitle: {
     textAlign: "center",
@@ -311,6 +305,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
+    fontFamily: "GoogleSansFlex",
   },
   switchMode: {
     flexDirection: "row",

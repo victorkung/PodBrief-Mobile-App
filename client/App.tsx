@@ -1,10 +1,12 @@
-import React from "react";
-import { StyleSheet } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { StyleSheet, View, Text } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Font from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -15,12 +17,43 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { Colors } from "@/constants/theme";
 
+SplashScreen.preventAutoHideAsync();
+
 export default function App() {
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [fontError, setFontError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    async function loadFonts() {
+      try {
+        await Font.loadAsync({
+          GoogleSansFlex: require("../assets/fonts/GoogleSansFlex.ttf"),
+        });
+        setFontsLoaded(true);
+      } catch (error) {
+        console.error("Error loading fonts:", error);
+        setFontError(error as Error);
+        setFontsLoaded(true);
+      }
+    }
+    loadFonts();
+  }, []);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <GestureHandlerRootView style={styles.root}>
+          <GestureHandlerRootView style={styles.root} onLayout={onLayoutRootView}>
             <KeyboardProvider>
               <AuthProvider>
                 <AudioPlayerProvider>
@@ -37,19 +70,19 @@ export default function App() {
                       },
                       fonts: {
                         regular: {
-                          fontFamily: "System",
+                          fontFamily: "GoogleSansFlex",
                           fontWeight: "400",
                         },
                         medium: {
-                          fontFamily: "System",
+                          fontFamily: "GoogleSansFlex",
                           fontWeight: "500",
                         },
                         bold: {
-                          fontFamily: "System",
+                          fontFamily: "GoogleSansFlex",
                           fontWeight: "700",
                         },
                         heavy: {
-                          fontFamily: "System",
+                          fontFamily: "GoogleSansFlex",
                           fontWeight: "800",
                         },
                       },
