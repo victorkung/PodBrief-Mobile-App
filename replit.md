@@ -47,6 +47,13 @@ Preferred communication style: Simple, everyday language.
 - **Theming**: Centralized theme constants with Colors, Spacing, BorderRadius, Typography, and GradientColors
 - **Component Structure**: Atomic design with reusable components (ThemedText, ThemedView, Card, Button, etc.)
 - **Screen Layout**: Consistent pattern using safe area insets, header height, and tab bar height for proper content positioning
+- **Onboarding Flow**: 4-slide carousel for first-time users showcasing value proposition:
+  - Slide 1: Welcome with logo, headline, and free briefs messaging
+  - Slide 2: Free Podcast Player features
+  - Slide 3: AI Summaries with ROI stats (17.5 hours saved, $506 value, 28x return)
+  - Slide 4: Offline Downloads features
+  - Navigation: "Start Listening Free" → signup, "Log In" → signin
+  - Status stored in AsyncStorage (`@podbrief_onboarding_complete`)
 
 ## External Dependencies
 
