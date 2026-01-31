@@ -1,0 +1,89 @@
+{
+  "colorScheme": "dark",
+  "fonts": [
+    {
+      "family": "Google Sans Flex",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#394256",
+    "accent": "#9CA3AF",
+    "background": "#000000",
+    "textPrimary": "#000000",
+    "link": "#9CA3AF"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Google Sans Flex",
+      "heading": "Google Sans Flex"
+    },
+    "fontStacks": {
+      "heading": [
+        "Google Sans Flex",
+        "sans-serif",
+        "serif"
+      ],
+      "body": [
+        "Google Sans Flex",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Google Sans Flex",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "48px",
+      "h2": "48px",
+      "body": "18px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "6px"
+  },
+  "components": {},
+  "images": {
+    "favicon": "https://podbrief.io/favicon.png",
+    "ogImage": "https://storage.googleapis.com/gpt-engineer-file-uploads/YlHIQ8eQHjTbHa0oreAwXYZfTgl1/social-images/social-1766550197607-podbrief-logo-square.png"
+  },
+  "__framework_hints": [],
+  "__llm_logo_reasoning": {
+    "selectedIndex": -1,
+    "reasoning": "No valid brand logo - only tiny icons were available, which are not suitable as the main brand logo.",
+    "confidence": 0.3,
+    "rejected": true,
+    "source": "llm"
+  },
+  "personality": {
+    "tone": "professional",
+    "energy": "low",
+    "targetAudience": "podcasters and content creators"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0,
+    "colors": 0.9,
+    "overall": 0.45
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": -1,
+        "selectedLogoReasoning": "No valid brand logo - only tiny icons were available, which are not suitable as the main brand logo.",
+        "confidence": 0.3
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": false,
+      "llmSucceeded": false
+    }
+  }
+}

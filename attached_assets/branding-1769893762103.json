@@ -1,0 +1,89 @@
+{
+  "colorScheme": "dark",
+  "fonts": [
+    {
+      "family": "Google Sans Flex",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#394256",
+    "accent": "#E8BA30",
+    "background": "#000000",
+    "textPrimary": "#000000",
+    "link": "#E8BA30"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Google Sans Flex",
+      "heading": "Google Sans Flex"
+    },
+    "fontStacks": {
+      "heading": [
+        "Google Sans Flex",
+        "sans-serif"
+      ],
+      "body": [
+        "Google Sans Flex",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Google Sans Flex",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "64px",
+      "h2": "48px",
+      "body": "19.2px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "6px"
+  },
+  "components": {},
+  "images": {
+    "logo": "File saved at: attached_assets/logo.svg",
+    "favicon": "https://podbrief.io/favicon.png",
+    "ogImage": "https://storage.googleapis.com/gpt-engineer-file-uploads/YlHIQ8eQHjTbHa0oreAwXYZfTgl1/social-images/social-1766550197607-podbrief-logo-square.png",
+    "logoHref": "File saved at: attached_assets/logoHref.html"
+  },
+  "__framework_hints": [],
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Selected #0 because it is located in the header, is visible, and links to the homepage, which is a strong indicator of being the main brand logo.",
+    "confidence": 0.85,
+    "source": "llm"
+  },
+  "personality": {
+    "tone": "modern",
+    "energy": "medium",
+    "targetAudience": "podcast listeners and creators"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0,
+    "colors": 0.9,
+    "overall": 0.45
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is located in the header, is visible, and links to the homepage, which is a strong indicator of being the main brand logo.",
+        "confidence": 0.85
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": false,
+      "llmSucceeded": false
+    }
+  }
+}
