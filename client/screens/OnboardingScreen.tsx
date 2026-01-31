@@ -78,17 +78,14 @@ const SLIDES: SlideData[] = [
   {
     id: "summaries",
     icon: "zap",
-    title: "Stop Losing Hours",
-    titleHighlight: "To Long-Form Audio",
+    title: "AI Podcast Player",
     subtitle:
-      "Turn lengthy podcasts into 5-minute briefs that you can read or listen to. Perfect for busy professionals.",
-    stat: {
-      value: "17.5",
-      label: "hours saved/month",
-      subValue: "$506",
-      subLabel: "value of your time",
-      badge: "28x ROI",
-    },
+      "Stop Losing Hours to Long-Form Audio. Turn lengthy podcasts into 5-minute summaries that you can read or listen to in your preferred language. Perfect for busy professionals.",
+    features: [
+      "Turn hour-long episodes into 5-minute briefs",
+      "Read or listen to AI summaries on the go",
+      "Summaries available in 10+ languages",
+    ],
   },
   {
     id: "offline",
@@ -96,12 +93,7 @@ const SLIDES: SlideData[] = [
     title: "Listen Anywhere",
     titleHighlight: "Even Offline",
     subtitle:
-      "Download your briefs and episodes for offline listening. Perfect for commutes, flights, and areas with poor connectivity.",
-    features: [
-      "Download briefs for offline",
-      "Save full episodes locally",
-      "Sync across all your devices",
-    ],
+      "Download full episodes and summaries for offline listening. Perfect for commutes, flights, and areas with poor connectivity.",
   },
 ];
 
