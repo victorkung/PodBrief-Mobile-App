@@ -5,16 +5,18 @@ import {
   Dimensions,
   Image,
   Pressable,
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import PagerView from "react-native-pager-view";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   withSpring,
   useSharedValue,
-  interpolate,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
@@ -23,7 +25,7 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, GradientColors } from "@/constants/theme";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BACKGROUND_COLOR = "#0D1117";
 
 interface OnboardingScreenProps {
@@ -109,28 +111,35 @@ export default function OnboardingScreen({
 }: OnboardingScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const pagerRef = useRef<PagerView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const pageProgress = useSharedValue(0);
 
-  const handlePageSelected = (e: { nativeEvent: { position: number } }) => {
-    const position = e.nativeEvent.position;
-    setCurrentPage(position);
-    pageProgress.value = withSpring(position);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const page = Math.round(offsetX / SCREEN_WIDTH);
+    if (page !== currentPage && page >= 0 && page < SLIDES.length) {
+      setCurrentPage(page);
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
   };
 
   const goToPage = (page: number) => {
-    pagerRef.current?.setPage(page);
+    scrollViewRef.current?.scrollTo({ x: page * SCREEN_WIDTH, animated: true });
   };
 
   const handleGetStarted = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     onComplete();
   };
 
   const handleLogin = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     onLogin();
   };
 
@@ -156,18 +165,23 @@ export default function OnboardingScreen({
         </Pressable>
       </View>
 
-      <PagerView
-        ref={pagerRef}
-        style={styles.pagerView}
-        initialPage={0}
-        onPageSelected={handlePageSelected}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
       >
-        {SLIDES.map((slide, index) => (
-          <View key={slide.id} style={styles.page}>
+        {SLIDES.map((slide) => (
+          <View key={slide.id} style={[styles.page, { width: SCREEN_WIDTH }]}>
             <SlideContent slide={slide} theme={theme} />
           </View>
         ))}
-      </PagerView>
+      </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.lg }]}>
         <View style={styles.pagination}>
@@ -323,7 +337,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: SCREEN_HEIGHT * 0.4,
+    height: 300,
   },
   header: {
     flexDirection: "row",
@@ -345,8 +359,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  pagerView: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   page: {
     flex: 1,

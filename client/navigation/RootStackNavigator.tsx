@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   createNativeStackNavigator,
   NativeStackNavigationOptions,
@@ -38,6 +38,7 @@ export function RootStackNavigator() {
   const { theme } = useTheme();
   const { user, isLoading: authLoading } = useAuth();
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
+  const [pendingAuthMode, setPendingAuthMode] = useState<"signin" | "signup">("signin");
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -52,14 +53,15 @@ export function RootStackNavigator() {
     }
   };
 
-  const handleOnboardingComplete = async () => {
+  const handleOnboardingComplete = useCallback(async (mode: "signin" | "signup") => {
     try {
+      setPendingAuthMode(mode);
       await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
       setHasSeenOnboarding(true);
     } catch (error) {
       console.error("Error saving onboarding status:", error);
     }
-  };
+  }, []);
 
   const screenOptions: NativeStackNavigationOptions = {
     headerTransparent: true,
@@ -90,25 +92,20 @@ export function RootStackNavigator() {
       {!user ? (
         !hasSeenOnboarding ? (
           <Stack.Screen name="Onboarding" options={{ headerShown: false }}>
-            {({ navigation }) => (
+            {() => (
               <OnboardingScreen
-                onComplete={() => {
-                  handleOnboardingComplete();
-                  navigation.replace("Auth", { mode: "signup" });
-                }}
-                onLogin={() => {
-                  handleOnboardingComplete();
-                  navigation.replace("Auth", { mode: "signin" });
-                }}
+                onComplete={() => handleOnboardingComplete("signup")}
+                onLogin={() => handleOnboardingComplete("signin")}
               />
             )}
           </Stack.Screen>
         ) : (
           <Stack.Screen
             name="Auth"
-            component={AuthScreen}
             options={{ headerShown: false }}
-          />
+          >
+            {() => <AuthScreen initialMode={pendingAuthMode} />}
+          </Stack.Screen>
         )
       ) : (
         <>
