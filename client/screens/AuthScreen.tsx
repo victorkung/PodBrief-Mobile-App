@@ -60,12 +60,12 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [preferredLanguage, setPreferredLanguage] = useState("en");
+  const [preferredLanguage, setPreferredLanguage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
-  const selectedLanguageLabel = LANGUAGES.find(l => l.value === preferredLanguage)?.label || "English";
+  const selectedLanguageLabel = LANGUAGES.find(l => l.value === preferredLanguage)?.label || "";
 
   const handleSubmit = async () => {
     if (mode === "signup" && !firstName.trim()) {
@@ -248,16 +248,19 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
                     ]}
                   >
                     <Feather name="globe" size={20} color={theme.textTertiary} />
-                    <View style={styles.languageDisplay}>
-                      <ThemedText style={[styles.languageLabel, { color: theme.textTertiary }]}>
-                        Preferred Language
-                      </ThemedText>
-                      <ThemedText style={[styles.languageValue, { color: theme.text }]}>
-                        {selectedLanguageLabel}
-                      </ThemedText>
-                    </View>
+                    <ThemedText 
+                      style={[
+                        styles.input, 
+                        { color: selectedLanguageLabel ? theme.text : theme.textTertiary }
+                      ]}
+                    >
+                      {selectedLanguageLabel || "Preferred Language"}
+                    </ThemedText>
                     <Feather name="chevron-down" size={20} color={theme.textTertiary} />
                   </Pressable>
+                  <ThemedText style={styles.languageHint}>
+                    The language that will be used for your AI summaries. This can be updated later in your Settings page.
+                  </ThemedText>
                 </>
               ) : null}
 
@@ -424,9 +427,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   logo: {
-    width: 180,
-    height: 50,
-    marginBottom: Spacing.md,
+    width: 220,
+    height: 65,
+    marginBottom: Spacing.xl,
   },
   title: {
     marginBottom: Spacing.xs,
@@ -488,6 +491,12 @@ const styles = StyleSheet.create({
   languageValue: {
     fontSize: 16,
     fontFamily: "GoogleSansFlex",
+  },
+  languageHint: {
+    fontSize: 12,
+    color: "#6B7280",
+    lineHeight: 18,
+    marginTop: -Spacing.xs,
   },
   forgotPassword: {
     alignSelf: "flex-end",
