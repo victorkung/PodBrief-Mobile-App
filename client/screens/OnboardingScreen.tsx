@@ -97,7 +97,7 @@ const SLIDES: SlideData[] = [
     titleHighlight: "Even Offline.",
     subtitle:
       "Download full episodes and summaries for offline listening. Perfect for commutes, flights, and areas with poor connectivity.",
-    showIllustration: true,
+    showIllustration: false,
   },
 ];
 
@@ -200,7 +200,7 @@ export default function OnboardingScreen({
         </Button>
 
         <ThemedText style={styles.freeBriefsText}>
-          5 free AI summaries included. No credit card required.
+          5 free summaries included. No credit card required.
         </ThemedText>
       </View>
     </View>
