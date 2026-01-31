@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
@@ -24,10 +25,12 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 WebBrowser.maybeCompleteAuthSession();
 
 type AuthMode = "signin" | "signup";
+type AuthScreenRouteProp = RouteProp<RootStackParamList, "Auth">;
 
 const LANGUAGES = [
   { label: "English", value: "en" },
@@ -50,8 +53,10 @@ export default function AuthScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { signIn, signUp } = useAuth();
+  const route = useRoute<AuthScreenRouteProp>();
+  const initialMode = route.params?.mode || "signin";
 
-  const [mode, setMode] = useState<AuthMode>("signin");
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
