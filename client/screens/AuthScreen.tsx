@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -9,6 +9,8 @@ import {
   Platform,
   Image,
   ScrollView,
+  Modal,
+  FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -16,7 +18,6 @@ import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
 import * as Linking from "expo-linking";
-import { Picker } from "@react-native-picker/picker";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -62,6 +63,9 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
   const [preferredLanguage, setPreferredLanguage] = useState("en");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+  const selectedLanguageLabel = LANGUAGES.find(l => l.value === preferredLanguage)?.label || "English";
 
   const handleSubmit = async () => {
     if (mode === "signup" && !firstName.trim()) {
@@ -153,6 +157,14 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
     }
   };
 
+  const handleLanguageSelect = (value: string) => {
+    setPreferredLanguage(value);
+    setShowLanguagePicker(false);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: BACKGROUND_COLOR }]}>
       <KeyboardAvoidingView
@@ -163,8 +175,8 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop: insets.top + Spacing.xl,
-              paddingBottom: insets.bottom + Spacing.xl,
+              paddingTop: insets.top + Spacing.lg,
+              paddingBottom: insets.bottom + Spacing.lg,
             },
           ]}
           keyboardShouldPersistTaps="handled"
@@ -183,7 +195,7 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
               <ThemedText type="body" style={styles.subtitle}>
                 {mode === "signin"
                   ? "Sign in to access your library"
-                  : "Get your first 5 briefs free"}
+                  : "Get your first 5 summaries free"}
               </ThemedText>
             </View>
 
@@ -204,7 +216,7 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
               <View style={styles.divider}>
                 <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                 <ThemedText type="small" style={styles.dividerText}>
-                  {mode === "signin" ? "OR" : "OR CONTINUE WITH EMAIL"}
+                  OR
                 </ThemedText>
                 <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
               </View>
@@ -228,41 +240,24 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
                     />
                   </View>
 
-                  <View style={styles.languageSection}>
-                    <View style={styles.labelRow}>
-                      <Feather name="globe" size={16} color={theme.textSecondary} />
-                      <ThemedText type="small" style={styles.labelText}>
+                  <Pressable
+                    onPress={() => setShowLanguagePicker(true)}
+                    style={[
+                      styles.inputContainer,
+                      { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                  >
+                    <Feather name="globe" size={20} color={theme.textTertiary} />
+                    <View style={styles.languageDisplay}>
+                      <ThemedText style={[styles.languageLabel, { color: theme.textTertiary }]}>
                         Preferred Language
                       </ThemedText>
+                      <ThemedText style={[styles.languageValue, { color: theme.text }]}>
+                        {selectedLanguageLabel}
+                      </ThemedText>
                     </View>
-                    <View
-                      style={[
-                        styles.pickerContainer,
-                        { backgroundColor: theme.backgroundSecondary },
-                      ]}
-                    >
-                      <Picker
-                        selectedValue={preferredLanguage}
-                        onValueChange={(value) => setPreferredLanguage(value)}
-                        style={[styles.picker, { color: theme.text }]}
-                        dropdownIconColor={theme.textSecondary}
-                      >
-                        {LANGUAGES.map((lang) => (
-                          <Picker.Item
-                            key={lang.value}
-                            label={lang.label}
-                            value={lang.value}
-                            color={Platform.OS === "ios" ? theme.text : undefined}
-                          />
-                        ))}
-                      </Picker>
-                    </View>
-                    <ThemedText type="caption" style={styles.languageHint}>
-                      This is the language that we will use to generate your AI
-                      summaries. This can also be updated in your Settings page
-                      after logging in.
-                    </ThemedText>
-                  </View>
+                    <Feather name="chevron-down" size={20} color={theme.textTertiary} />
+                  </Pressable>
                 </>
               ) : null}
 
@@ -326,19 +321,18 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
                   : "Create Account"}
               </Button>
 
-              <Pressable
-                onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
-                style={styles.switchMode}
-              >
-                <ThemedText type="small">
+              <View style={styles.switchMode}>
+                <ThemedText style={styles.switchModeText}>
                   {mode === "signin"
                     ? "Don't have an account? "
                     : "Already have an account? "}
                 </ThemedText>
-                <ThemedText type="link" style={styles.switchModeLink}>
-                  {mode === "signin" ? "Sign up" : "Sign in"}
-                </ThemedText>
-              </Pressable>
+                <Pressable onPress={() => setMode(mode === "signin" ? "signup" : "signin")}>
+                  <ThemedText style={styles.switchModeLink}>
+                    {mode === "signin" ? "Sign up" : "Sign in"}
+                  </ThemedText>
+                </Pressable>
+              </View>
             </View>
 
             <View style={styles.footer}>
@@ -364,6 +358,46 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={showLanguagePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLanguagePicker(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Select Language</ThemedText>
+              <Pressable onPress={() => setShowLanguagePicker(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={LANGUAGES}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={[
+                    styles.languageOption,
+                    preferredLanguage === item.value && styles.languageOptionSelected,
+                  ]}
+                  onPress={() => handleLanguageSelect(item.value)}
+                >
+                  <ThemedText style={styles.languageOptionText}>{item.label}</ThemedText>
+                  {preferredLanguage === item.value ? (
+                    <Feather name="check" size={20} color="#E8BA30" />
+                  ) : null}
+                </Pressable>
+              )}
+              style={styles.languageList}
+            />
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -387,12 +421,12 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: Spacing["2xl"],
+    marginBottom: Spacing.xl,
   },
   logo: {
-    width: 200,
-    height: 60,
-    marginBottom: Spacing.lg,
+    width: 180,
+    height: 50,
+    marginBottom: Spacing.md,
   },
   title: {
     marginBottom: Spacing.xs,
@@ -403,7 +437,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   form: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   googleButton: {
     flexDirection: "row",
@@ -419,7 +453,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: Spacing.sm,
+    marginVertical: Spacing.xs,
   },
   dividerLine: {
     flex: 1,
@@ -430,30 +464,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     textTransform: "uppercase",
     fontSize: 12,
-  },
-  languageSection: {
-    gap: Spacing.xs,
-  },
-  labelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.xs,
-    marginBottom: Spacing.xs,
-  },
-  labelText: {
-    opacity: 0.8,
-  },
-  pickerContainer: {
-    borderRadius: BorderRadius.sm,
-    overflow: "hidden",
-  },
-  picker: {
-    height: Spacing.buttonHeight,
-  },
-  languageHint: {
-    opacity: 0.6,
-    marginTop: Spacing.xs,
-    lineHeight: 18,
   },
   inputContainer: {
     flexDirection: "row",
@@ -468,21 +478,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "GoogleSansFlex",
   },
+  languageDisplay: {
+    flex: 1,
+  },
+  languageLabel: {
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  languageValue: {
+    fontSize: 16,
+    fontFamily: "GoogleSansFlex",
+  },
   forgotPassword: {
     alignSelf: "flex-end",
     marginTop: -Spacing.xs,
-    marginBottom: Spacing.xs,
   },
   switchMode: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: Spacing.md,
+    alignItems: "center",
+    marginTop: Spacing.sm,
+  },
+  switchModeText: {
+    fontSize: 14,
+    color: "#9CA3AF",
   },
   switchModeLink: {
-    fontWeight: "500",
+    fontSize: 14,
+    color: "#E8BA30",
+    fontWeight: "600",
   },
   footer: {
-    marginTop: Spacing["2xl"],
+    marginTop: Spacing.xl,
     alignItems: "center",
   },
   footerText: {
@@ -492,5 +519,49 @@ const styles = StyleSheet.create({
   footerLink: {
     textDecorationLine: "underline",
     opacity: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 340,
+    maxHeight: 400,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  languageList: {
+    maxHeight: 340,
+  },
+  languageOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+  },
+  languageOptionSelected: {
+    backgroundColor: "rgba(232, 186, 48, 0.1)",
+  },
+  languageOptionText: {
+    fontSize: 16,
   },
 });
