@@ -40,6 +40,7 @@ interface SlideData {
   titleHighlight?: string;
   subtitle: string;
   features?: string[];
+  showIllustration?: boolean;
   stat?: {
     value: string;
     label: string;
@@ -67,6 +68,7 @@ const SLIDES: SlideData[] = [
     id: "player",
     icon: "play-circle",
     title: "Free Podcast Player",
+    titleHighlight: "Listen to any podcast, anytime.",
     subtitle:
       "Listen to your favorite podcasts using our beautiful, intuitive audio player designed for the modern listener.",
     features: [
@@ -79,10 +81,11 @@ const SLIDES: SlideData[] = [
     id: "summaries",
     icon: "zap",
     title: "AI Podcast Player",
+    titleHighlight: "Stop Losing Hours to Long-Form Audio.",
     subtitle:
-      "Stop Losing Hours to Long-Form Audio. Turn lengthy podcasts into 5-minute summaries that you can read or listen to in your preferred language. Perfect for busy professionals.",
+      "Turn lengthy podcasts into 5-minute summaries that you can read or listen to in your preferred language. Perfect for busy professionals.",
     features: [
-      "Turn hour-long episodes into 5-minute briefs",
+      "Turn episodes into 5-minute summaries",
       "Read or listen to AI summaries on the go",
       "Summaries available in 10+ languages",
     ],
@@ -90,10 +93,11 @@ const SLIDES: SlideData[] = [
   {
     id: "offline",
     icon: "download-cloud",
-    title: "Listen Anywhere",
-    titleHighlight: "Even Offline",
+    title: "Listen Anywhere.",
+    titleHighlight: "Even Offline.",
     subtitle:
       "Download full episodes and summaries for offline listening. Perfect for commutes, flights, and areas with poor connectivity.",
+    showIllustration: true,
   },
 ];
 
@@ -282,6 +286,52 @@ function SlideContent({
                 </View>
               ) : null}
             </LinearGradient>
+          </View>
+        ) : null}
+
+        {slide.showIllustration ? (
+          <View style={styles.illustrationContainer}>
+            <View style={styles.illustrationRow}>
+              <View style={styles.illustrationItem}>
+                <LinearGradient
+                  colors={["rgba(232, 186, 48, 0.2)", "rgba(218, 132, 11, 0.1)"]}
+                  style={styles.illustrationIcon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Feather name="smartphone" size={24} color="#E8BA30" />
+                </LinearGradient>
+                <ThemedText style={styles.illustrationLabel}>Phone</ThemedText>
+              </View>
+              <View style={styles.illustrationConnector}>
+                <Feather name="arrow-right" size={20} color="#E8BA30" />
+              </View>
+              <View style={styles.illustrationItem}>
+                <LinearGradient
+                  colors={["rgba(232, 186, 48, 0.2)", "rgba(218, 132, 11, 0.1)"]}
+                  style={styles.illustrationIcon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Feather name="headphones" size={24} color="#E8BA30" />
+                </LinearGradient>
+                <ThemedText style={styles.illustrationLabel}>Listen</ThemedText>
+              </View>
+              <View style={styles.illustrationConnector}>
+                <Feather name="arrow-right" size={20} color="#E8BA30" />
+              </View>
+              <View style={styles.illustrationItem}>
+                <LinearGradient
+                  colors={["rgba(232, 186, 48, 0.2)", "rgba(218, 132, 11, 0.1)"]}
+                  style={styles.illustrationIcon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Feather name="wifi-off" size={24} color="#E8BA30" />
+                </LinearGradient>
+                <ThemedText style={styles.illustrationLabel}>Anywhere</ThemedText>
+              </View>
+            </View>
           </View>
         ) : null}
       </View>
@@ -488,5 +538,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#6B7280",
     textAlign: "center",
+  },
+  illustrationContainer: {
+    width: "100%",
+    marginTop: Spacing.xl,
+    alignItems: "center",
+  },
+  illustrationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.md,
+  },
+  illustrationItem: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  illustrationIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(232, 186, 48, 0.3)",
+  },
+  illustrationLabel: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 4,
+  },
+  illustrationConnector: {
+    opacity: 0.6,
   },
 });
