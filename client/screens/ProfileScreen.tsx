@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import { View, StyleSheet, Pressable, Alert, Linking, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -20,7 +19,6 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 export default function ProfileScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -155,7 +153,7 @@ export default function ProfileScreen() {
     <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
       contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
+        paddingTop: insets.top + Spacing.xl,
         paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
         paddingHorizontal: Spacing.lg,
       }}

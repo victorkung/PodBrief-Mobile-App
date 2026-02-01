@@ -7,11 +7,11 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import { Feather } from "@expo/vector-icons";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { PodcastCard } from "@/components/PodcastCard";
@@ -34,7 +34,6 @@ const emptyShowsImage = require("../../assets/images/empty-shows.png");
 export default function ShowsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
@@ -198,11 +197,15 @@ export default function ShowsScreen() {
       );
     }
     return (
-      <EmptyState
-        image={emptyShowsImage}
-        title="No Shows Yet"
-        subtitle="Search for podcasts and follow your favorites"
-      />
+      <View style={styles.emptyContainer}>
+        <Feather name="radio" size={48} color={theme.textTertiary} />
+        <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+          No Shows Yet
+        </ThemedText>
+        <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+          Search for podcasts and follow your favorites
+        </ThemedText>
+      </View>
     );
   };
 
@@ -218,19 +221,27 @@ export default function ShowsScreen() {
     }
     if (!followedPodcasts?.length) {
       return (
-        <EmptyState
-          image={emptyShowsImage}
-          title="No Shows Followed"
-          subtitle="Follow some shows to see their latest episodes"
-        />
+        <View style={styles.emptyContainer}>
+          <Feather name="radio" size={48} color={theme.textTertiary} />
+          <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+            No Shows Followed
+          </ThemedText>
+          <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+            Follow some shows to see their latest episodes
+          </ThemedText>
+        </View>
       );
     }
     return (
-      <EmptyState
-        image={emptyShowsImage}
-        title="No New Episodes"
-        subtitle="Check back later for new content"
-      />
+      <View style={styles.emptyContainer}>
+        <Feather name="inbox" size={48} color={theme.textTertiary} />
+        <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+          No New Episodes
+        </ThemedText>
+        <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+          Check back later for new content
+        </ThemedText>
+      </View>
     );
   };
 
@@ -279,7 +290,7 @@ export default function ShowsScreen() {
           selectedTab === "shows" ? renderShowsEmpty() : renderEpisodesEmpty()
         }
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
+          paddingTop: insets.top + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
           flexGrow: 1,
@@ -311,5 +322,20 @@ const styles = StyleSheet.create({
   subtitle: {
     marginBottom: Spacing.lg,
     opacity: 0.7,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing["3xl"],
+  },
+  emptyTitle: {
+    textAlign: "center",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtitle: {
+    textAlign: "center",
+    maxWidth: 260,
   },
 });

@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from "react";
 import { FlatList, View, StyleSheet, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Sharing from "expo-sharing";
+import { Feather } from "@expo/vector-icons";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { EpisodeCard } from "@/components/EpisodeCard";
@@ -29,7 +29,6 @@ const emptySummariesImage = require("../../assets/images/empty-summaries.png");
 export default function LibraryScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
@@ -178,11 +177,15 @@ export default function LibraryScreen() {
       );
     }
     return (
-      <EmptyState
-        image={emptyEpisodesImage}
-        title="No Saved Episodes"
-        subtitle="Save episodes from shows you follow to listen later"
-      />
+      <View style={styles.emptyContainer}>
+        <Feather name="bookmark" size={48} color={theme.textTertiary} />
+        <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+          No Saved Episodes
+        </ThemedText>
+        <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+          Save episodes from shows you follow to listen later
+        </ThemedText>
+      </View>
     );
   };
 
@@ -197,11 +200,15 @@ export default function LibraryScreen() {
       );
     }
     return (
-      <EmptyState
-        image={emptySummariesImage}
-        title="No Summaries Yet"
-        subtitle="Generate AI summaries from any podcast episode"
-      />
+      <View style={styles.emptyContainer}>
+        <Feather name="zap" size={48} color={theme.textTertiary} />
+        <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+          No Summaries Yet
+        </ThemedText>
+        <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+          Generate AI summaries from any podcast episode
+        </ThemedText>
+      </View>
     );
   };
 
@@ -246,7 +253,7 @@ export default function LibraryScreen() {
           selectedTab === "episodes" ? renderEpisodesEmpty() : renderBriefsEmpty()
         }
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
+          paddingTop: insets.top + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
           flexGrow: 1,
@@ -278,5 +285,20 @@ const styles = StyleSheet.create({
   subtitle: {
     marginBottom: Spacing.lg,
     opacity: 0.7,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing["3xl"],
+  },
+  emptyTitle: {
+    textAlign: "center",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtitle: {
+    textAlign: "center",
+    maxWidth: 260,
   },
 });

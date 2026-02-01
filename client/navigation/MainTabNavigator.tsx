@@ -101,7 +101,7 @@ export function MainTabNavigator({
           name="ShowsTab"
           component={ShowsScreen}
           options={{
-            headerTitle: "",
+            headerShown: false,
             tabBarLabel: "Shows",
             tabBarIcon: ({ color }) => <TabBarIcon name="radio" color={color} />,
           }}
@@ -110,7 +110,7 @@ export function MainTabNavigator({
           name="LibraryTab"
           component={LibraryScreen}
           options={{
-            headerTitle: "",
+            headerShown: false,
             tabBarLabel: "Library",
             tabBarIcon: ({ color }) => <TabBarIcon name="bookmark" color={color} />,
           }}
@@ -119,7 +119,7 @@ export function MainTabNavigator({
           name="DownloadsTab"
           component={DownloadsScreen}
           options={{
-            headerTitle: "",
+            headerShown: false,
             tabBarLabel: "Downloads",
             tabBarIcon: ({ color }) => (
               <TabBarIcon name="download" color={color} />
@@ -130,7 +130,7 @@ export function MainTabNavigator({
           name="ProfileTab"
           component={ProfileScreen}
           options={{
-            headerTitle: "",
+            headerShown: false,
             tabBarLabel: "Profile",
             tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
           }}

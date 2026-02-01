@@ -152,28 +152,24 @@ export default function DiscoverScreen() {
     }
     if (submittedTerm && searchResults?.length === 0) {
       return (
-        <View style={[styles.emptyContainer, { backgroundColor: theme.backgroundDefault }]}>
-          <View style={[styles.emptyIconCircle, { backgroundColor: theme.gold }]}>
-            <Feather name="search" size={32} color={theme.backgroundRoot} />
-          </View>
-          <ThemedText type="h3" style={styles.emptyTitle}>
+        <View style={styles.emptyContainer}>
+          <Feather name="search" size={48} color={theme.textTertiary} />
+          <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
             No results found
           </ThemedText>
-          <ThemedText type="body" style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+          <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
             We couldn't find any podcasts matching "{submittedTerm}"
           </ThemedText>
         </View>
       );
     }
     return (
-      <View style={[styles.emptyContainer, { backgroundColor: theme.backgroundDefault }]}>
-        <View style={[styles.emptyIconCircle, { backgroundColor: theme.gold }]}>
-          <Feather name="search" size={32} color={theme.backgroundRoot} />
-        </View>
-        <ThemedText type="h3" style={styles.emptyTitle}>
+      <View style={styles.emptyContainer}>
+        <Feather name="search" size={48} color={theme.textTertiary} />
+        <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
           Search for podcasts
         </ThemedText>
-        <ThemedText type="body" style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+        <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
           Search by show name to find your favorite podcasts.
         </ThemedText>
       </View>
@@ -206,7 +202,7 @@ export default function DiscoverScreen() {
         }
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={{
-          paddingTop: insets.top + Spacing.lg,
+          paddingTop: insets.top + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
           flexGrow: 1,
@@ -237,24 +233,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing["3xl"],
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.md,
-  },
-  emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.lg,
   },
   emptyTitle: {
     textAlign: "center",
-    marginBottom: Spacing.sm,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
   },
   emptySubtitle: {
     textAlign: "center",
-    maxWidth: 280,
+    maxWidth: 260,
   },
 });

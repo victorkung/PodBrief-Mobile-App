@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { FlatList, View, StyleSheet, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
@@ -43,7 +42,6 @@ function formatDate(dateString: string): string {
 export default function DownloadsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
 
   const [downloads, setDownloads] = useState<Download[]>([]);
@@ -150,11 +148,15 @@ export default function DownloadsScreen() {
   );
 
   const renderEmpty = () => (
-    <EmptyState
-      image={emptyDownloadsImage}
-      title="No Downloads"
-      subtitle="Download summaries and episodes to listen offline"
-    />
+    <View style={styles.emptyContainer}>
+      <Feather name="download" size={48} color={theme.textTertiary} />
+      <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+        No Downloads
+      </ThemedText>
+      <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+        Download summaries and episodes to listen offline
+      </ThemedText>
+    </View>
   );
 
   return (
@@ -180,7 +182,7 @@ export default function DownloadsScreen() {
         }
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
+          paddingTop: insets.top + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
           flexGrow: 1,
@@ -211,6 +213,21 @@ const styles = StyleSheet.create({
   storageText: {
     marginLeft: Spacing.sm,
     fontWeight: "500",
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing["3xl"],
+  },
+  emptyTitle: {
+    textAlign: "center",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtitle: {
+    textAlign: "center",
+    maxWidth: 260,
   },
   downloadCard: {
     marginBottom: Spacing.md,
