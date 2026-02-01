@@ -80,7 +80,7 @@ const SLIDES: SlideData[] = [
   {
     id: "summaries",
     icon: "zap",
-    title: "AI Podcast Player",
+    title: "AI Podcast Summarizer",
     titleHighlight: "Stop Losing Hours to Long-Form Audio.",
     subtitle:
       "Turn lengthy podcasts into 5-minute summaries that you can read or listen to in your preferred language. Perfect for busy professionals.",
