@@ -1,0 +1,89 @@
+Let me explore how the web app handles these features to help the mobile team understand the data flow.
+
+Let me also check the edge function that fetches show briefs to understand the complete picture:
+
+I now have a clear picture of how the web app handles these features. Let me explain the data flow so the mobile team can sync properly with web app data.
+
+---
+
+## How the Web App Handles These Features
+
+### 1. Show Details Page - Display Episodes
+
+The web app uses the **`get-show-episodes`** edge function:
+
+```typescript
+// Called with podcast slug
+await supabase.functions.invoke('get-show-episodes', {
+  body: { slug, page: 1, limit: 50 }
+});
+```
+
+**Returns:** Episodes from `master_briefs` table where `pipeline_status = 'completed'` for that podcast.
+
+---
+
+### 2. New Episodes - Checking for Existing Briefs
+
+**This is the key issue.** The web app queries the **database directly** to check what the user has already generated:
+
+```typescript
+// From useNewEpisodes.ts (lines 89-108)
+const fetchExistingBriefs = async (currentProfile) => {
+  const { data } = await supabase
+    .from('user_briefs')
+    .select('master_briefs!inner(taddy_episode_uuid, language)')
+    .eq('user_id', user.id)
+    .eq('is_hidden', false);
+
+  // Filter to match user's preferred language
+  return new Set(
+    data
+      .filter(b => b.master_briefs?.language === currentProfile.preferred_language)
+      .map(b => b.master_briefs?.taddy_episode_uuid)
+  );
+};
+```
+
+**The mobile app needs to query this same data** to know which episodes already have briefs.
+
+---
+
+### 3. Checking for Saved Episodes
+
+The web app queries `saved_episodes` table directly:
+
+```typescript
+// From useSavedEpisodes.ts (lines 36-46)
+const { data } = await supabase
+  .from('saved_episodes')
+  .select('id, taddy_episode_uuid, taddy_podcast_uuid, episode_name, ...')
+  .eq('user_id', userId)
+  .order('created_at', { ascending: false });
+```
+
+---
+
+## Why Mobile Only Sees Mobile Actions
+
+The mobile app is likely:
+1. **Storing state locally** instead of querying the database
+2. **Not calling the database** to check existing briefs/saved episodes
+
+**The fix:** The mobile app needs to call the Supabase database (same queries as web) to see cross-platform data.
+
+---
+
+## Recommended Mobile API Calls
+
+| Feature | Database Query |
+|---------|----------------|
+| **Check if episode has brief** | Query `user_briefs` joined with `master_briefs` by `taddy_episode_uuid` |
+| **Check if episode is saved** | Query `saved_episodes` by `user_id` and `taddy_episode_uuid` |
+| **Get show episodes** | Call `get-show-episodes` edge function with podcast slug |
+
+Would you like me to create a dedicated edge function for the mobile app that combines these checks into a single call? This would be more efficient than making multiple queries.
+
+Create combined status check endpoint
+Update mobile API docs
+Fix get-show-briefs CORS

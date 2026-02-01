@@ -18,9 +18,11 @@ export function useScreenOptions({
     headerTransparent: transparent,
     headerBlurEffect: isDark ? "dark" : "light",
     headerTintColor: theme.text,
+    headerBackTitle: "Back",
     headerBackTitleStyle: {
-      fontSize: 14,
+      fontSize: 13,
     },
+    headerBackButtonDisplayMode: "minimal",
     headerStyle: {
       backgroundColor: Platform.select({
         ios: undefined,

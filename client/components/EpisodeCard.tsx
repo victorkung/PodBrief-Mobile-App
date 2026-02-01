@@ -117,11 +117,11 @@ export function EpisodeCard({
         <View style={styles.actionsRow}>
           {onSavePress ? (
             isSaved ? (
-              <View style={[styles.completedButton, { backgroundColor: "transparent" }]}>
-                <Feather name="check" size={14} color={Colors.dark.success} />
+              <View style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}>
+                <Feather name="check" size={14} color={theme.text} />
                 <ThemedText
                   type="caption"
-                  style={{ color: Colors.dark.success, marginLeft: 4, fontWeight: "500" }}
+                  style={{ color: theme.text, marginLeft: 4, fontWeight: "600" }}
                 >
                   Added
                 </ThemedText>
@@ -134,7 +134,7 @@ export function EpisodeCard({
                 <Feather name="plus" size={14} color={theme.buttonText} />
                 <ThemedText
                   type="caption"
-                  style={{ color: theme.buttonText, marginLeft: 4, fontWeight: "500" }}
+                  style={{ color: theme.buttonText, marginLeft: 4, fontWeight: "600" }}
                 >
                   Add Episode
                 </ThemedText>
@@ -143,11 +143,11 @@ export function EpisodeCard({
           ) : null}
           {onGenerateBriefPress ? (
             isSummarized ? (
-              <View style={[styles.completedButton, { backgroundColor: "transparent" }]}>
-                <Feather name="check" size={14} color={Colors.dark.success} />
+              <View style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}>
+                <Feather name="check" size={14} color={theme.text} />
                 <ThemedText
                   type="caption"
-                  style={{ color: Colors.dark.success, marginLeft: 4, fontWeight: "500" }}
+                  style={{ color: theme.text, marginLeft: 4, fontWeight: "600" }}
                 >
                   Summarized
                 </ThemedText>
@@ -160,7 +160,7 @@ export function EpisodeCard({
                 <Feather name="zap" size={14} color={theme.buttonText} />
                 <ThemedText
                   type="caption"
-                  style={{ color: theme.buttonText, marginLeft: 4, fontWeight: "500" }}
+                  style={{ color: theme.buttonText, marginLeft: 4, fontWeight: "600" }}
                 >
                   Summarize
                 </ThemedText>
@@ -218,12 +218,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-  },
-  completedButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
   },
   playButton: {
     padding: Spacing.sm,
