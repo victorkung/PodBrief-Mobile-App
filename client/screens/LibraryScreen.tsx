@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { FlatList, View, StyleSheet, RefreshControl, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,6 +18,7 @@ import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { supabase } from "@/lib/supabase";
 import { SavedEpisode, UserBrief, TabType, AudioItem, Download } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useToast } from "@/contexts/ToastContext";
 
 const DOWNLOADS_KEY = "@podbrief_downloads";
 
@@ -35,6 +36,7 @@ export default function LibraryScreen() {
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
   const { play } = useAudioPlayerContext();
+  const { showToast } = useToast();
 
   const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
   const [refreshing, setRefreshing] = useState(false);
@@ -120,6 +122,16 @@ export default function LibraryScreen() {
     await Promise.all([refetchEpisodes(), refetchBriefs(), loadDownloads()]);
     setRefreshing(false);
   }, [refetchEpisodes, refetchBriefs, loadDownloads]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        refetchEpisodes();
+        refetchBriefs();
+        loadDownloads();
+      }
+    }, [user, refetchEpisodes, refetchBriefs, loadDownloads])
+  );
 
   const handlePlayEpisode = useCallback(
     (episode: SavedEpisode) => {
@@ -235,34 +247,62 @@ export default function LibraryScreen() {
 
   const handleMarkEpisodeComplete = useCallback(
     async (episode: SavedEpisode, isComplete: boolean) => {
+      queryClient.setQueryData(["savedEpisodes"], (old: SavedEpisode[] | undefined) => {
+        if (!old) return old;
+        return old.map((e) =>
+          e.id === episode.id ? { ...e, is_completed: isComplete } : e
+        );
+      });
+      showToast(isComplete ? "Marked as complete" : "Marked as unfinished", "success");
+
       try {
         const { error } = await supabase
           .from("saved_episodes")
           .update({ is_completed: isComplete })
           .eq("id", episode.id);
         if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       } catch (error) {
         console.error("Error updating episode:", error);
+        queryClient.setQueryData(["savedEpisodes"], (old: SavedEpisode[] | undefined) => {
+          if (!old) return old;
+          return old.map((e) =>
+            e.id === episode.id ? { ...e, is_completed: !isComplete } : e
+          );
+        });
+        showToast("Failed to update", "error");
       }
     },
-    [queryClient]
+    [queryClient, showToast]
   );
 
   const handleMarkBriefComplete = useCallback(
     async (brief: UserBrief, isComplete: boolean) => {
+      queryClient.setQueryData(["userBriefs"], (old: UserBrief[] | undefined) => {
+        if (!old) return old;
+        return old.map((b) =>
+          b.id === brief.id ? { ...b, is_completed: isComplete } : b
+        );
+      });
+      showToast(isComplete ? "Marked as complete" : "Marked as unfinished", "success");
+
       try {
         const { error } = await supabase
           .from("user_briefs")
           .update({ is_completed: isComplete })
           .eq("id", brief.id);
         if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
       } catch (error) {
         console.error("Error updating brief:", error);
+        queryClient.setQueryData(["userBriefs"], (old: UserBrief[] | undefined) => {
+          if (!old) return old;
+          return old.map((b) =>
+            b.id === brief.id ? { ...b, is_completed: !isComplete } : b
+          );
+        });
+        showToast("Failed to update", "error");
       }
     },
-    [queryClient]
+    [queryClient, showToast]
   );
 
   const handleSummarizeEpisode = useCallback(

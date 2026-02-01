@@ -214,10 +214,10 @@ export function LibraryItemCard({
         </View>
 
         <View style={styles.info}>
-          <ThemedText type="h4" numberOfLines={2} style={styles.title}>
+          <ThemedText type="small" numberOfLines={2} style={[styles.title, { fontWeight: "600" }]}>
             {getTitle()}
           </ThemedText>
-          <ThemedText type="small" numberOfLines={1} style={{ color: theme.textSecondary }}>
+          <ThemedText type="caption" numberOfLines={1} style={{ color: theme.textSecondary }}>
             {getPodcastName()}
           </ThemedText>
           <View style={styles.metaRow}>
@@ -288,7 +288,7 @@ export function LibraryItemCard({
           onPress={onPlay}
           style={[styles.playButton, { backgroundColor: theme.text }]}
         >
-          <Feather name="play" size={22} color={theme.backgroundRoot} />
+          <Feather name="play" size={18} color={theme.backgroundRoot} />
         </Pressable>
       </View>
 
@@ -307,23 +307,9 @@ export function LibraryItemCard({
               style={styles.menuItem}
               onPress={handleRemove}
             >
-              <Feather name="trash-2" size={20} color={theme.error} />
-              <ThemedText type="body" style={[styles.menuText, { color: theme.error }]}>
+              <Feather name="trash-2" size={20} color={theme.text} />
+              <ThemedText type="body" style={[styles.menuText, { color: theme.text }]}>
                 Remove from Library
-              </ThemedText>
-            </Pressable>
-
-            <Pressable
-              style={styles.menuItem}
-              onPress={handleToggleComplete}
-            >
-              <Feather
-                name={completed ? "circle" : "check-circle"}
-                size={20}
-                color={theme.text}
-              />
-              <ThemedText type="body" style={styles.menuText}>
-                Mark as {completed ? "Unfinished" : "Complete"}
               </ThemedText>
             </Pressable>
 
@@ -332,8 +318,8 @@ export function LibraryItemCard({
                 style={styles.menuItem}
                 onPress={handleSummarize}
               >
-                <Feather name="zap" size={20} color={theme.gold} />
-                <ThemedText type="body" style={[styles.menuText, { color: theme.gold }]}>
+                <Feather name="zap" size={20} color={theme.text} />
+                <ThemedText type="body" style={[styles.menuText, { color: theme.text }]}>
                   Summarize Episode
                 </ThemedText>
               </Pressable>
@@ -364,9 +350,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   artwork: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.sm,
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.xs,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -377,11 +363,11 @@ const styles = StyleSheet.create({
   },
   summaryBadge: {
     position: "absolute",
-    bottom: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -422,12 +408,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   playButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    paddingLeft: 3,
+    paddingLeft: 2,
   },
   modalOverlay: {
     flex: 1,

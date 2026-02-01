@@ -15,6 +15,7 @@ import { RootStackNavigator } from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import { Colors } from "@/constants/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -57,6 +58,7 @@ export default function App() {
             <KeyboardProvider>
               <AuthProvider>
                 <AudioPlayerProvider>
+                  <ToastProvider>
                   <NavigationContainer
                     theme={{
                       dark: true,
@@ -90,6 +92,7 @@ export default function App() {
                   >
                     <RootStackNavigator />
                   </NavigationContainer>
+                  </ToastProvider>
                   <StatusBar style="light" />
                 </AudioPlayerProvider>
               </AuthProvider>
