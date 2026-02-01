@@ -91,20 +91,40 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
         throw new Error("No auth URL returned");
       }
 
-      console.log("Opening auth browser...");
+      console.log("Auth URL:", data.url);
+      console.log("Opening auth browser with return URL: podbrief://auth/callback");
+      
       const result = await WebBrowser.openAuthSessionAsync(
         data.url,
         "podbrief://auth/callback"
       );
       
-      console.log("Browser result type:", result.type);
-
+      console.log("=== Browser Result ===");
+      console.log("Result type:", result.type);
+      
       if (result.type === "success") {
-        const url = new URL(result.url);
-        const params = new URLSearchParams(url.hash.slice(1));
+        console.log("Callback URL received:", result.url);
         
-        const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
+        const url = new URL(result.url);
+        console.log("URL hash:", url.hash);
+        console.log("URL search:", url.search);
+        
+        let accessToken: string | null = null;
+        let refreshToken: string | null = null;
+        
+        if (url.hash && url.hash.length > 1) {
+          const hashParams = new URLSearchParams(url.hash.slice(1));
+          accessToken = hashParams.get("access_token");
+          refreshToken = hashParams.get("refresh_token");
+          console.log("Tokens from hash - access:", !!accessToken, "refresh:", !!refreshToken);
+        }
+        
+        if (!accessToken && url.search) {
+          const searchParams = new URLSearchParams(url.search);
+          accessToken = searchParams.get("access_token");
+          refreshToken = searchParams.get("refresh_token");
+          console.log("Tokens from search - access:", !!accessToken, "refresh:", !!refreshToken);
+        }
         
         if (accessToken && refreshToken) {
           const { error: sessionError } = await supabase.auth.setSession({
@@ -117,11 +137,15 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           console.log("Session set successfully");
         } else {
+          console.error("Missing tokens. Full URL:", result.url);
           throw new Error("Missing tokens in callback URL");
         }
       } else if (result.type === "cancel") {
         console.log("User cancelled Google sign in");
+      } else if (result.type === "dismiss") {
+        console.log("Browser was dismissed");
       } else {
+        console.log("Unknown result type:", result.type);
         throw new Error("Sign-in failed");
       }
     } catch (error: any) {
