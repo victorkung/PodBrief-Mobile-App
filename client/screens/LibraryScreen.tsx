@@ -434,6 +434,8 @@ export default function LibraryScreen() {
           sourceId: brief.id,
           episodeDurationSeconds: brief.master_brief.audio_duration_seconds || undefined,
           audioUrl: brief.master_brief.audio_url,
+          masterBriefId: brief.master_brief_id,
+          slug: brief.slug,
         };
 
         const updated = [...downloads.filter((d) => d.id !== downloadData.id), downloadData];

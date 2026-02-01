@@ -138,4 +138,6 @@ export interface Download {
   episodeDurationSeconds?: number;
   episodePublishedAt?: string;
   audioUrl?: string;
+  masterBriefId?: string;
+  slug?: string;
 }
