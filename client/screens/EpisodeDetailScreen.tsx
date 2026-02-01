@@ -14,6 +14,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
+import { useToast } from "@/contexts/ToastContext";
 import { supabase } from "@/lib/supabase";
 import { TaddyEpisode, SavedEpisode, AudioItem } from "@/lib/types";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
@@ -36,6 +37,7 @@ export default function EpisodeDetailScreen() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { play } = useAudioPlayerContext();
+  const { showToast } = useToast();
 
   const { episode, podcast, source = "podcastDetail" } = route.params;
 
@@ -113,6 +115,7 @@ export default function EpisodeDetailScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showToast("Episode added to your library", "success");
     },
   });
 
@@ -130,6 +133,7 @@ export default function EpisodeDetailScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      showToast("Episode removed from your library", "info");
     },
   });
 

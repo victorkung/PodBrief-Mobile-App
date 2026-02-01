@@ -730,7 +730,11 @@ export default function LibraryScreen() {
     }
   };
 
-  const getKeyExtractor = (item: SavedEpisode | UserBrief | Download) => item.id;
+  const getKeyExtractor = (item: SavedEpisode | UserBrief | Download) => {
+    if (selectedTab === "episodes") return `episode-${item.id}`;
+    if (selectedTab === "summaries") return `summary-${item.id}`;
+    return `download-${item.id}`;
+  };
 
   const getSearchPlaceholder = () => {
     if (selectedTab === "episodes") return "Search episodes...";
