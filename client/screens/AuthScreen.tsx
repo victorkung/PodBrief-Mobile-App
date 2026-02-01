@@ -15,20 +15,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
-import * as Google from "expo-auth-session/providers/google";
 
 import { ThemedText } from "@/components/ThemedText";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
 import { Spacing, BorderRadius } from "@/constants/theme";
-
-WebBrowser.maybeCompleteAuthSession();
-
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
 type AuthMode = "signin" | "signup";
 
@@ -66,65 +60,8 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const selectedLanguageLabel = LANGUAGES.find(l => l.value === preferredLanguage)?.label || "";
-
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    scopes: ["openid", "profile", "email"],
-  });
-
-  React.useEffect(() => {
-    const handleGoogleResponse = async () => {
-      if (response?.type === "success") {
-        try {
-          setIsGoogleLoading(true);
-          const { authentication } = response;
-          
-          if (!authentication?.idToken) {
-            throw new Error("No ID token received from Google");
-          }
-
-          const { error } = await supabase.auth.signInWithIdToken({
-            provider: "google",
-            token: authentication.idToken,
-          });
-
-          if (error) throw error;
-
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch (error: any) {
-          console.error("Google sign in error:", error);
-          Alert.alert("Sign-in failed", error.message || "Please try again.");
-        } finally {
-          setIsGoogleLoading(false);
-        }
-      } else if (response?.type === "error") {
-        console.error("Google auth error:", response.error);
-        Alert.alert("Sign-in failed", "Google authentication failed. Please try again.");
-        setIsGoogleLoading(false);
-      }
-    };
-
-    handleGoogleResponse();
-  }, [response]);
-
-  const handleGoogleSignIn = async () => {
-    if (!request) {
-      Alert.alert("Error", "Google Sign-In is not ready. Please try again.");
-      return;
-    }
-    
-    setIsGoogleLoading(true);
-    try {
-      await promptAsync();
-    } catch (error: any) {
-      console.error("Google prompt error:", error);
-      Alert.alert("Sign-in failed", "Could not open Google Sign-In.");
-      setIsGoogleLoading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     if (mode === "signup" && !firstName.trim()) {
@@ -218,29 +155,6 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
             </View>
 
             <View style={styles.form}>
-              <Pressable
-                onPress={handleGoogleSignIn}
-                disabled={isGoogleLoading}
-                style={[
-                  styles.googleButton,
-                  { backgroundColor: theme.backgroundSecondary },
-                  isGoogleLoading && styles.buttonDisabled,
-                ]}
-              >
-                <Feather name="globe" size={20} color={theme.text} />
-                <ThemedText type="body" style={styles.googleText}>
-                  {isGoogleLoading ? "Signing in..." : "Continue with Google"}
-                </ThemedText>
-              </Pressable>
-
-              <View style={styles.divider}>
-                <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                <ThemedText type="small" style={styles.dividerText}>
-                  OR
-                </ThemedText>
-                <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              </View>
-
               {mode === "signup" ? (
                 <>
                   <View
@@ -461,35 +375,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: Spacing.sm,
-  },
-  googleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.sm,
-    gap: Spacing.sm,
-  },
-  googleText: {
-    fontWeight: "500",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: Spacing.xs,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    marginHorizontal: Spacing.md,
-    opacity: 0.5,
-    textTransform: "uppercase",
-    fontSize: 12,
   },
   inputContainer: {
     flexDirection: "row",
