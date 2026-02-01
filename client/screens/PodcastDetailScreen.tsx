@@ -46,10 +46,12 @@ export default function PodcastDetailScreen() {
   const {
     data: podcastDetails,
     isLoading,
+    error: podcastError,
     refetch,
   } = useQuery({
     queryKey: ["podcastDetails", podcast.uuid, searchTerm],
     queryFn: async () => {
+      console.log("[PodcastDetail] Fetching episodes for:", podcast.uuid);
       const { data, error } = await supabase.functions.invoke(
         "taddy-podcast-details",
         {
@@ -61,9 +63,18 @@ export default function PodcastDetailScreen() {
           },
         }
       );
-      if (error) throw error;
+      if (error) {
+        console.error("[PodcastDetail] Edge function error:", error);
+        throw error;
+      }
+      if (!data?.podcast) {
+        console.error("[PodcastDetail] No podcast data returned:", data);
+        throw new Error("No podcast data returned");
+      }
+      console.log("[PodcastDetail] Received", data.podcast.episodes?.length || 0, "episodes");
       return data.podcast;
     },
+    retry: 2,
   });
 
   const { data: followedPodcasts } = useQuery({
@@ -171,6 +182,22 @@ export default function PodcastDetailScreen() {
     },
   });
 
+  const removeSavedMutation = useMutation({
+    mutationFn: async (episodeUuid: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase
+        .from("saved_episodes")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("taddy_episode_uuid", episodeUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    },
+  });
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
@@ -220,6 +247,27 @@ export default function PodcastDetailScreen() {
         </View>
       );
     }
+    if (podcastError) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Feather name="alert-circle" size={48} color={theme.textTertiary} />
+          <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+            Unable to Load Episodes
+          </ThemedText>
+          <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+            Please try again later
+          </ThemedText>
+          <Pressable 
+            onPress={() => refetch()} 
+            style={[styles.retryButton, { backgroundColor: theme.gold }]}
+          >
+            <ThemedText type="caption" style={{ color: theme.buttonText, fontWeight: "600" }}>
+              Retry
+            </ThemedText>
+          </Pressable>
+        </View>
+      );
+    }
     return (
       <View style={styles.emptyContainer}>
         <Feather name="mic" size={48} color={theme.textTertiary} />
@@ -248,7 +296,7 @@ export default function PodcastDetailScreen() {
               isSaved={isSaved}
               isSummarized={isSummarized}
               onPress={() => handleEpisodePress(item)}
-              onSavePress={isSaved ? undefined : () => saveMutation.mutate(item)}
+              onSavePress={() => isSaved ? removeSavedMutation.mutate(item.uuid) : saveMutation.mutate(item)}
               onGenerateBriefPress={() => handleGenerateBrief(item)}
             />
           );
@@ -408,5 +456,11 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     textAlign: "center",
     maxWidth: 260,
+  },
+  retryButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.lg,
   },
 });

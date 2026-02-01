@@ -154,6 +154,22 @@ export default function ShowsScreen() {
     },
   });
 
+  const removeSavedMutation = useMutation({
+    mutationFn: async (episodeUuid: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase
+        .from("saved_episodes")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("taddy_episode_uuid", episodeUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    },
+  });
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetchPodcasts(), refetchEpisodes()]);
@@ -302,7 +318,7 @@ export default function ShowsScreen() {
                   isSaved={isSaved}
                   isSummarized={isSummarized}
                   onPress={() => handleEpisodePress(ep)}
-                  onSavePress={() => saveMutation.mutate(ep)}
+                  onSavePress={() => isSaved ? removeSavedMutation.mutate(ep.uuid) : saveMutation.mutate(ep)}
                   onGenerateBriefPress={() => handleGenerateBrief(ep)}
                 />
               );

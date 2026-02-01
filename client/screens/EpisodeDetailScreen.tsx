@@ -115,6 +115,23 @@ export default function EpisodeDetailScreen() {
     },
   });
 
+  const removeSavedMutation = useMutation({
+    mutationFn: async () => {
+      if (!user || !isTaddyEpisode) throw new Error("Cannot remove");
+      const taddyEpisode = episode as TaddyEpisode;
+      const { error } = await supabase
+        .from("saved_episodes")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("taddy_episode_uuid", taddyEpisode.uuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    },
+  });
+
   const markCompleteMutation = useMutation({
     mutationFn: async () => {
       if (!user || isTaddyEpisode) throw new Error("Cannot mark complete");
@@ -162,10 +179,12 @@ export default function EpisodeDetailScreen() {
   }, []);
 
   const handleAddToLibrary = useCallback(() => {
-    if (!isSaved) {
+    if (isSaved) {
+      removeSavedMutation.mutate();
+    } else {
       saveMutation.mutate();
     }
-  }, [isSaved, saveMutation]);
+  }, [isSaved, saveMutation, removeSavedMutation]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -241,12 +260,12 @@ export default function EpisodeDetailScreen() {
             ) : (
               <Pressable
                 onPress={handleAddToLibrary}
-                disabled={saveMutation.isPending || isSaved}
+                disabled={saveMutation.isPending || removeSavedMutation.isPending}
                 style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
               >
                 <Feather name={isSaved ? "check" : "plus"} size={18} color={isSaved ? Colors.dark.success : theme.text} />
                 <ThemedText type="small" style={{ color: isSaved ? Colors.dark.success : theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
-                  {isSaved ? "Added" : saveMutation.isPending ? "Adding..." : "Add Episode"}
+                  {saveMutation.isPending ? "Adding..." : removeSavedMutation.isPending ? "Removing..." : isSaved ? "Added" : "Add Episode"}
                 </ThemedText>
               </Pressable>
             )}

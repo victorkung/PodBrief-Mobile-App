@@ -117,7 +117,10 @@ export function EpisodeCard({
         <View style={styles.actionsRow}>
           {onSavePress ? (
             isSaved ? (
-              <View style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}>
+              <Pressable
+                onPress={onSavePress}
+                style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+              >
                 <Feather name="check" size={14} color={theme.text} />
                 <ThemedText
                   type="caption"
@@ -125,7 +128,7 @@ export function EpisodeCard({
                 >
                   Added
                 </ThemedText>
-              </View>
+              </Pressable>
             ) : (
               <Pressable
                 onPress={onSavePress}
@@ -143,11 +146,11 @@ export function EpisodeCard({
           ) : null}
           {onGenerateBriefPress ? (
             isSummarized ? (
-              <View style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}>
-                <Feather name="check" size={14} color={theme.text} />
+              <View style={[styles.completedBadge, { borderColor: theme.textTertiary }]}>
+                <Feather name="check-circle" size={12} color={theme.textSecondary} />
                 <ThemedText
                   type="caption"
-                  style={{ color: theme.text, marginLeft: 4, fontWeight: "600" }}
+                  style={{ color: theme.textSecondary, marginLeft: 4, fontWeight: "500" }}
                 >
                   Summarized
                 </ThemedText>
@@ -218,6 +221,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
+  },
+  completedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    opacity: 0.7,
   },
   playButton: {
     padding: Spacing.sm,
