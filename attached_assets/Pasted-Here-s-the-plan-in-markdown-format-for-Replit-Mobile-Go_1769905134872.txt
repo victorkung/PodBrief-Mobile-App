@@ -1,0 +1,99 @@
+Here's the plan in markdown format for Replit:
+
+
+# Mobile Google Sign-In via ID Token
+
+## Summary
+
+Create a backend endpoint that allows the Expo/React Native mobile app to sign in with Google using an ID token (obtained via `expo-auth-session`), which is then exchanged for a Supabase session. This approach **requires no custom redirect URLs** in Supabase.
+
+---
+
+## How It Works
+┌─────────────────┐ ┌──────────────────┐ ┌────────────────┐ │ Mobile App │───▶│ Google OAuth │───▶│ Google Token │ │ (Expo) │ │ (expo-auth- │ │ (ID Token) │ │ │ │ session) │ │ │ └─────────────────┘ └──────────────────┘ └───────┬────────┘ │ ┌──────────────────────────────▼────────────────────────────┐ │ │ │ POST /functions/v1/mobile-google-auth │ │ { idToken: "eyJ..." } │ │ │ └───────────────────────────┬───────────────────────────────┘ │ ┌───────────────────────────▼───────────────────────────────┐ │ Supabase signInWithIdToken() │ │ → Returns access_token + refresh_token │ └───────────────────────────┬───────────────────────────────┘ │ ┌───────────────────────────▼───────────────────────────────┐ │ Mobile app calls supabase.auth.setSession() │ │ → User is now authenticated! │ └───────────────────────────────────────────────────────────┘
+
+
+---
+
+## Backend Endpoint
+
+### `POST /functions/v1/mobile-google-auth`
+
+**Base URL:** `https://wdylkaiyoelfcmphoaqs.supabase.co`
+
+**Headers:**
+```json
+{
+  "Content-Type": "application/json",
+  "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkeWxrYWl5b2VsZmNtcGhvYXFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1MjcwMTQsImV4cCI6MjA4MjEwMzAxNH0.h9kbq-ABILY3ZrIZdWIimzJhdyGz-Cq1eztkEiCBKDk"
+}
+Request Body:
+
+
+interface MobileGoogleAuthRequest {
+  idToken: string;      // Google ID token from expo-auth-session
+  platform: 'ios' | 'android';  // Platform identifier
+}
+Response (Success - 200):
+
+
+interface MobileGoogleAuthResponse {
+  success: true;
+  access_token: string;   // Supabase JWT access token
+  refresh_token: string;  // Supabase refresh token
+  user: {
+    id: string;
+    email: string;
+    user_metadata: {
+      full_name?: string;
+      avatar_url?: string;
+    };
+  };
+  isNewUser: boolean;     // True if this is first sign-in
+}
+Response (Error - 400/401):
+
+
+interface MobileGoogleAuthError {
+  error: string;
+  code?: 'INVALID_TOKEN' | 'AUTH_FAILED' | 'MISSING_PARAMS';
+}
+Mobile App Implementation (Expo)
+
+Dependencies
+
+
+npx expo install expo-auth-session expo-web-browser expo-crypto
+Setup Google OAuth Client IDs
+
+Create OAuth 2.0 Client IDs in Google Cloud Console:
+
+iOS Client ID: Create with your iOS bundle ID (e.g., com.podbrief.app)
+Android Client ID: Create with your Android package name and SHA-1 fingerprint
+Example Implementation
+
+
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { createClient } from '@supabase/supabase-js';
+
+// Required for expo-auth-session
+WebBrowser.maybeCompleteAuthSession();
+
+const supabase = createClient(
+  'https://wdylkaiyoelfcmphoaqs.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // anon key
+);
+
+export function useGoogleAuth() {
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
+    androidClientId: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
+  });
+
+  const signInWithGoogle = async () => {
+    try {
+      const result = await promptAsync();
+      
+      if (result.type !== 'success') {
+        throw new Error('Google sign
