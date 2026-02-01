@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.xxl * 2,
+    paddingVertical: Spacing["3xl"],
     paddingHorizontal: Spacing.xl,
     borderRadius: BorderRadius.lg,
     marginTop: Spacing.md,
