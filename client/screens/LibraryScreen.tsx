@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { FlatList, View, StyleSheet, RefreshControl, Alert } from "react-native";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { FlatList, View, StyleSheet, RefreshControl, Alert, TextInput, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -22,6 +22,8 @@ import { useToast } from "@/contexts/ToastContext";
 
 const DOWNLOADS_KEY = "@podbrief_downloads";
 
+type FilterType = "unfinished" | "completed" | "all";
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -43,6 +45,9 @@ export default function LibraryScreen() {
   const [downloads, setDownloads] = useState<Download[]>([]);
   const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set());
   const [totalDownloadSize, setTotalDownloadSize] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<FilterType>("unfinished");
+  const [filterMenuVisible, setFilterMenuVisible] = useState(false);
 
   const loadDownloads = useCallback(async () => {
     try {
@@ -489,7 +494,74 @@ export default function LibraryScreen() {
     return downloadedIds.has(brief.id) || downloadedIds.has(brief.master_brief_id);
   };
 
+  const getFilteredData = useMemo(() => {
+    let data: (SavedEpisode | UserBrief | Download)[] = [];
+    
+    if (selectedTab === "episodes") {
+      data = savedEpisodes || [];
+    } else if (selectedTab === "summaries") {
+      data = userBriefs || [];
+    } else {
+      data = downloads;
+    }
+
+    if (filter !== "all" && selectedTab !== "downloads") {
+      data = data.filter((item) => {
+        const isCompleted = selectedTab === "episodes"
+          ? (item as SavedEpisode).is_completed
+          : (item as UserBrief).is_completed;
+        return filter === "completed" ? isCompleted : !isCompleted;
+      });
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      data = data.filter((item) => {
+        let title = "";
+        let podcast = "";
+        
+        if (selectedTab === "episodes") {
+          const ep = item as SavedEpisode;
+          title = ep.episode_name || "";
+          podcast = ep.podcast_name || "";
+        } else if (selectedTab === "summaries") {
+          const br = item as UserBrief;
+          title = br.master_brief?.episode_name || "";
+          podcast = br.master_brief?.podcast_name || "";
+        } else {
+          const dl = item as Download;
+          title = dl.title || "";
+          podcast = dl.podcast || "";
+        }
+        
+        return title.toLowerCase().includes(query) || podcast.toLowerCase().includes(query);
+      });
+    }
+
+    return data;
+  }, [selectedTab, savedEpisodes, userBriefs, downloads, filter, searchQuery]);
+
+  const filterLabels: Record<FilterType, string> = {
+    unfinished: "Unfinished",
+    completed: "Completed",
+    all: "All",
+  };
+
   const renderEmptyState = () => {
+    if (searchQuery.trim()) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Feather name="search" size={48} color={theme.textTertiary} />
+          <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+            No Results
+          </ThemedText>
+          <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+            Try a different search term
+          </ThemedText>
+        </View>
+      );
+    }
+
     let icon: string = "bookmark";
     let title = "No Saved Episodes";
     let subtitle = "Save episodes from shows you follow to listen later";
@@ -502,6 +574,14 @@ export default function LibraryScreen() {
       icon = "download";
       title = "No Downloads";
       subtitle = "Download summaries and episodes to listen offline";
+    }
+
+    if (filter === "completed" && selectedTab !== "downloads") {
+      title = `No Completed ${selectedTab === "episodes" ? "Episodes" : "Summaries"}`;
+      subtitle = "Items you mark as complete will appear here";
+    } else if (filter === "unfinished" && selectedTab !== "downloads") {
+      title = `No Unfinished ${selectedTab === "episodes" ? "Episodes" : "Summaries"}`;
+      subtitle = "Great job! You've finished everything";
     }
 
     return (
@@ -581,18 +661,18 @@ export default function LibraryScreen() {
     }
   };
 
-  const getData = () => {
-    if (selectedTab === "episodes") return savedEpisodes || [];
-    if (selectedTab === "summaries") return userBriefs || [];
-    return downloads;
-  };
-
   const getKeyExtractor = (item: SavedEpisode | UserBrief | Download) => item.id;
+
+  const getSearchPlaceholder = () => {
+    if (selectedTab === "episodes") return "Search episodes...";
+    if (selectedTab === "summaries") return "Search summaries...";
+    return "Search downloads...";
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
-        data={getData()}
+        data={getFilteredData}
         keyExtractor={getKeyExtractor}
         renderItem={renderItem}
         ListHeaderComponent={
@@ -608,6 +688,54 @@ export default function LibraryScreen() {
               selectedKey={selectedTab}
               onSelect={setSelectedTab}
             />
+
+            <View style={styles.searchFilterRow}>
+              <View
+                style={[
+                  styles.searchContainer,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <Feather name="search" size={16} color={theme.textTertiary} />
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text }]}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder={getSearchPlaceholder()}
+                  placeholderTextColor={theme.textTertiary}
+                  returnKeyType="search"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {searchQuery.length > 0 ? (
+                  <Pressable onPress={() => setSearchQuery("")} style={styles.clearButton}>
+                    <Feather name="x" size={16} color={theme.textTertiary} />
+                  </Pressable>
+                ) : null}
+              </View>
+
+              {selectedTab !== "downloads" ? (
+                <Pressable
+                  onPress={() => setFilterMenuVisible(true)}
+                  style={[
+                    styles.filterButton,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <ThemedText type="caption" style={{ color: theme.text }}>
+                    {filterLabels[filter]}
+                  </ThemedText>
+                  <Feather name="chevron-down" size={14} color={theme.textSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
+
             {selectedTab === "downloads" && downloads.length > 0 ? (
               <View style={[styles.storageBar, { backgroundColor: theme.backgroundDefault }]}>
                 <Feather name="download-cloud" size={18} color={theme.gold} />
@@ -635,6 +763,39 @@ export default function LibraryScreen() {
         }
         showsVerticalScrollIndicator={false}
       />
+
+      {filterMenuVisible ? (
+        <Pressable
+          style={styles.filterOverlay}
+          onPress={() => setFilterMenuVisible(false)}
+        >
+          <View style={[styles.filterMenu, { backgroundColor: theme.backgroundDefault }]}>
+            {(["unfinished", "completed", "all"] as FilterType[]).map((option) => (
+              <Pressable
+                key={option}
+                style={[
+                  styles.filterOption,
+                  filter === option && { backgroundColor: theme.backgroundTertiary },
+                ]}
+                onPress={() => {
+                  setFilter(option);
+                  setFilterMenuVisible(false);
+                }}
+              >
+                <ThemedText
+                  type="body"
+                  style={{ color: filter === option ? theme.gold : theme.text }}
+                >
+                  {filterLabels[option]}
+                </ThemedText>
+                {filter === option ? (
+                  <Feather name="check" size={18} color={theme.gold} />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -644,13 +805,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   title: {
     marginBottom: Spacing.xs,
   },
   subtitle: {
     marginBottom: Spacing.lg,
+  },
+  searchFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: Spacing.xs,
+    fontSize: 14,
+    ...Platform.select({
+      web: {
+        outlineStyle: "none",
+      } as any,
+    }),
+  },
+  clearButton: {
+    padding: 4,
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    gap: 4,
   },
   storageBar: {
     flexDirection: "row",
@@ -670,12 +868,34 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing["3xl"],
   },
   emptyTitle: {
+    marginTop: Spacing.md,
     textAlign: "center",
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.xs,
   },
   emptySubtitle: {
+    marginTop: Spacing.xs,
     textAlign: "center",
-    maxWidth: 260,
+    paddingHorizontal: Spacing.xl,
+  },
+  filterOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterMenu: {
+    width: 200,
+    borderRadius: BorderRadius.md,
+    overflow: "hidden",
+  },
+  filterOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
 });
