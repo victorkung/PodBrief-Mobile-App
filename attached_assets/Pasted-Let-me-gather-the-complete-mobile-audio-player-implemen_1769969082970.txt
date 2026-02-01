@@ -1,0 +1,315 @@
+Let me gather the complete mobile audio player implementation details for you.
+
+Here's a comprehensive overview of the web app's mobile audio player implementation for Replit:
+
+---
+
+## PodBrief Web App - Mobile Audio Player Implementation
+
+### Architecture Overview
+
+The web app uses a **global audio player architecture** with these key components:
+
+| Component | Purpose |
+|-----------|---------|
+| `src/lib/audioManager.ts` | Singleton HTMLAudioElement that persists outside React lifecycle (iOS fix) |
+| `src/contexts/AudioPlayerContext.tsx` | Global state, playback controls, queue management, engagement tracking |
+| `src/hooks/useAudioPlayer.ts` | Standalone hook for brief detail pages (legacy) |
+| `src/lib/audioCache.ts` | IndexedDB caching for offline resilience |
+| `src/lib/audioUtils.ts` | Shared utilities (formatTime, waitForCanPlay, SPEED_OPTIONS) |
+
+---
+
+### 1. Audio Element Management (`audioManager.ts`)
+
+```typescript
+// Singleton audio element prevents iOS from garbage collecting during backgrounding
+let globalAudioElement: HTMLAudioElement | null = null;
+
+export function getGlobalAudioElement(): HTMLAudioElement {
+  if (!globalAudioElement) {
+    globalAudioElement = document.createElement('audio');
+    globalAudioElement.setAttribute('playsinline', 'true');
+    globalAudioElement.preload = 'metadata';
+    // Keep in DOM but off-screen
+    globalAudioElement.style.cssText = 
+      'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(globalAudioElement);
+  }
+  return globalAudioElement;
+}
+```
+
+---
+
+### 2. Track Info Structure
+
+```typescript
+export type AudioType = 'summary' | 'full_episode';
+
+export interface TrackInfo {
+  masterBriefId: string;        // Unique ID (for episodes: "episode-{taddyEpisodeUuid}")
+  briefSlug?: string;           // For navigation back to brief page
+  title: string;
+  artist: string;
+  artwork: string | null;
+  audioType: AudioType;
+  audioUrl: string | null;      // Summary: signed URL, Full episode: direct URL
+  audioDurationSeconds?: number | null;
+}
+```
+
+---
+
+### 3. Playback States
+
+```typescript
+export type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
+```
+
+---
+
+### 4. Core Play Logic (Summaries)
+
+```typescript
+const playSummary = async (track: Omit) => {
+  // 1. Check cache first (IndexedDB blob URL)
+  const cachedUrl = getBlobUrl(masterBriefId) || await getCachedAudioUrl(masterBriefId);
+
+  if (cachedUrl) {
+    // Use cached blob URL
+    urlToUse = cachedUrl;
+  } else {
+    // 2. Use provided signed URL or fetch fresh one
+    urlToUse = track.audioUrl || await refreshSignedUrl(masterBriefId);
+  }
+
+  // 3. Load and play
+  audio.src = urlToUse;
+  audio.load();
+  await waitForCanPlay(audio);
+  audio.playbackRate = speed;
+
+  // 4. Restore saved progress
+  const saved = localStorage.getItem(`audio-progress-summary-${masterBriefId}`);
+  if (saved) audio.currentTime = parsed.currentTime;
+
+  await audio.play();
+
+  // 5. Start background download for offline (if streaming)
+  if (!isFromCache && !urlToUse.startsWith('blob:')) {
+    downloadAudioInBackground(masterBriefId, urlToUse, audioDurationSeconds);
+  }
+};
+```
+
+---
+
+### 5. Signed URL Refresh
+
+```typescript
+const refreshSignedUrl = async (masterBriefId: string): Promise => {
+  const { data, error } = await supabase.functions.invoke('get-signed-audio-url', {
+    body: { masterBriefId },
+  });
+  return data?.signedUrl || null;
+};
+```
+
+**Important**: Summary audio URLs expire after 15 minutes. Always refresh if playback fails.
+
+---
+
+### 6. Full Episode Playback
+
+```typescript
+const playFullEpisode = async (track: Omit) => {
+  // Full episodes use direct URLs (no signed URL refresh needed)
+  // masterBriefId format: "episode-{taddyEpisodeUuid}"
+
+  const fullTrack: TrackInfo = {
+    ...track,
+    audioType: 'full_episode',
+  };
+
+  await playTrack(fullTrack);
+};
+```
+
+---
+
+### 7. Progress Persistence
+
+```typescript
+// Save format
+interface SavedProgress {
+  currentTime: number;
+  speed: number;
+  savedAt: number; // timestamp for 7-day expiry check
+}
+
+// Storage keys
+const summaryKey = `audio-progress-summary-${masterBriefId}`;
+const episodeKey = `audio-progress-full_episode-episode-${taddyEpisodeUuid}`;
+
+// Auto-save every 10 seconds while playing
+// Also save on: pause, visibility change, beforeunload
+```
+
+---
+
+### 8. Speed Options
+
+```typescript
+export const SPEED_OPTIONS = [
+  { value: 0.5, label: '0.5x' },
+  { value: 0.75, label: '0.75x' },
+  { value: 0.9, label: '0.9x' },
+  { value: 1, label: '1x' },
+  { value: 1.1, label: '1.1x' },
+  { value: 1.25, label: '1.25x' },
+  { value: 1.5, label: '1.5x' },
+  { value: 1.75, label: '1.75x' },
+  { value: 2, label: '2x' },
+];
+
+// Persisted in localStorage: 'audio-playback-speed'
+```
+
+---
+
+### 9. Media Session API (Lock Screen Controls)
+
+```typescript
+navigator.mediaSession.metadata = new MediaMetadata({
+  title: track.title,
+  artist: track.artist,
+  album: 'Pod Brief',
+  artwork: track.artwork ? [
+    { src: track.artwork, sizes: '512x512', type: 'image/jpeg' },
+  ] : [
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+  ],
+});
+
+// Action handlers
+navigator.mediaSession.setActionHandler('play', ...);
+navigator.mediaSession.setActionHandler('pause', ...);
+navigator.mediaSession.setActionHandler('seekbackward', () => seek(-15));
+navigator.mediaSession.setActionHandler('seekforward', () => seek(+15));
+navigator.mediaSession.setActionHandler('seekto', (details) => ...);
+```
+
+---
+
+### 10. iOS Recovery Logic
+
+```typescript
+// Stall recovery (audio suspended by OS)
+audio.addEventListener('stalled', async () => {
+  const savedPosition = audio.currentTime;
+  audio.load();
+  await waitForCanPlay(audio, 5000);
+  audio.currentTime = savedPosition;
+  audio.playbackRate = speed;
+  await audio.play();
+});
+
+// Visibility change sync (returning from background)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (state === 'playing' && audio.paused) {
+      setState('paused'); // Sync UI with actual state
+    }
+  }
+});
+
+// Media session play handler (lock screen resume)
+navigator.mediaSession.setActionHandler('play', async () => {
+  if (audio.readyState < 2 && audio.src) {
+    // iOS may have suspended - reload
+    const savedPosition = audio.currentTime;
+    audio.load();
+    await waitForCanPlay(audio, 5000);
+    audio.currentTime = savedPosition;
+    audio.playbackRate = speed;
+  }
+  await audio.play();
+});
+```
+
+---
+
+### 11. Engagement Tracking
+
+```typescript
+const START_THRESHOLD_SECONDS = 30;     // Log "start" after 30s accumulated listening
+const COMPLETION_THRESHOLD_PERCENT = 75; // Log "completion" at 75% progress
+
+// Track accumulated listening (forward progress only)
+if (playbackState === 'playing') {
+  const delta = currentTime - lastTimeUpdate;
+  if (delta > 0 && delta < 2) { // Only forward, reasonable jumps
+    accumulatedListenTime += delta;
+  }
+}
+
+// Insert to audio_engagement_events table
+await supabase.from('audio_engagement_events').insert({
+  user_id: user.id,
+  master_brief_id: masterBriefId,
+  audio_type: 'summary' | 'full_episode',
+  event_type: 'start' | 'completion',
+  duration_seconds: Math.round(audioDuration),
+  progress_seconds: Math.round(currentPosition),
+  progress_percentage: Math.round(progressPercent * 100) / 100,
+});
+```
+
+---
+
+### 12. Auto-Advance (Queue)
+
+```typescript
+// On track end, auto-play next in queue
+audio.addEventListener('ended', async () => {
+  // 1. Mark current as completed in database
+  await supabase.from('user_briefs').update({ is_completed: true })...
+
+  // 2. Get next track BEFORE queue refreshes
+  const nextTrack = queueContext.getNextTrack();
+
+  // 3. Refresh queue in background
+  queueContext.refreshQueue();
+
+  // 4. Play next (with browser visibility check)
+  if (nextTrack && document.visibilityState === 'visible') {
+    setTimeout(() => playTrackFromQueue(nextTrack), 500);
+  } else if (nextTrack) {
+    // Store for when user returns to foreground
+    pendingAutoAdvance = { track: nextTrack, timestamp: Date.now() };
+  }
+});
+```
+
+---
+
+### Key Differences for Native Mobile
+
+| Web PWA | Native Mobile |
+|---------|---------------|
+| Uses `HTMLAudioElement` singleton | Use native audio APIs (AVAudioPlayer, ExoPlayer) |
+| IndexedDB for caching | `AsyncStorage` + `expo-file-system` |
+| `navigator.mediaSession` for lock screen | Native Now Playing / MediaSession APIs |
+| Visibility API for background detection | Native app lifecycle events |
+| Signed URLs expire (15 min) | Same - must refresh before download |
+| Progress in `localStorage` | `AsyncStorage` or SQLite |
+
+---
+
+Let me know if you need more details on any specific part!
+
+Update Mobile API Contract with audio player specs
+Create audio player test checklist
+Add combined track metadata endpoint
