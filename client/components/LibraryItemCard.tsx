@@ -32,6 +32,7 @@ interface LibraryItemCardProps {
   onSummarize?: () => void;
   isComplete?: boolean;
   isDownloading?: boolean;
+  hasSummary?: boolean;
 }
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -68,6 +69,7 @@ export function LibraryItemCard({
   onSummarize,
   isComplete = false,
   isDownloading = false,
+  hasSummary = false,
 }: LibraryItemCardProps) {
   const { theme } = useTheme();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -137,7 +139,6 @@ export function LibraryItemCard({
       onMarkComplete(!getCompleted());
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    setMenuVisible(false);
   }, [onMarkComplete, getCompleted]);
 
   const handleRemove = useCallback(() => {
@@ -186,82 +187,121 @@ export function LibraryItemCard({
     } else if (onDownload) {
       onDownload();
     }
-    setMenuVisible(false);
   }, [isDownloaded, onDownload, onRemoveDownload]);
 
   const showSummarizeOption = type === "episode" || (type === "download" && download?.type === "episode");
   const completed = getCompleted();
   const artwork = getArtwork();
 
-  return (
-    <Pressable
-      onPress={onPlay}
-      style={[styles.row, { borderBottomColor: theme.border }]}
-    >
-      <View style={[styles.artwork, { backgroundColor: theme.backgroundTertiary }]}>
-        {artwork ? (
-          <Image source={{ uri: artwork }} style={styles.artworkImage} contentFit="cover" />
-        ) : (
-          <Feather
-            name={type === "summary" ? "zap" : "headphones"}
-            size={20}
-            color={theme.textTertiary}
-          />
-        )}
-        {type === "summary" || (type === "download" && download?.type === "summary") ? (
-          <View style={[styles.summaryBadge, { backgroundColor: theme.gold }]}>
-            <Feather name="zap" size={8} color={theme.buttonText} />
-          </View>
-        ) : null}
-        {completed ? (
-          <View style={[styles.completedBadge, { backgroundColor: theme.gold }]}>
-            <Feather name="check" size={8} color={theme.buttonText} />
-          </View>
-        ) : null}
-      </View>
+  const showSummaryBadge = 
+    (type === "episode" && hasSummary) || 
+    (type === "download" && download?.type === "episode" && hasSummary);
 
-      <View style={styles.info}>
-        <ThemedText type="small" numberOfLines={2} style={[styles.title, { color: theme.text }]}>
-          {getTitle()}
-        </ThemedText>
-        <View style={styles.metaRow}>
-          <ThemedText type="caption" numberOfLines={1} style={{ color: theme.textSecondary, flex: 1 }}>
+  return (
+    <View style={[styles.card, { borderBottomColor: theme.border }]}>
+      <Pressable onPress={onPlay} style={styles.contentRow}>
+        <View style={[styles.artwork, { backgroundColor: theme.backgroundTertiary }]}>
+          {artwork ? (
+            <Image source={{ uri: artwork }} style={styles.artworkImage} contentFit="cover" />
+          ) : (
+            <Feather
+              name={type === "summary" ? "zap" : "headphones"}
+              size={20}
+              color={theme.textTertiary}
+            />
+          )}
+          {showSummaryBadge ? (
+            <View style={[styles.summaryBadge, { backgroundColor: theme.gold }]}>
+              <Feather name="zap" size={8} color={theme.buttonText} />
+            </View>
+          ) : null}
+          {completed ? (
+            <View style={[styles.completedBadge, { backgroundColor: theme.gold }]}>
+              <Feather name="check" size={8} color={theme.buttonText} />
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.info}>
+          <ThemedText type="small" numberOfLines={2} style={[styles.title, { color: theme.text }]}>
+            {getTitle()}
+          </ThemedText>
+          <ThemedText type="caption" numberOfLines={1} style={{ color: theme.textSecondary }}>
             {getPodcastName()}
           </ThemedText>
+          <View style={styles.metaRow}>
+            <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+              {getDate()}
+            </ThemedText>
+            {getDuration() ? (
+              <>
+                <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+                <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+                  {getDuration()}
+                </ThemedText>
+              </>
+            ) : null}
+            {type === "download" && download ? (
+              <>
+                <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+                <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+                  {formatFileSize(download.fileSize)}
+                </ThemedText>
+              </>
+            ) : null}
+          </View>
         </View>
-        <View style={styles.metaRow}>
-          <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-            {getDate()}
-          </ThemedText>
-          {getDuration() ? (
-            <>
-              <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
-              <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-                {getDuration()}
-              </ThemedText>
-            </>
-          ) : null}
-          {type === "download" && download ? (
-            <>
-              <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
-              <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-                {formatFileSize(download.fileSize)}
-              </ThemedText>
-            </>
-          ) : null}
-        </View>
-      </View>
-
-      <Pressable
-        onPress={(e) => {
-          e.stopPropagation();
-          setMenuVisible(true);
-        }}
-        style={styles.menuButton}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Feather name="more-vertical" size={20} color={theme.textSecondary} />
       </Pressable>
+
+      <View style={styles.actionsRow}>
+        <View style={styles.leftActions}>
+          <Pressable
+            onPress={handleToggleComplete}
+            style={[
+              styles.actionButton,
+              completed && { backgroundColor: theme.gold },
+            ]}
+          >
+            <Feather
+              name="check"
+              size={20}
+              color={completed ? theme.buttonText : theme.textSecondary}
+            />
+          </Pressable>
+
+          {type !== "download" ? (
+            <Pressable
+              onPress={handleDownloadPress}
+              style={styles.actionButton}
+              disabled={isDownloading}
+            >
+              <Feather
+                name={isDownloaded ? "check-circle" : "download"}
+                size={20}
+                color={isDownloaded ? theme.gold : theme.textSecondary}
+              />
+            </Pressable>
+          ) : null}
+
+          <Pressable onPress={handleShare} style={styles.actionButton}>
+            <Feather name="share" size={20} color={theme.textSecondary} />
+          </Pressable>
+
+          <Pressable
+            onPress={() => setMenuVisible(true)}
+            style={styles.actionButton}
+          >
+            <Feather name="more-horizontal" size={20} color={theme.textSecondary} />
+          </Pressable>
+        </View>
+
+        <Pressable
+          onPress={onPlay}
+          style={[styles.playButton, { backgroundColor: theme.text }]}
+        >
+          <Feather name="play" size={18} color={theme.backgroundRoot} />
+        </Pressable>
+      </View>
 
       <Modal
         visible={menuVisible}
@@ -274,47 +314,6 @@ export function LibraryItemCard({
           onPress={() => setMenuVisible(false)}
         >
           <View style={[styles.menuContainer, { backgroundColor: theme.backgroundDefault }]}>
-            <Pressable
-              style={styles.menuItem}
-              onPress={handleToggleComplete}
-            >
-              <Feather
-                name={completed ? "circle" : "check-circle"}
-                size={20}
-                color={theme.text}
-              />
-              <ThemedText type="body" style={[styles.menuText, { color: theme.text }]}>
-                Mark as {completed ? "Unfinished" : "Complete"}
-              </ThemedText>
-            </Pressable>
-
-            {type !== "download" ? (
-              <Pressable
-                style={styles.menuItem}
-                onPress={handleDownloadPress}
-                disabled={isDownloading}
-              >
-                <Feather
-                  name={isDownloaded ? "check-circle" : "download"}
-                  size={20}
-                  color={theme.text}
-                />
-                <ThemedText type="body" style={[styles.menuText, { color: theme.text }]}>
-                  {isDownloaded ? "Downloaded" : isDownloading ? "Downloading..." : "Download"}
-                </ThemedText>
-              </Pressable>
-            ) : null}
-
-            <Pressable
-              style={styles.menuItem}
-              onPress={handleShare}
-            >
-              <Feather name="share" size={20} color={theme.text} />
-              <ThemedText type="body" style={[styles.menuText, { color: theme.text }]}>
-                Share
-              </ThemedText>
-            </Pressable>
-
             {showSummarizeOption && onSummarize ? (
               <Pressable
                 style={styles.menuItem}
@@ -348,16 +347,19 @@ export function LibraryItemCard({
           </View>
         </Pressable>
       </Modal>
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
+  card: {
     paddingVertical: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  contentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
   },
   artwork: {
     width: 56,
@@ -411,9 +413,30 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     marginHorizontal: 6,
   },
-  menuButton: {
-    padding: Spacing.sm,
-    marginLeft: Spacing.xs,
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  leftActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  actionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingLeft: 2,
   },
   modalOverlay: {
     flex: 1,

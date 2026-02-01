@@ -494,6 +494,27 @@ export default function LibraryScreen() {
     return downloadedIds.has(brief.id) || downloadedIds.has(brief.master_brief_id);
   };
 
+  const summarizedEpisodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (userBriefs) {
+      for (const brief of userBriefs) {
+        if (brief.master_brief?.taddy_episode_uuid) {
+          ids.add(brief.master_brief.taddy_episode_uuid);
+        }
+      }
+    }
+    return ids;
+  }, [userBriefs]);
+
+  const hasSummaryForEpisode = (episode: SavedEpisode): boolean => {
+    return summarizedEpisodeIds.has(episode.taddy_episode_uuid);
+  };
+
+  const hasSummaryForDownload = (download: Download): boolean => {
+    if (download.type !== "episode" || !download.taddyEpisodeUuid) return false;
+    return summarizedEpisodeIds.has(download.taddyEpisodeUuid);
+  };
+
   const getFilteredData = useMemo(() => {
     let data: (SavedEpisode | UserBrief | Download)[] = [];
     
@@ -606,6 +627,7 @@ export default function LibraryScreen() {
           episode={episode}
           isDownloaded={isEpisodeDownloaded(episode)}
           isDownloading={downloadingIds.has(episode.id)}
+          hasSummary={hasSummaryForEpisode(episode)}
           onPlay={() => handlePlayEpisode(episode)}
           onDownload={() => handleDownloadEpisode(episode)}
           onRemoveDownload={() => handleRemoveEpisodeDownload(episode)}
@@ -636,6 +658,7 @@ export default function LibraryScreen() {
           type="download"
           download={download}
           isDownloaded={true}
+          hasSummary={hasSummaryForDownload(download)}
           onPlay={() => handlePlayDownload(download)}
           onRemoveFromPlaylist={() => handleRemoveDownload(download)}
           onRemoveDownload={() => handleRemoveDownload(download)}
@@ -770,6 +793,11 @@ export default function LibraryScreen() {
           onPress={() => setFilterMenuVisible(false)}
         >
           <View style={[styles.filterMenu, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={[styles.filterHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText type="small" style={{ color: theme.textSecondary, fontWeight: "600" }}>
+                Filter Library By:
+              </ThemedText>
+            </View>
             {(["unfinished", "completed", "all"] as FilterType[]).map((option) => (
               <Pressable
                 key={option}
@@ -882,7 +910,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.85)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -897,5 +925,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
+  },
+  filterHeader: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });
