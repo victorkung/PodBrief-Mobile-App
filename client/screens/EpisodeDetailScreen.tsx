@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Share, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -7,6 +7,8 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -191,9 +193,61 @@ export default function EpisodeDetailScreen() {
     }
   }, [navigation, episode, podcast, isTaddyEpisode]);
 
-  const handleDownload = useCallback(() => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    if (!audioUrl) {
+      Alert.alert("Error", "No audio available to download");
+      return;
+    }
+
+    setIsDownloading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, []);
+
+    try {
+      const fileName = `episode_${uuid}.mp3`;
+      const filePath = `${FileSystem.documentDirectory}downloads/${fileName}`;
+
+      const dirInfo = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}downloads`);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}downloads`, { intermediates: true });
+      }
+
+      const downloadResult = await FileSystem.downloadAsync(audioUrl, filePath);
+
+      if (downloadResult.status !== 200) {
+        throw new Error("Download failed");
+      }
+
+      const fileInfo = await FileSystem.getInfoAsync(filePath);
+      const fileSize = fileInfo.exists ? (fileInfo as any).size || 0 : 0;
+
+      const downloadData = {
+        id: `episode-${uuid}`,
+        type: "episode" as const,
+        title: name,
+        podcast: podcastName || "",
+        artwork: imageUrl || null,
+        filePath: filePath,
+        fileSize: fileSize,
+        downloadedAt: new Date().toISOString(),
+      };
+
+      const existingDownloads = await AsyncStorage.getItem("@podbrief_downloads");
+      const downloads = existingDownloads ? JSON.parse(existingDownloads) : [];
+      const filteredDownloads = downloads.filter((d: any) => d.id !== downloadData.id);
+      filteredDownloads.push(downloadData);
+      await AsyncStorage.setItem("@podbrief_downloads", JSON.stringify(filteredDownloads));
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Downloaded", `"${name}" has been saved for offline listening.`);
+    } catch (error) {
+      console.error("Download error:", error);
+      Alert.alert("Download Failed", "Unable to download this episode. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [uuid, name, podcastName, imageUrl, audioUrl]);
 
   const handleAddToLibrary = useCallback(() => {
     if (isSaved) {
@@ -288,11 +342,12 @@ export default function EpisodeDetailScreen() {
             )}
             <Pressable
               onPress={handleDownload}
-              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+              disabled={isDownloading}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, opacity: isDownloading ? 0.6 : 1 }]}
             >
-              <Feather name="download" size={18} color={theme.text} />
+              <Feather name={isDownloading ? "loader" : "download"} size={18} color={theme.text} />
               <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
-                Download
+                {isDownloading ? "Downloading..." : "Download"}
               </ThemedText>
             </Pressable>
           </View>
