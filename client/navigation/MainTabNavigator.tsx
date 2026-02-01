@@ -9,7 +9,6 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { ExpandedPlayer } from "@/components/ExpandedPlayer";
-import { Spacing } from "@/constants/theme";
 
 import DiscoverScreen from "@/screens/DiscoverScreen";
 import ShowsScreen from "@/screens/ShowsScreen";
@@ -83,18 +82,11 @@ export function MainTabNavigator() {
             paddingBottom: insets.bottom,
           },
           tabBarBackground: () => (
-            <View style={StyleSheet.absoluteFill}>
-              <BlurView
-                intensity={80}
-                tint="dark"
-                style={StyleSheet.absoluteFill}
-              />
-              {hasPlayer ? (
-                <View style={[styles.miniPlayerContainer, { top: 0 }]}>
-                  <MiniPlayer onPress={() => setExpanded(true)} />
-                </View>
-              ) : null}
-            </View>
+            <BlurView
+              intensity={80}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
           ),
           tabBarItemStyle: {
             paddingTop: hasPlayer ? MINI_PLAYER_HEIGHT : 0,
@@ -139,6 +131,18 @@ export function MainTabNavigator() {
         />
       </Tab.Navigator>
 
+      {hasPlayer ? (
+        <View
+          style={[
+            styles.miniPlayerWrapper,
+            { bottom: tabBarHeight },
+          ]}
+          pointerEvents="box-none"
+        >
+          <MiniPlayer onPress={() => setExpanded(true)} />
+        </View>
+      ) : null}
+
       <ExpandedPlayer
         visible={isExpanded}
         onClose={() => setExpanded(false)}
@@ -151,9 +155,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  miniPlayerContainer: {
+  miniPlayerWrapper: {
     position: "absolute",
     left: 0,
     right: 0,
+    zIndex: 100,
   },
 });
