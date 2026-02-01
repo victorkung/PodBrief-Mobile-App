@@ -9,8 +9,9 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import { TaddyEpisode, SavedEpisode } from "@/lib/types";
+import { formatDate, formatDuration } from "@/lib/utils";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
@@ -18,6 +19,8 @@ interface EpisodeCardProps {
   episode: TaddyEpisode | SavedEpisode;
   showPodcastName?: boolean;
   showDivider?: boolean;
+  isSaved?: boolean;
+  isSummarized?: boolean;
   onPress?: () => void;
   onPlayPress?: () => void;
   onSavePress?: () => void;
@@ -26,25 +29,12 @@ interface EpisodeCardProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
-}
-
-function formatDate(date: number | string | null): string {
-  if (!date) return "";
-  const d = typeof date === "number" ? new Date(date) : new Date(date);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 export function EpisodeCard({
   episode,
   showPodcastName = true,
   showDivider = true,
+  isSaved = false,
+  isSummarized = false,
   onPress,
   onPlayPress,
   onSavePress,
@@ -124,32 +114,56 @@ export function EpisodeCard({
       {(onSavePress || onGenerateBriefPress) ? (
         <View style={styles.actionsRow}>
           {onSavePress ? (
-            <Pressable
-              onPress={onSavePress}
-              style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
-            >
-              <Feather name="plus" size={14} color={theme.text} />
-              <ThemedText
-                type="caption"
-                style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+            isSaved ? (
+              <View style={styles.completedButton}>
+                <Feather name="check" size={14} color={Colors.dark.success} />
+                <ThemedText
+                  type="caption"
+                  style={{ color: Colors.dark.success, marginLeft: 4, fontWeight: "500" }}
+                >
+                  Added
+                </ThemedText>
+              </View>
+            ) : (
+              <Pressable
+                onPress={onSavePress}
+                style={[styles.actionButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
               >
-                Add Episode
-              </ThemedText>
-            </Pressable>
+                <Feather name="plus" size={14} color={theme.text} />
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+                >
+                  Add Episode
+                </ThemedText>
+              </Pressable>
+            )
           ) : null}
           {onGenerateBriefPress ? (
-            <Pressable
-              onPress={onGenerateBriefPress}
-              style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
-            >
-              <Feather name="zap" size={14} color={theme.gold} />
-              <ThemedText
-                type="caption"
-                style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+            isSummarized ? (
+              <View style={styles.completedButton}>
+                <Feather name="check" size={14} color={Colors.dark.success} />
+                <ThemedText
+                  type="caption"
+                  style={{ color: Colors.dark.success, marginLeft: 4, fontWeight: "500" }}
+                >
+                  Summarized
+                </ThemedText>
+              </View>
+            ) : (
+              <Pressable
+                onPress={onGenerateBriefPress}
+                style={[styles.actionButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
               >
-                Summarize
-              </ThemedText>
-            </Pressable>
+                <Feather name="zap" size={14} color={theme.text} />
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+                >
+                  Summarize
+                </ThemedText>
+              </Pressable>
+            )
           ) : null}
         </View>
       ) : null}
@@ -193,7 +207,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     width: "100%",
-    marginTop: Spacing.sm,
+    marginTop: Spacing.md,
     gap: Spacing.sm,
   },
   actionButton: {
@@ -202,6 +216,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  completedButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
   playButton: {
     padding: Spacing.sm,

@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   searchButton: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.md,
     height: Spacing.inputHeight,
     borderRadius: BorderRadius.md,
     alignItems: "center",

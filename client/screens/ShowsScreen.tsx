@@ -87,6 +87,34 @@ export default function ShowsScreen() {
     enabled: podcastUuids.length > 0,
   });
 
+  const { data: savedEpisodes } = useQuery({
+    queryKey: ["savedEpisodes"],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("saved_episodes")
+        .select("taddy_episode_uuid")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: userBriefs } = useQuery({
+    queryKey: ["userBriefs"],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("user_briefs")
+        .select("taddy_episode_uuid")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const unfollowMutation = useMutation({
     mutationFn: async (podcastUuid: string) => {
       if (!user) throw new Error("Not authenticated");
@@ -115,7 +143,7 @@ export default function ShowsScreen() {
         episode_thumbnail: episode.imageUrl || episode.podcastSeries?.imageUrl,
         episode_audio_url: episode.audioUrl,
         episode_duration_seconds: episode.duration,
-        episode_published_at: new Date(episode.datePublished).toISOString(),
+        episode_published_at: new Date(episode.datePublished * 1000).toISOString(),
       });
       if (error) throw error;
     },
@@ -263,12 +291,21 @@ export default function ShowsScreen() {
               }
             />
           ) : (
-            <EpisodeCard
-              episode={item as TaddyEpisode}
-              onPress={() => handleEpisodePress(item as TaddyEpisode)}
-              onSavePress={() => saveMutation.mutate(item as TaddyEpisode)}
-              onGenerateBriefPress={() => handleGenerateBrief(item as TaddyEpisode)}
-            />
+            (() => {
+              const ep = item as TaddyEpisode;
+              const isSaved = savedEpisodes?.some((e) => e.taddy_episode_uuid === ep.uuid);
+              const isSummarized = userBriefs?.some((b) => b.taddy_episode_uuid === ep.uuid);
+              return (
+                <EpisodeCard
+                  episode={ep}
+                  isSaved={isSaved}
+                  isSummarized={isSummarized}
+                  onPress={() => handleEpisodePress(ep)}
+                  onSavePress={isSaved ? undefined : () => saveMutation.mutate(ep)}
+                  onGenerateBriefPress={() => handleGenerateBrief(ep)}
+                />
+              );
+            })()
           )
         }
         ListHeaderComponent={

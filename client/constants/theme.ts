@@ -56,7 +56,7 @@ export const Spacing = {
   "3xl": 32,
   "4xl": 40,
   "5xl": 48,
-  inputHeight: 48,
+  inputHeight: 40,
   buttonHeight: 52,
   miniPlayerHeight: 72,
   artworkSm: 48,
