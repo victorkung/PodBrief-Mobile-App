@@ -120,5 +120,22 @@ export interface AudioItem {
   savedEpisodeId?: string;
 }
 
-export type TabType = "episodes" | "summaries";
+export type TabType = "episodes" | "summaries" | "downloads";
 export type ShowsTabType = "shows" | "newEpisodes";
+
+export interface Download {
+  id: string;
+  type: "summary" | "episode";
+  title: string;
+  podcast: string;
+  artwork: string | null;
+  filePath: string;
+  fileSize: number;
+  downloadedAt: string;
+  sourceId?: string;
+  taddyEpisodeUuid?: string;
+  taddyPodcastUuid?: string;
+  episodeDurationSeconds?: number;
+  episodePublishedAt?: string;
+  audioUrl?: string;
+}

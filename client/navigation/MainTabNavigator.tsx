@@ -12,14 +12,12 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import DiscoverScreen from "@/screens/DiscoverScreen";
 import ShowsScreen from "@/screens/ShowsScreen";
 import LibraryScreen from "@/screens/LibraryScreen";
-import DownloadsScreen from "@/screens/DownloadsScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 
 export type MainTabParamList = {
   DiscoverTab: undefined;
   ShowsTab: undefined;
   LibraryTab: undefined;
-  DownloadsTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -113,17 +111,6 @@ export function MainTabNavigator({
             headerShown: false,
             tabBarLabel: "Library",
             tabBarIcon: ({ color }) => <TabBarIcon name="bookmark" color={color} />,
-          }}
-        />
-        <Tab.Screen
-          name="DownloadsTab"
-          component={DownloadsScreen}
-          options={{
-            headerShown: false,
-            tabBarLabel: "Downloads",
-            tabBarIcon: ({ color }) => (
-              <TabBarIcon name="download" color={color} />
-            ),
           }}
         />
         <Tab.Screen
