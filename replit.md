@@ -109,11 +109,19 @@ Preferred communication style: Simple, everyday language.
   - Optimistic updates for mark complete actions (instant UI feedback)
 
 - **LibraryItemCard UI Updates**:
-  - Artwork: 56x56 (matches EpisodeCard row layout)
-  - Play button: 40x40 with 18px icon (matches other action buttons)
-  - Title: small font with bold weight
-  - Podcast name: caption font
-  - Menu items all use white text (no red/yellow colors)
+  - Converted from card layout to compact row layout (like Shows/Search pages)
+  - Removed action buttons row - actions now in three-dots menu only
+  - Artwork: 56x56 with completed badge indicator
+  - Title: white text with bold weight
+  - Podcast name: grey (textSecondary) 
+  - Date/Duration: lighter grey (textTertiary)
+  - Three-dots menu includes: Mark Complete, Download, Share, Summarize, Remove
+
+- **Library Search & Filter**:
+  - Added search bar to filter episodes/summaries by title or podcast name
+  - Added compact filter dropdown: Unfinished (default), Completed, All
+  - Filter not shown on Downloads tab
+  - Empty states update based on current filter
 
 - **Shows Screen**: Fixed alphabetical sorting on initial load using `useMemo` to ensure podcasts are always sorted by name
 - **MiniPlayer**: Fixed `useBottomTabBarHeight` error by using `BottomTabBarHeightContext` with fallback to safe area insets for stack screens
