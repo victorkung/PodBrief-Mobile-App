@@ -104,10 +104,11 @@ export default function PodcastDetailScreen() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("user_briefs")
-        .select("taddy_episode_uuid")
-        .eq("user_id", user.id);
+        .select("master_briefs!inner(taddy_episode_uuid)")
+        .eq("user_id", user.id)
+        .eq("is_hidden", false);
       if (error) throw error;
-      return data;
+      return data?.map((b: any) => ({ taddy_episode_uuid: b.master_briefs?.taddy_episode_uuid })) || [];
     },
     enabled: !!user,
   });
