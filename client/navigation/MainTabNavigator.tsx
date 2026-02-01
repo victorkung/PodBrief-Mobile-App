@@ -3,11 +3,13 @@ import { View, StyleSheet } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { MiniPlayer } from "@/components/MiniPlayer";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { ExpandedPlayer } from "@/components/ExpandedPlayer";
+import { Spacing } from "@/constants/theme";
 
 import DiscoverScreen from "@/screens/DiscoverScreen";
 import ShowsScreen from "@/screens/ShowsScreen";
@@ -23,6 +25,9 @@ export type MainTabParamList = {
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+const MINI_PLAYER_HEIGHT = 64;
+const TAB_BAR_HEIGHT = 56;
+
 function TabBarIcon({
   name,
   color,
@@ -33,13 +38,14 @@ function TabBarIcon({
   return <Feather name={name} size={22} color={color} />;
 }
 
-export function MainTabNavigator({
-  onMiniPlayerPress,
-}: {
-  onMiniPlayerPress?: () => void;
-}) {
+export function MainTabNavigator() {
   const { theme } = useTheme();
-  const { currentItem } = useAudioPlayerContext();
+  const insets = useSafeAreaInsets();
+  const { currentItem, isExpanded, setExpanded } = useAudioPlayerContext();
+
+  const hasPlayer = !!currentItem;
+  const tabBarHeight = TAB_BAR_HEIGHT + insets.bottom;
+  const totalBottomHeight = hasPlayer ? tabBarHeight + MINI_PLAYER_HEIGHT : tabBarHeight;
 
   return (
     <View style={styles.container}>
@@ -68,22 +74,31 @@ export function MainTabNavigator({
           tabBarLabelStyle: {
             fontSize: 11,
             fontWeight: "500",
-            marginTop: -4,
           },
           tabBarStyle: {
             position: "absolute",
-            backgroundColor: "rgba(0,0,0,0.9)",
+            backgroundColor: "transparent",
             borderTopWidth: 0,
-            paddingTop: currentItem ? Spacing.miniPlayerHeight : 0,
-            height: currentItem ? 90 + Spacing.miniPlayerHeight : 90,
+            height: totalBottomHeight,
+            paddingBottom: insets.bottom,
           },
           tabBarBackground: () => (
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={StyleSheet.absoluteFill}>
+              <BlurView
+                intensity={80}
+                tint="dark"
+                style={StyleSheet.absoluteFill}
+              />
+              {hasPlayer ? (
+                <View style={[styles.miniPlayerContainer, { top: 0 }]}>
+                  <MiniPlayer onPress={() => setExpanded(true)} />
+                </View>
+              ) : null}
+            </View>
           ),
+          tabBarItemStyle: {
+            paddingTop: hasPlayer ? MINI_PLAYER_HEIGHT : 0,
+          },
         }}
       >
         <Tab.Screen
@@ -123,7 +138,11 @@ export function MainTabNavigator({
           }}
         />
       </Tab.Navigator>
-      {currentItem ? <MiniPlayer onPress={onMiniPlayerPress} /> : null}
+
+      <ExpandedPlayer
+        visible={isExpanded}
+        onClose={() => setExpanded(false)}
+      />
     </View>
   );
 }
@@ -131,5 +150,10 @@ export function MainTabNavigator({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  miniPlayerContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
   },
 });

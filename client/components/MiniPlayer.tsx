@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
   useAnimatedStyle,
@@ -8,13 +8,11 @@ import Animated, {
   FadeIn,
   FadeOut,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
@@ -24,9 +22,6 @@ interface MiniPlayerProps {
 
 export function MiniPlayer({ onPress }: MiniPlayerProps) {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
-  const tabBarHeightContext = React.useContext(BottomTabBarHeightContext);
-  const tabBarHeight = tabBarHeightContext ?? insets.bottom;
   const {
     currentItem,
     isPlaying,
@@ -35,7 +30,6 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
     duration,
     pause,
     resume,
-    skipForward,
   } = useAudioPlayerContext();
 
   const scale = useSharedValue(1);
@@ -48,17 +42,15 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
 
   if (!currentItem) return null;
 
+  const typeLabel = currentItem.type === "summary" ? "Summary" : "Full Episode";
+
   return (
     <Animated.View
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
       style={[
         styles.container,
-        {
-          backgroundColor: theme.backgroundDefault,
-          bottom: tabBarHeight,
-        },
-        Shadows.player,
+        { backgroundColor: theme.backgroundSecondary },
       ]}
     >
       <View style={[styles.progressBar, { backgroundColor: theme.backgroundTertiary }]}>
@@ -87,16 +79,14 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
           />
           <View style={styles.info}>
             <View style={styles.labelRow}>
-              {currentItem.type === "summary" ? (
-                <View style={[styles.badge, { backgroundColor: theme.gold }]}>
-                  <ThemedText
-                    type="caption"
-                    style={{ color: theme.buttonText, fontWeight: "600" }}
-                  >
-                    Summary
-                  </ThemedText>
-                </View>
-              ) : null}
+              <View style={[styles.badge, { backgroundColor: theme.gold }]}>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.buttonText, fontWeight: "600", fontSize: 9 }}
+                >
+                  {typeLabel}
+                </ThemedText>
+              </View>
             </View>
             <ThemedText type="small" numberOfLines={1} style={styles.title}>
               {currentItem.title}
@@ -110,20 +100,26 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
             </ThemedText>
           </View>
           <View style={styles.controls}>
-            <Pressable onPress={skipForward} style={styles.controlButton}>
-              <Feather name="rotate-cw" size={20} color={theme.text} />
+            <Pressable
+              onPress={() => {}}
+              style={styles.controlButton}
+              hitSlop={8}
+            >
+              <Feather name="cast" size={18} color={theme.textSecondary} />
             </Pressable>
             <Pressable
               onPress={isPlaying ? pause : resume}
               style={[styles.playButton, { backgroundColor: theme.gold }]}
+              hitSlop={4}
             >
               {isLoading ? (
-                <Feather name="loader" size={20} color={theme.buttonText} />
+                <ActivityIndicator size="small" color={theme.buttonText} />
               ) : (
                 <Feather
                   name={isPlaying ? "pause" : "play"}
-                  size={20}
+                  size={18}
                   color={theme.buttonText}
+                  style={isPlaying ? undefined : { marginLeft: 2 }}
                 />
               )}
             </Pressable>
@@ -136,9 +132,6 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    left: 0,
-    right: 0,
     borderTopLeftRadius: BorderRadius.md,
     borderTopRightRadius: BorderRadius.md,
     overflow: "hidden",
@@ -159,25 +152,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   artwork: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: BorderRadius.xs,
   },
   info: {
     flex: 1,
-    marginLeft: Spacing.md,
+    marginLeft: Spacing.sm,
   },
   labelRow: {
     flexDirection: "row",
     marginBottom: 2,
   },
   badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
   title: {
-    fontWeight: "500",
+    fontWeight: "600",
+    fontSize: 13,
   },
   controls: {
     flexDirection: "row",
@@ -188,9 +182,9 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },

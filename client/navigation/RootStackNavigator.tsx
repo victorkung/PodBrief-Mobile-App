@@ -114,13 +114,8 @@ export function RootStackNavigator() {
           <Stack.Screen
             name="Main"
             options={{ headerShown: false }}
-          >
-            {() => (
-              <MainTabNavigator
-                onMiniPlayerPress={() => {}}
-              />
-            )}
-          </Stack.Screen>
+            component={MainTabNavigator}
+          />
           <Stack.Screen
             name="PodcastDetail"
             component={PodcastDetailScreen}
