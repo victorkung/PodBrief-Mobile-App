@@ -17,6 +17,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import * as Google from "expo-auth-session/providers/google";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -26,6 +27,8 @@ import { supabase } from "@/lib/supabase";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
 type AuthMode = "signin" | "signup";
 
@@ -67,93 +70,58 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
 
   const selectedLanguageLabel = LANGUAGES.find(l => l.value === preferredLanguage)?.label || "";
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsGoogleLoading(true);
-      
-      console.log("=== GOOGLE SSO (Browser OAuth) ===");
-      console.log("Platform:", Platform.OS);
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    scopes: ["openid", "profile", "email"],
+  });
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: "https://podbrief.io?mobile=1",
-          skipBrowserRedirect: true,
-        },
-      });
+  React.useEffect(() => {
+    const handleGoogleResponse = async () => {
+      if (response?.type === "success") {
+        try {
+          setIsGoogleLoading(true);
+          const { authentication } = response;
+          
+          if (!authentication?.idToken) {
+            throw new Error("No ID token received from Google");
+          }
 
-      if (error) {
-        console.error("OAuth setup error:", error);
-        throw error;
-      }
-
-      if (!data.url) {
-        throw new Error("No auth URL returned");
-      }
-
-      console.log("Auth URL:", data.url);
-      console.log("Opening auth browser with return URL: podbrief://auth/callback");
-      
-      const result = await WebBrowser.openAuthSessionAsync(
-        data.url,
-        "podbrief://auth/callback"
-      );
-      
-      console.log("=== Browser Result ===");
-      console.log("Result type:", result.type);
-      
-      if (result.type === "success") {
-        console.log("Callback URL received:", result.url);
-        
-        const url = new URL(result.url);
-        console.log("URL hash:", url.hash);
-        console.log("URL search:", url.search);
-        
-        let accessToken: string | null = null;
-        let refreshToken: string | null = null;
-        
-        if (url.hash && url.hash.length > 1) {
-          const hashParams = new URLSearchParams(url.hash.slice(1));
-          accessToken = hashParams.get("access_token");
-          refreshToken = hashParams.get("refresh_token");
-          console.log("Tokens from hash - access:", !!accessToken, "refresh:", !!refreshToken);
-        }
-        
-        if (!accessToken && url.search) {
-          const searchParams = new URLSearchParams(url.search);
-          accessToken = searchParams.get("access_token");
-          refreshToken = searchParams.get("refresh_token");
-          console.log("Tokens from search - access:", !!accessToken, "refresh:", !!refreshToken);
-        }
-        
-        if (accessToken && refreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: authentication.idToken,
           });
-          
-          if (sessionError) throw sessionError;
-          
+
+          if (error) throw error;
+
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          console.log("Session set successfully");
-        } else {
-          console.error("Missing tokens. Full URL:", result.url);
-          throw new Error("Missing tokens in callback URL");
+        } catch (error: any) {
+          console.error("Google sign in error:", error);
+          Alert.alert("Sign-in failed", error.message || "Please try again.");
+        } finally {
+          setIsGoogleLoading(false);
         }
-      } else if (result.type === "cancel") {
-        console.log("User cancelled Google sign in");
-      } else if (result.type === "dismiss") {
-        console.log("Browser was dismissed");
-      } else {
-        console.log("Unknown result type:", result.type);
-        throw new Error("Sign-in failed");
+      } else if (response?.type === "error") {
+        console.error("Google auth error:", response.error);
+        Alert.alert("Sign-in failed", "Google authentication failed. Please try again.");
+        setIsGoogleLoading(false);
       }
+    };
+
+    handleGoogleResponse();
+  }, [response]);
+
+  const handleGoogleSignIn = async () => {
+    if (!request) {
+      Alert.alert("Error", "Google Sign-In is not ready. Please try again.");
+      return;
+    }
+    
+    setIsGoogleLoading(true);
+    try {
+      await promptAsync();
     } catch (error: any) {
-      console.error("Google sign in error:", error);
-      if (error.message !== "Sign-in cancelled") {
-        Alert.alert("Sign-in failed", "Please try again.");
-      }
-    } finally {
+      console.error("Google prompt error:", error);
+      Alert.alert("Sign-in failed", "Could not open Google Sign-In.");
       setIsGoogleLoading(false);
     }
   };
