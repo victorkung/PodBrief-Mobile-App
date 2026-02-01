@@ -96,17 +96,27 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           audioUrl = await getSignedAudioUrl(item.masterBriefId);
         }
 
+        if (!audioUrl) {
+          console.error("No audio URL provided");
+          setIsLoading(false);
+          return;
+        }
+
+        console.log("[AudioPlayer] Loading audio:", audioUrl.substring(0, 100));
+        
         await player.replace({ uri: audioUrl });
         
         if (item.progress > 0) {
           player.seekTo(item.progress / 1000);
         }
         
-        player.play();
+        await player.play();
         setIsPlaying(true);
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } catch (error) {
         console.error("Error playing audio:", error);
+        setCurrentItem(null);
+        setIsPlaying(false);
       } finally {
         setIsLoading(false);
       }

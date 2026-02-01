@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Share, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -7,7 +7,6 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Sharing from "expo-sharing";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -148,25 +147,43 @@ export default function EpisodeDetailScreen() {
     },
   });
 
-  const handlePlay = useCallback(() => {
-    const audioItem: AudioItem = {
-      id: uuid || "",
-      type: "episode",
-      title: name,
-      podcast: podcastName || "",
-      artwork: imageUrl || null,
-      audioUrl: audioUrl || "",
-      duration: duration * 1000,
-      progress: 0,
-    };
-    play(audioItem);
+  const handlePlay = useCallback(async () => {
+    if (!audioUrl) {
+      Alert.alert("Error", "No audio available for this episode");
+      return;
+    }
+    
+    try {
+      const audioItem: AudioItem = {
+        id: `episode-${uuid}`,
+        type: "episode",
+        title: name,
+        podcast: podcastName || "",
+        artwork: imageUrl || null,
+        audioUrl: audioUrl,
+        duration: duration * 1000,
+        progress: 0,
+      };
+      await play(audioItem);
+    } catch (error) {
+      console.error("Error playing episode:", error);
+      Alert.alert("Error", "Failed to play episode. Please try again.");
+    }
   }, [uuid, name, podcastName, imageUrl, audioUrl, duration, play]);
 
   const handleShare = useCallback(async () => {
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(`Listen to ${name} from ${podcastName}`);
+    try {
+      const shareUrl = `https://podbrief.io/episode/${uuid}`;
+      await Share.share({
+        message: `Listen to "${name}" from ${podcastName} on PodBrief: ${shareUrl}`,
+        url: shareUrl,
+        title: name,
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error("Error sharing:", error);
     }
-  }, [name, podcastName]);
+  }, [uuid, name, podcastName]);
 
   const handleGenerateBrief = useCallback(() => {
     if (isTaddyEpisode) {
