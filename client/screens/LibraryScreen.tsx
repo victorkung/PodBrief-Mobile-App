@@ -1,30 +1,31 @@
-import React, { useState, useCallback } from "react";
-import { FlatList, View, StyleSheet, RefreshControl } from "react-native";
+import React, { useState, useCallback, useEffect } from "react";
+import { FlatList, View, StyleSheet, RefreshControl, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Sharing from "expo-sharing";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { File } from "expo-file-system";
+import * as Haptics from "expo-haptics";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
-import { EpisodeCard } from "@/components/EpisodeCard";
-import { BriefCard } from "@/components/BriefCard";
-import { EmptyState } from "@/components/EmptyState";
-import {
-  EpisodeCardSkeleton,
-  BriefCardSkeleton,
-} from "@/components/SkeletonLoader";
+import { LibraryItemCard } from "@/components/LibraryItemCard";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { supabase } from "@/lib/supabase";
-import { SavedEpisode, UserBrief, TabType, AudioItem } from "@/lib/types";
-import { Spacing } from "@/constants/theme";
+import { SavedEpisode, UserBrief, TabType, AudioItem, Download } from "@/lib/types";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
-const emptyEpisodesImage = require("../../assets/images/empty-episodes.png");
-const emptySummariesImage = require("../../assets/images/empty-summaries.png");
+const DOWNLOADS_KEY = "@podbrief_downloads";
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function LibraryScreen() {
   const { theme } = useTheme();
@@ -35,8 +36,31 @@ export default function LibraryScreen() {
   const { user, profile } = useAuth();
   const { play } = useAudioPlayerContext();
 
-  const [selectedTab, setSelectedTab] = useState<TabType>("summaries");
+  const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
   const [refreshing, setRefreshing] = useState(false);
+  const [downloads, setDownloads] = useState<Download[]>([]);
+  const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set());
+  const [totalDownloadSize, setTotalDownloadSize] = useState(0);
+
+  const loadDownloads = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem(DOWNLOADS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Download[];
+        setDownloads(parsed);
+        const ids = new Set(parsed.map((d) => d.sourceId || d.id));
+        setDownloadedIds(ids);
+        const size = parsed.reduce((acc, d) => acc + d.fileSize, 0);
+        setTotalDownloadSize(size);
+      }
+    } catch (error) {
+      console.error("Error loading downloads:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDownloads();
+  }, [loadDownloads]);
 
   const {
     data: savedEpisodes,
@@ -93,9 +117,9 @@ export default function LibraryScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchEpisodes(), refetchBriefs()]);
+    await Promise.all([refetchEpisodes(), refetchBriefs(), loadDownloads()]);
     setRefreshing(false);
-  }, [refetchEpisodes, refetchBriefs]);
+  }, [refetchEpisodes, refetchBriefs, loadDownloads]);
 
   const handlePlayEpisode = useCallback(
     (episode: SavedEpisode) => {
@@ -137,25 +161,116 @@ export default function LibraryScreen() {
     [play]
   );
 
-  const handleShareBrief = useCallback(async (brief: UserBrief) => {
-    const shareUrl = `https://podbrief.io/brief/${brief.slug}`;
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(shareUrl);
-    }
-  }, []);
-
-  const handleBriefPress = useCallback(
-    (brief: UserBrief) => {
-      (navigation as any).navigate("BriefDetail", { brief });
+  const handlePlayDownload = useCallback(
+    (download: Download) => {
+      const audioItem: AudioItem = {
+        id: download.id,
+        type: download.type,
+        title: download.title,
+        podcast: download.podcast,
+        artwork: download.artwork,
+        audioUrl: download.filePath,
+        duration: (download.episodeDurationSeconds || 0) * 1000,
+        progress: 0,
+      };
+      play(audioItem);
     },
-    [navigation]
+    [play]
   );
 
-  const handleEpisodePress = useCallback(
+  const handleRemoveEpisode = useCallback(
+    async (episode: SavedEpisode) => {
+      try {
+        const { error } = await supabase
+          .from("saved_episodes")
+          .delete()
+          .eq("id", episode.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      } catch (error) {
+        console.error("Error removing episode:", error);
+        Alert.alert("Error", "Failed to remove episode from library");
+      }
+    },
+    [queryClient]
+  );
+
+  const handleRemoveBrief = useCallback(
+    async (brief: UserBrief) => {
+      try {
+        const { error } = await supabase
+          .from("user_briefs")
+          .update({ is_hidden: true })
+          .eq("id", brief.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+      } catch (error) {
+        console.error("Error removing brief:", error);
+        Alert.alert("Error", "Failed to remove summary from library");
+      }
+    },
+    [queryClient]
+  );
+
+  const handleRemoveDownload = useCallback(
+    async (download: Download) => {
+      try {
+        const file = new File(download.filePath);
+        if (file.exists) {
+          file.delete();
+        }
+        const updated = downloads.filter((d) => d.id !== download.id);
+        setDownloads(updated);
+        await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(updated));
+        const ids = new Set(updated.map((d) => d.sourceId || d.id));
+        setDownloadedIds(ids);
+        const size = updated.reduce((acc, d) => acc + d.fileSize, 0);
+        setTotalDownloadSize(size);
+      } catch (error) {
+        console.error("Error removing download:", error);
+      }
+    },
+    [downloads]
+  );
+
+  const handleMarkEpisodeComplete = useCallback(
+    async (episode: SavedEpisode, isComplete: boolean) => {
+      try {
+        const { error } = await supabase
+          .from("saved_episodes")
+          .update({ is_completed: isComplete })
+          .eq("id", episode.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      } catch (error) {
+        console.error("Error updating episode:", error);
+      }
+    },
+    [queryClient]
+  );
+
+  const handleMarkBriefComplete = useCallback(
+    async (brief: UserBrief, isComplete: boolean) => {
+      try {
+        const { error } = await supabase
+          .from("user_briefs")
+          .update({ is_completed: isComplete })
+          .eq("id", brief.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+      } catch (error) {
+        console.error("Error updating brief:", error);
+      }
+    },
+    [queryClient]
+  );
+
+  const handleSummarizeEpisode = useCallback(
     (episode: SavedEpisode) => {
       (navigation as any).navigate("EpisodeDetail", {
         episode,
         source: "library",
+        autoSummarize: true,
       });
     },
     [navigation]
@@ -164,94 +279,141 @@ export default function LibraryScreen() {
   const segments = [
     { key: "episodes" as TabType, label: "Episodes" },
     { key: "summaries" as TabType, label: "Summaries" },
+    { key: "downloads" as TabType, label: "Downloads" },
   ];
 
-  const renderEpisodesEmpty = () => {
-    if (isLoadingEpisodes) {
-      return (
-        <View>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <EpisodeCardSkeleton key={i} />
-          ))}
-        </View>
-      );
+  const isEpisodeDownloaded = (episode: SavedEpisode): boolean => {
+    return downloadedIds.has(episode.id) || downloadedIds.has(episode.taddy_episode_uuid);
+  };
+
+  const isBriefDownloaded = (brief: UserBrief): boolean => {
+    return downloadedIds.has(brief.id) || downloadedIds.has(brief.master_brief_id);
+  };
+
+  const renderEmptyState = () => {
+    let icon: string = "bookmark";
+    let title = "No Saved Episodes";
+    let subtitle = "Save episodes from shows you follow to listen later";
+
+    if (selectedTab === "summaries") {
+      icon = "zap";
+      title = "No Summaries Yet";
+      subtitle = "Generate AI summaries from any podcast episode";
+    } else if (selectedTab === "downloads") {
+      icon = "download";
+      title = "No Downloads";
+      subtitle = "Download summaries and episodes to listen offline";
     }
+
     return (
       <View style={styles.emptyContainer}>
-        <Feather name="bookmark" size={48} color={theme.textTertiary} />
+        <Feather name={icon as any} size={48} color={theme.textTertiary} />
         <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
-          No Saved Episodes
+          {title}
         </ThemedText>
         <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
-          Save episodes from shows you follow to listen later
+          {subtitle}
         </ThemedText>
       </View>
     );
   };
 
-  const renderBriefsEmpty = () => {
-    if (isLoadingBriefs) {
+  const renderItem = ({ item }: { item: SavedEpisode | UserBrief | Download }) => {
+    if (selectedTab === "episodes") {
+      const episode = item as SavedEpisode;
       return (
-        <View>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <BriefCardSkeleton key={i} />
-          ))}
-        </View>
+        <LibraryItemCard
+          type="episode"
+          episode={episode}
+          isDownloaded={isEpisodeDownloaded(episode)}
+          onPlay={() => handlePlayEpisode(episode)}
+          onRemoveFromPlaylist={() => handleRemoveEpisode(episode)}
+          onMarkComplete={(isComplete) => handleMarkEpisodeComplete(episode, isComplete)}
+          onSummarize={() => handleSummarizeEpisode(episode)}
+        />
+      );
+    } else if (selectedTab === "summaries") {
+      const brief = item as UserBrief;
+      return (
+        <LibraryItemCard
+          type="summary"
+          brief={brief}
+          isDownloaded={isBriefDownloaded(brief)}
+          onPlay={() => handlePlayBrief(brief)}
+          onRemoveFromPlaylist={() => handleRemoveBrief(brief)}
+          onMarkComplete={(isComplete) => handleMarkBriefComplete(brief, isComplete)}
+        />
+      );
+    } else {
+      const download = item as Download;
+      return (
+        <LibraryItemCard
+          type="download"
+          download={download}
+          isDownloaded={true}
+          onPlay={() => handlePlayDownload(download)}
+          onRemoveFromPlaylist={() => handleRemoveDownload(download)}
+          onRemoveDownload={() => handleRemoveDownload(download)}
+          onSummarize={download.type === "episode" ? () => {
+            if (download.taddyEpisodeUuid) {
+              (navigation as any).navigate("EpisodeDetail", {
+                episode: {
+                  taddy_episode_uuid: download.taddyEpisodeUuid,
+                  taddy_podcast_uuid: download.taddyPodcastUuid,
+                  episode_name: download.title,
+                  podcast_name: download.podcast,
+                  episode_thumbnail: download.artwork,
+                  episode_audio_url: download.audioUrl,
+                  episode_duration_seconds: download.episodeDurationSeconds,
+                },
+                source: "downloads",
+                autoSummarize: true,
+              });
+            }
+          } : undefined}
+        />
       );
     }
-    return (
-      <View style={styles.emptyContainer}>
-        <Feather name="zap" size={48} color={theme.textTertiary} />
-        <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
-          No Summaries Yet
-        </ThemedText>
-        <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
-          Generate AI summaries from any podcast episode
-        </ThemedText>
-      </View>
-    );
   };
+
+  const getData = () => {
+    if (selectedTab === "episodes") return savedEpisodes || [];
+    if (selectedTab === "summaries") return userBriefs || [];
+    return downloads;
+  };
+
+  const getKeyExtractor = (item: SavedEpisode | UserBrief | Download) => item.id;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
-        data={selectedTab === "episodes" ? savedEpisodes || [] : userBriefs || []}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) =>
-          selectedTab === "episodes" ? (
-            <EpisodeCard
-              episode={item as SavedEpisode}
-              showPodcastName
-              onPress={() => handleEpisodePress(item as SavedEpisode)}
-              onPlayPress={() => handlePlayEpisode(item as SavedEpisode)}
-            />
-          ) : (
-            <BriefCard
-              brief={item as UserBrief}
-              onPress={() => handleBriefPress(item as UserBrief)}
-              onPlayPress={() => handlePlayBrief(item as UserBrief)}
-              onSharePress={() => handleShareBrief(item as UserBrief)}
-            />
-          )
-        }
+        data={getData()}
+        keyExtractor={getKeyExtractor}
+        renderItem={renderItem}
         ListHeaderComponent={
           <View style={styles.header}>
             <ThemedText type="pageTitle" style={styles.title}>
               {profile?.first_name ? `${profile.first_name}'s Library` : "Your Library"}
             </ThemedText>
             <ThemedText type="caption" style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Your saved episodes and AI summaries
+              Your saved episodes, AI summaries, and downloads
             </ThemedText>
             <SegmentedControl
               segments={segments}
               selectedKey={selectedTab}
               onSelect={setSelectedTab}
             />
+            {selectedTab === "downloads" && downloads.length > 0 ? (
+              <View style={[styles.storageBar, { backgroundColor: theme.backgroundDefault }]}>
+                <Feather name="download-cloud" size={18} color={theme.gold} />
+                <ThemedText type="small" style={styles.storageText}>
+                  {formatFileSize(totalDownloadSize)} used
+                </ThemedText>
+              </View>
+            ) : null}
           </View>
         }
-        ListEmptyComponent={
-          selectedTab === "episodes" ? renderEpisodesEmpty() : renderBriefsEmpty()
-        }
+        ListEmptyComponent={renderEmptyState}
         contentContainerStyle={{
           paddingTop: insets.top + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
@@ -284,6 +446,17 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginBottom: Spacing.lg,
+  },
+  storageBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  storageText: {
+    marginLeft: Spacing.sm,
+    fontWeight: "500",
   },
   emptyContainer: {
     flex: 1,

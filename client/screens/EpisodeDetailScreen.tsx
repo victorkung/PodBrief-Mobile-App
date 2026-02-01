@@ -235,6 +235,14 @@ export default function EpisodeDetailScreen() {
         filePath: downloadedFile.uri,
         fileSize: fileSize,
         downloadedAt: new Date().toISOString(),
+        sourceId: isTaddyEpisode ? undefined : (episode as SavedEpisode).id,
+        taddyEpisodeUuid: uuid,
+        taddyPodcastUuid: podcastUuid,
+        episodeDurationSeconds: duration,
+        episodePublishedAt: typeof publishedAt === "number" 
+          ? new Date(publishedAt * 1000).toISOString() 
+          : publishedAt,
+        audioUrl: audioUrl,
       };
 
       const existingDownloads = await AsyncStorage.getItem("@podbrief_downloads");
@@ -242,6 +250,22 @@ export default function EpisodeDetailScreen() {
       const filteredDownloads = downloads.filter((d: any) => d.id !== downloadData.id);
       filteredDownloads.push(downloadData);
       await AsyncStorage.setItem("@podbrief_downloads", JSON.stringify(filteredDownloads));
+
+      if (!isSaved && isTaddyEpisode && user) {
+        const taddyEpisode = episode as TaddyEpisode;
+        await supabase.from("saved_episodes").insert({
+          user_id: user.id,
+          taddy_episode_uuid: taddyEpisode.uuid,
+          taddy_podcast_uuid: podcastUuid,
+          episode_name: taddyEpisode.name,
+          podcast_name: podcastName,
+          episode_thumbnail: imageUrl,
+          episode_audio_url: taddyEpisode.audioUrl,
+          episode_duration_seconds: taddyEpisode.duration,
+          episode_published_at: new Date(taddyEpisode.datePublished * 1000).toISOString(),
+        });
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Downloaded", `"${name}" has been saved for offline listening.`);
@@ -251,7 +275,7 @@ export default function EpisodeDetailScreen() {
     } finally {
       setIsDownloading(false);
     }
-  }, [uuid, name, podcastName, imageUrl, audioUrl]);
+  }, [uuid, name, podcastName, imageUrl, audioUrl, duration, publishedAt, podcastUuid, isTaddyEpisode, isSaved, user, episode, queryClient]);
 
   const handleAddToLibrary = useCallback(() => {
     if (isSaved) {
