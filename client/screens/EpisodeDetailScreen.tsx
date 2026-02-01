@@ -7,7 +7,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
+import { Paths, File, Directory } from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -205,22 +205,26 @@ export default function EpisodeDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
+      const docDir = Paths.document;
       const fileName = `episode_${uuid}.mp3`;
-      const filePath = `${FileSystem.documentDirectory}downloads/${fileName}`;
-
-      const dirInfo = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}downloads`);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}downloads`, { intermediates: true });
+      const downloadDir = new Directory(docDir, "downloads");
+      
+      if (!downloadDir.exists) {
+        downloadDir.create();
       }
 
-      const downloadResult = await FileSystem.downloadAsync(audioUrl, filePath);
-
-      if (downloadResult.status !== 200) {
+      const downloadedFile = new File(downloadDir, fileName);
+      
+      const response = await fetch(audioUrl);
+      if (!response.ok) {
         throw new Error("Download failed");
       }
+      
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      downloadedFile.write(new Uint8Array(arrayBuffer));
 
-      const fileInfo = await FileSystem.getInfoAsync(filePath);
-      const fileSize = fileInfo.exists ? (fileInfo as any).size || 0 : 0;
+      const fileSize = blob.size || 0;
 
       const downloadData = {
         id: `episode-${uuid}`,
@@ -228,7 +232,7 @@ export default function EpisodeDetailScreen() {
         title: name,
         podcast: podcastName || "",
         artwork: imageUrl || null,
-        filePath: filePath,
+        filePath: downloadedFile.uri,
         fileSize: fileSize,
         downloadedAt: new Date().toISOString(),
       };

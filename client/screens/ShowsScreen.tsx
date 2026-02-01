@@ -300,8 +300,8 @@ export default function ShowsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
-        data={selectedTab === "shows" ? sortedFollowedPodcasts : newEpisodes || []}
-        keyExtractor={(item) =>
+        data={(selectedTab === "shows" ? sortedFollowedPodcasts : newEpisodes || []) as any}
+        keyExtractor={(item: any) =>
           "uuid" in item ? item.uuid : item.taddy_podcast_uuid
         }
         renderItem={({ item }) =>

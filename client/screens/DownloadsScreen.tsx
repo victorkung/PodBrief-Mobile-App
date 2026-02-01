@@ -3,7 +3,7 @@ import { FlatList, View, StyleSheet, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
-import * as FileSystem from "expo-file-system";
+import { File } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -80,9 +80,10 @@ export default function DownloadsScreen() {
             style: "destructive",
             onPress: async () => {
               try {
-                await FileSystem.deleteAsync(download.filePath, {
-                  idempotent: true,
-                });
+                const file = new File(download.filePath);
+                if (file.exists) {
+                  file.delete();
+                }
                 const updated = downloads.filter((d) => d.id !== download.id);
                 setDownloads(updated);
                 await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(updated));
@@ -103,7 +104,7 @@ export default function DownloadsScreen() {
   const renderItem = useCallback(
     ({ item }: { item: Download }) => (
       <Card
-        style={[styles.downloadCard, { backgroundColor: theme.backgroundDefault }]}
+        style={{ ...styles.downloadCard, backgroundColor: theme.backgroundDefault } as any}
       >
         <View style={styles.downloadContent}>
           <View

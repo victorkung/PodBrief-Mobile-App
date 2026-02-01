@@ -83,8 +83,20 @@ Preferred communication style: Simple, everyday language.
 
 ### Known Issues
 
-- **CORS Configuration**: Supabase Edge Functions are configured to only accept requests from `https://podbrief.io`. Development domains are blocked - needs Lovable/Supabase CORS whitelist update to enable testing
+- **CORS Configuration**: Supabase Edge Functions are configured to only accept requests from `https://podbrief.io`. Development domains are blocked - CORS has been updated to allow `exp://*` and `*.expo.dev` for mobile development
 - **Google SSO (Deferred)**: Mobile Google Sign-In requires Supabase to accept multiple Client IDs for iOS/Android apps
+- **Taddy API Limits**: `limitPerPage` must be between 1-25 (not 30)
+
+### Recent Changes (Feb 2026)
+
+- **Shows Screen**: Fixed alphabetical sorting on initial load using `useMemo` to ensure podcasts are always sorted by name
+- **MiniPlayer**: Fixed `useBottomTabBarHeight` error by using `BottomTabBarHeightContext` with fallback to safe area insets for stack screens
+- **Episode Detail Actions**:
+  - **Play**: Uses direct audio URL from episode data, wrapped with error handling
+  - **Share**: Uses React Native's Share API to share episode URL with deep link
+  - **Add/Remove**: Toggles saved_episodes with haptic feedback (success for add, medium for remove)
+  - **Download**: Full implementation using new expo-file-system API (`Paths`, `File`, `Directory` classes), saves to AsyncStorage for Downloads screen
+- **expo-file-system**: Updated to use new class-based API (`Paths.document`, `Directory`, `File`) instead of legacy `documentDirectory`
 
 ### Key NPM Packages
 
