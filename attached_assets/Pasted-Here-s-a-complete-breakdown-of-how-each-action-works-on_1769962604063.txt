@@ -1,0 +1,175 @@
+Here's a complete breakdown of how each action works on the Episode Details page:
+
+---
+
+## 1. Play Action
+
+**No edge function required** - plays directly from the episode's audio URL.
+
+```typescript
+// From EpisodeDetail.tsx (lines 146-167)
+const handlePlayEpisode = async () => {
+  if (!episode || !episode.audioUrl) return;
+
+  // If already playing this episode, toggle pause/resume
+  if (isThisPlaying) {
+    if (playbackState === 'playing') {
+      pause();
+    } else {
+      resume();
+    }
+    return;
+  }
+
+  // Play new episode
+  await playFullEpisode({
+    masterBriefId: `episode-${episode.taddyEpisodeUuid}`,  // Unique ID format
+    briefSlug: episode.slug,
+    title: episode.name,
+    artist: episode.podcastName,
+    artwork: episode.imageUrl || episode.podcastImageUrl,
+    audioUrl: episode.audioUrl,  // Direct audio URL - no signing needed
+    audioDurationSeconds: episode.durationSeconds,
+  });
+};
+```
+
+**Key Point**: The `masterBriefId` for episodes uses the format `episode-{taddyEpisodeUuid}` to distinguish from summary tracks.
+
+---
+
+## 2. Share Action
+
+**URL Construction:**
+```typescript
+// From EpisodeDetail.tsx (lines 222-228)
+const getShareUrl = () => {
+  const baseUrl = `${window.location.origin}/episode/${episode?.slug}`;
+  if (profile?.first_name) {
+    return `${baseUrl}?sharedBy=${encodeURIComponent(profile.first_name)}`;
+  }
+  return baseUrl;
+};
+```
+
+**Share Modal Behavior:**
+- On mobile with Web Share API: Uses `navigator.share({ url, title })`
+- On desktop: Copies link to clipboard
+
+```typescript
+// From ShareModal.tsx
+const handleNativeShare = async () => {
+  if (navigator.share) {
+    await navigator.share({
+      url: shareUrl,
+      title: briefTitle,
+    });
+  }
+};
+```
+
+---
+
+## 3. Summarize Action
+
+**Prerequisites:**
+1. User must be authenticated
+2. User must have credits > 0 (or be Pro)
+
+```typescript
+// From EpisodeDetail.tsx (lines 246-299)
+const handleGenerateBrief = async () => {
+  if (!user || !episode) return;
+
+  // CRITICAL: Check credits first
+  if (!profile || profile.credits <= 0) {
+    toast.error('No credits available. Please upgrade to continue.');
+    return;
+  }
+
+  const { data, error } = await supabase.functions.invoke('generate-taddy-brief', {
+    body: {
+      episodeUuid: episode.taddyEpisodeUuid,      // Required
+      podcastUuid: episode.taddyPodcastUuid,      // Required
+      episodeName: episode.name,                   // Required
+      podcastName: episode.podcastName,            // Required
+      episodeThumbnail: episode.imageUrl || episode.podcastImageUrl,
+      episodeDuration: episode.durationSeconds,    // Note: "episodeDuration" not "episodeDurationSeconds"
+      episodePublishedAt: episode.publishedAt,
+      episodeAudioUrl: episode.audioUrl,
+    },
+  });
+
+  // Handle response statuses
+  if (data.status === 'exists') {
+    toast.info("This brief is already in your Library!");
+  } else if (data.status === 'restored') {
+    toast.success('Brief restored to your Library!');
+    await refreshProfile();  // Refresh to update credit count
+  } else if (data.status === 'linked') {
+    toast.success('Brief added to your Library!');
+    await refreshProfile();
+  } else if (data.status === 'processing') {
+    toast.success("Your brief is being generated. We'll email you when it's ready!");
+    await refreshProfile();
+  }
+
+  // Update UI with returned briefSlug
+  if (data.briefSlug) {
+    setEpisode(prev => prev ? { ...prev, briefSlug: data.briefSlug } : prev);
+    setUserHasBrief(true);
+  }
+};
+```
+
+---
+
+## Checking if User Already Has Brief
+
+```typescript
+// From EpisodeDetail.tsx (lines 116-144)
+const { data } = await supabase
+  .from('user_briefs')
+  .select(`
+    id,
+    master_briefs!inner(taddy_episode_uuid)
+  `)
+  .eq('user_id', user.id)
+  .eq('is_hidden', false)
+  .eq('master_briefs.taddy_episode_uuid', episode.taddyEpisodeUuid)
+  .maybeSingle();
+
+setUserHasBrief(!!data);
+```
+
+---
+
+## Episode Data Structure
+
+The episode data comes from the `get-episode-details` edge function:
+
+```typescript
+interface EpisodeData {
+  id: string;
+  taddyEpisodeUuid: string;
+  taddyPodcastUuid: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  audioUrl: string | null;           // Direct URL - no signing needed
+  durationSeconds: number | null;
+  publishedAt: string | null;
+  podcastName: string;
+  podcastSlug: string | null;
+  podcastImageUrl: string | null;
+  briefSlug: string | null;          // If a brief already exists
+}
+```
+
+---
+
+Let me know if you need more details on any specific action or the edge function contracts!
+
+Update API Contract with Episode Actions
+Document get-episode-details endpoint
