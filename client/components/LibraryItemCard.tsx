@@ -296,9 +296,11 @@ export function LibraryItemCard({
 
         <Pressable
           onPress={onPlay}
-          style={[styles.playButton, { backgroundColor: theme.text }]}
+          style={styles.actionButton}
         >
-          <Feather name="play" size={18} color={theme.backgroundRoot} />
+          <View style={[styles.playCircle, { backgroundColor: theme.text }]}>
+            <Feather name="play" size={14} color={theme.backgroundRoot} style={{ marginLeft: 2 }} />
+          </View>
         </Pressable>
       </View>
 
@@ -436,13 +438,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  playCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
-    paddingLeft: 2,
   },
   modalOverlay: {
     flex: 1,
