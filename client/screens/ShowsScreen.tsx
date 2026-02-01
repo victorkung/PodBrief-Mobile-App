@@ -358,7 +358,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginBottom: Spacing.lg,
-    opacity: 0.7,
   },
   emptyContainer: {
     flex: 1,
