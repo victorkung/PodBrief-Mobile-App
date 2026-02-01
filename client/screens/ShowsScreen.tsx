@@ -301,7 +301,7 @@ export default function ShowsScreen() {
                   isSaved={isSaved}
                   isSummarized={isSummarized}
                   onPress={() => handleEpisodePress(ep)}
-                  onSavePress={isSaved ? undefined : () => saveMutation.mutate(ep)}
+                  onSavePress={() => saveMutation.mutate(ep)}
                   onGenerateBriefPress={() => handleGenerateBrief(ep)}
                 />
               );

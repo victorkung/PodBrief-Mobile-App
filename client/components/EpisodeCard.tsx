@@ -73,49 +73,51 @@ export function EpisodeCard({
         animatedStyle,
       ]}
     >
-      <Image
-        source={imageUrl ? { uri: imageUrl } : placeholderImage}
-        style={styles.artwork}
-        contentFit="cover"
-        transition={200}
-      />
-      <View style={styles.content}>
-        <ThemedText
-          type="small"
-          numberOfLines={2}
-          style={[styles.title, { color: "#FFFFFF" }]}
-        >
-          {name}
-        </ThemedText>
-        {showPodcastName && podcastName ? (
+      <View style={styles.contentRow}>
+        <Image
+          source={imageUrl ? { uri: imageUrl } : placeholderImage}
+          style={styles.artwork}
+          contentFit="cover"
+          transition={200}
+        />
+        <View style={styles.content}>
           <ThemedText
-            type="caption"
-            numberOfLines={1}
-            style={[styles.podcast, { color: theme.textSecondary }]}
+            type="small"
+            numberOfLines={2}
+            style={[styles.title, { color: "#FFFFFF" }]}
           >
-            {podcastName}
+            {name}
           </ThemedText>
-        ) : null}
-        <View style={styles.metaRow}>
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            {formatDate(publishedAt)}
-          </ThemedText>
-          <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            {formatDuration(duration)}
-          </ThemedText>
+          {showPodcastName && podcastName ? (
+            <ThemedText
+              type="caption"
+              numberOfLines={1}
+              style={[styles.podcast, { color: theme.textSecondary }]}
+            >
+              {podcastName}
+            </ThemedText>
+          ) : null}
+          <View style={styles.metaRow}>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {formatDate(publishedAt)}
+            </ThemedText>
+            <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {formatDuration(duration)}
+            </ThemedText>
+          </View>
         </View>
+        {onPlayPress && !onSavePress && !onGenerateBriefPress ? (
+          <Pressable onPress={onPlayPress} style={styles.playButton}>
+            <Feather name="play" size={16} color={theme.gold} />
+          </Pressable>
+        ) : null}
       </View>
-      {onPlayPress && !onSavePress && !onGenerateBriefPress ? (
-        <Pressable onPress={onPlayPress} style={styles.playButton}>
-          <Feather name="play" size={16} color={theme.gold} />
-        </Pressable>
-      ) : null}
       {(onSavePress || onGenerateBriefPress) ? (
         <View style={styles.actionsRow}>
           {onSavePress ? (
             isSaved ? (
-              <View style={styles.completedButton}>
+              <View style={[styles.completedButton, { backgroundColor: "transparent" }]}>
                 <Feather name="check" size={14} color={Colors.dark.success} />
                 <ThemedText
                   type="caption"
@@ -127,12 +129,12 @@ export function EpisodeCard({
             ) : (
               <Pressable
                 onPress={onSavePress}
-                style={[styles.actionButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                style={[styles.actionButton, { backgroundColor: theme.gold }]}
               >
-                <Feather name="plus" size={14} color={theme.text} />
+                <Feather name="plus" size={14} color={theme.buttonText} />
                 <ThemedText
                   type="caption"
-                  style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+                  style={{ color: theme.buttonText, marginLeft: 4, fontWeight: "500" }}
                 >
                   Add Episode
                 </ThemedText>
@@ -141,7 +143,7 @@ export function EpisodeCard({
           ) : null}
           {onGenerateBriefPress ? (
             isSummarized ? (
-              <View style={styles.completedButton}>
+              <View style={[styles.completedButton, { backgroundColor: "transparent" }]}>
                 <Feather name="check" size={14} color={Colors.dark.success} />
                 <ThemedText
                   type="caption"
@@ -153,12 +155,12 @@ export function EpisodeCard({
             ) : (
               <Pressable
                 onPress={onGenerateBriefPress}
-                style={[styles.actionButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                style={[styles.actionButton, { backgroundColor: theme.gold }]}
               >
-                <Feather name="zap" size={14} color={theme.text} />
+                <Feather name="zap" size={14} color={theme.buttonText} />
                 <ThemedText
                   type="caption"
-                  style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+                  style={{ color: theme.buttonText, marginLeft: 4, fontWeight: "500" }}
                 >
                   Summarize
                 </ThemedText>
@@ -173,9 +175,10 @@ export function EpisodeCard({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     paddingVertical: Spacing.md,
+  },
+  contentRow: {
+    flexDirection: "row",
     alignItems: "flex-start",
   },
   artwork: {
@@ -206,7 +209,6 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: "row",
-    width: "100%",
     marginTop: Spacing.sm,
     gap: Spacing.sm,
   },
@@ -216,7 +218,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    borderWidth: 1,
   },
   completedButton: {
     flexDirection: "row",
