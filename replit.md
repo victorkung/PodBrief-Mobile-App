@@ -30,7 +30,7 @@ Preferred communication style: Simple, everyday language.
 
 - **Server**: Express.js with TypeScript, minimal local routes as most logic lives in Supabase Edge Functions
 - **Database**: PostgreSQL via Supabase with Drizzle ORM for schema management
-- **Authentication**: Supabase Auth with email/password and Google SSO support
+- **Authentication**: Supabase Auth with email/password (Google SSO deferred for mobile - requires Supabase multi-client-ID configuration)
 - **API Pattern**: Edge Functions for business logic (podcast search, brief generation, billing), REST API for direct database access
 
 ### Data Storage Solutions
