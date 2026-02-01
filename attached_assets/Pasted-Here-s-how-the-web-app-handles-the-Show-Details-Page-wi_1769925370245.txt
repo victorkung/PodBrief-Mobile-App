@@ -1,0 +1,69 @@
+Here's how the web app handles the **Show Details Page** with episodes:
+
+## Two Data Sources for Episodes
+
+The web app uses **two different edge functions** depending on context:
+
+### 1. `get-show-discovery` (Initial Page Load - SEO/Public Data)
+- **Called with:** `{ slug, taddyPodcastUuid? }`
+- **Returns:** Podcast metadata + `latestBriefs` (episodes that have completed summaries in the database)
+- **Used for:** Initial page render, SEO, unauthenticated users
+
+### 2. `taddy-podcast-details` (Full Episode List for Authenticated Users)
+- **Called with:** `{ uuid, page, limitPerPage, searchTerm? }`
+- **Returns:** ALL episodes from Taddy API (not just ones with briefs)
+- **Used for:** Authenticated users browsing/generating briefs
+
+## Key Data Flow
+
+```text
+1. Page loads -> calls get-show-discovery with slug
+   Returns: podcast info + latestBriefs (completed summaries only)
+
+2. If user is authenticated AND taddyPodcastUuid exists:
+   -> calls taddy-podcast-details with the UUID
+   Returns: Full episode list from Taddy API
+```
+
+## Checking Existing Briefs (Critical for Mobile)
+
+The web app queries `user_briefs` joined with `master_briefs` to determine which episodes already have summaries:
+
+```typescript
+// From ShowDiscovery.tsx lines 206-224
+const fetchExistingBriefs = useCallback(async () => {
+  if (!user || !profile || !taddyPodcastUuid) return;
+
+  const { data: briefsData } = await supabase
+    .from('user_briefs')
+    .select('master_briefs!inner(taddy_episode_uuid, language)')
+    .eq('user_id', user.id)
+    .eq('is_hidden', false);
+
+  if (briefsData) {
+    const episodeUuids = new Set(
+      briefsData
+        .filter((b: any) => b.master_briefs?.language === profile.preferred_language)
+        .map((b: any) => b.master_briefs?.taddy_episode_uuid)
+        .filter(Boolean) as string[]
+    );
+    setExistingBriefs(episodeUuids);  // Set of episode UUIDs that have briefs
+  }
+}, [user, profile, taddyPodcastUuid]);
+```
+
+## Checking Saved Episodes
+
+```typescript
+// Uses the useSavedEpisodes hook which queries:
+const { data: savedEpisodes } = useSavedEpisodes(user?.id);
+
+// Then checks:
+const isEpisodeSaved = (taddyEpisodeUuid: string) => {
+  return savedEpisodes?.some(ep => ep.taddyEpisodeUuid === taddyEpisodeUuid) || false;
+};
+```
+
+## CORS Issue Found
+
+I noticed `taddy-podcast-details` still has the **old CORS configuration** without Replit domains or null origin support
