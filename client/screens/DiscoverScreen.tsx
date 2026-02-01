@@ -1,29 +1,25 @@
 import React, { useState, useCallback } from "react";
-import { FlatList, View, StyleSheet, ActivityIndicator } from "react-native";
+import { FlatList, View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import { Feather } from "@expo/vector-icons";
 
 import { SearchInput } from "@/components/SearchInput";
 import { PodcastCard } from "@/components/PodcastCard";
-import { EmptyState } from "@/components/EmptyState";
 import { PodcastCardSkeleton } from "@/components/SkeletonLoader";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { TaddyPodcast, FollowedPodcast } from "@/lib/types";
-import { Spacing } from "@/constants/theme";
-
-const emptyDiscoverImage = require("../../assets/images/empty-discover.png");
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 export default function DiscoverScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
@@ -32,7 +28,11 @@ export default function DiscoverScreen() {
   const [searchTerm, setSearchTerm] = useState("");
   const [submittedTerm, setSubmittedTerm] = useState("");
 
-  const { data: searchResults, isLoading: isSearching } = useQuery({
+  const {
+    data: searchResults,
+    isLoading: isSearching,
+    isFetching,
+  } = useQuery({
     queryKey: ["podcastSearch", submittedTerm],
     queryFn: async () => {
       if (!submittedTerm) return [];
@@ -43,6 +43,7 @@ export default function DiscoverScreen() {
       return data.podcasts as TaddyPodcast[];
     },
     enabled: !!submittedTerm,
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: followedPodcasts } = useQuery({
@@ -96,10 +97,11 @@ export default function DiscoverScreen() {
   });
 
   const handleSearch = useCallback(() => {
-    if (searchTerm.trim()) {
-      setSubmittedTerm(searchTerm.trim());
+    const term = searchTerm.trim();
+    if (term && term !== submittedTerm) {
+      setSubmittedTerm(term);
     }
-  }, [searchTerm]);
+  }, [searchTerm, submittedTerm]);
 
   const isFollowed = useCallback(
     (uuid: string) => {
@@ -139,7 +141,7 @@ export default function DiscoverScreen() {
   );
 
   const renderEmpty = () => {
-    if (isSearching) {
+    if (isSearching || isFetching) {
       return (
         <View>
           {[1, 2, 3, 4, 5].map((i) => (
@@ -150,19 +152,31 @@ export default function DiscoverScreen() {
     }
     if (submittedTerm && searchResults?.length === 0) {
       return (
-        <EmptyState
-          image={emptyDiscoverImage}
-          title="No Results Found"
-          subtitle={`We couldn't find any podcasts matching "${submittedTerm}"`}
-        />
+        <View style={[styles.emptyContainer, { backgroundColor: theme.backgroundDefault }]}>
+          <View style={[styles.emptyIconCircle, { backgroundColor: theme.gold }]}>
+            <Feather name="search" size={32} color={theme.backgroundRoot} />
+          </View>
+          <ThemedText type="h3" style={styles.emptyTitle}>
+            No results found
+          </ThemedText>
+          <ThemedText type="body" style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+            We couldn't find any podcasts matching "{submittedTerm}"
+          </ThemedText>
+        </View>
       );
     }
     return (
-      <EmptyState
-        image={emptyDiscoverImage}
-        title="Search for Podcasts"
-        subtitle="Find shows by name, topic, or host"
-      />
+      <View style={[styles.emptyContainer, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={[styles.emptyIconCircle, { backgroundColor: theme.gold }]}>
+          <Feather name="search" size={32} color={theme.backgroundRoot} />
+        </View>
+        <ThemedText type="h3" style={styles.emptyTitle}>
+          Search for podcasts
+        </ThemedText>
+        <ThemedText type="body" style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+          Search by show name to find your favorite podcasts.
+        </ThemedText>
+      </View>
     );
   };
 
@@ -175,22 +189,24 @@ export default function DiscoverScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <ThemedText type="h1" style={styles.title}>
-              Discover
+              Search Podcasts
             </ThemedText>
-            <ThemedText type="small" style={styles.subtitle}>
-              Find shows, add them to your list, and generate briefs
+            <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
+              Find shows, add them to your list, and generate summaries for specific episodes.
             </ThemedText>
             <SearchInput
               value={searchTerm}
               onChangeText={setSearchTerm}
               onSubmit={handleSearch}
               placeholder="Search for podcasts..."
+              showButton={true}
+              isLoading={isSearching || isFetching}
             />
           </View>
         }
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
+          paddingTop: insets.top + Spacing.lg,
           paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
           flexGrow: 1,
@@ -208,13 +224,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   title: {
     marginBottom: Spacing.xs,
   },
   subtitle: {
     marginBottom: Spacing.lg,
-    opacity: 0.7,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.xxl * 2,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.md,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  emptyTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.sm,
+  },
+  emptySubtitle: {
+    textAlign: "center",
+    maxWidth: 280,
   },
 });

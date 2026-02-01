@@ -63,13 +63,13 @@ export function PodcastCard({
         transition={200}
       />
       <View style={styles.content}>
-        <ThemedText type="h4" numberOfLines={2} style={styles.title}>
+        <ThemedText type="body" numberOfLines={2} style={styles.title}>
           {name}
         </ThemedText>
         <ThemedText type="small" numberOfLines={1} style={styles.author}>
           {authorName || "Unknown"}
         </ThemedText>
-        <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+        <ThemedText type="small" style={{ color: theme.textTertiary }}>
           {episodeCount} episodes
         </ThemedText>
       </View>
@@ -98,7 +98,7 @@ export function PodcastCard({
               marginLeft: 4,
             }}
           >
-            {isFollowed ? "Following" : "Follow"}
+            {isFollowed ? "Added" : "Add"}
           </ThemedText>
         </Pressable>
       ) : null}

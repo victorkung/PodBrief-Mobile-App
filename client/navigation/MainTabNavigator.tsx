@@ -92,8 +92,8 @@ export function MainTabNavigator({
           name="DiscoverTab"
           component={DiscoverScreen}
           options={{
-            headerTitle: "",
-            tabBarLabel: "Discover",
+            headerShown: false,
+            tabBarLabel: "Search",
             tabBarIcon: ({ color }) => <TabBarIcon name="search" color={color} />,
           }}
         />
