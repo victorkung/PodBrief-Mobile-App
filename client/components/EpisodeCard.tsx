@@ -75,11 +75,7 @@ export function EpisodeCard({
       onPress={onPress}
       onPressIn={() => (scale.value = withSpring(0.98))}
       onPressOut={() => (scale.value = withSpring(1))}
-      style={[
-        styles.container,
-        { backgroundColor: theme.backgroundDefault },
-        animatedStyle,
-      ]}
+      style={[styles.container, animatedStyle]}
     >
       <Image
         source={imageUrl ? { uri: imageUrl } : placeholderImage}
@@ -88,41 +84,60 @@ export function EpisodeCard({
         transition={200}
       />
       <View style={styles.content}>
-        <ThemedText type="h4" numberOfLines={2} style={styles.title}>
+        <ThemedText type="small" numberOfLines={2} style={styles.title}>
           {name}
         </ThemedText>
         {showPodcastName && podcastName ? (
-          <ThemedText type="small" numberOfLines={1} style={styles.podcast}>
+          <ThemedText
+            type="caption"
+            numberOfLines={1}
+            style={[styles.podcast, { color: theme.textSecondary }]}
+          >
             {podcastName}
           </ThemedText>
         ) : null}
         <View style={styles.metaRow}>
-          <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             {formatDate(publishedAt)}
           </ThemedText>
-          <View style={styles.dot} />
-          <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+          <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             {formatDuration(duration)}
           </ThemedText>
         </View>
       </View>
       <View style={styles.actions}>
-        {onPlayPress ? (
-          <Pressable onPress={onPlayPress} style={styles.actionButton}>
-            <Feather name="play" size={18} color={theme.gold} />
-          </Pressable>
-        ) : null}
         {onSavePress ? (
-          <Pressable onPress={onSavePress} style={styles.actionButton}>
-            <Feather name="bookmark" size={18} color={theme.textSecondary} />
+          <Pressable
+            onPress={onSavePress}
+            style={[styles.actionButton, { borderColor: theme.border }]}
+          >
+            <Feather name="plus" size={14} color={theme.text} />
+            <ThemedText
+              type="caption"
+              style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+            >
+              Add Episode
+            </ThemedText>
           </Pressable>
         ) : null}
         {onGenerateBriefPress ? (
           <Pressable
             onPress={onGenerateBriefPress}
-            style={[styles.briefButton, { backgroundColor: theme.gold }]}
+            style={[styles.actionButton, { borderColor: theme.border }]}
           >
-            <Feather name="zap" size={14} color={theme.buttonText} />
+            <Feather name="zap" size={14} color={theme.text} />
+            <ThemedText
+              type="caption"
+              style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+            >
+              Summarize
+            </ThemedText>
+          </Pressable>
+        ) : null}
+        {onPlayPress && !onSavePress && !onGenerateBriefPress ? (
+          <Pressable onPress={onPlayPress} style={styles.playButton}>
+            <Feather name="play" size={16} color={theme.gold} />
           </Pressable>
         ) : null}
       </View>
@@ -133,21 +148,20 @@ export function EpisodeCard({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
+    paddingVertical: Spacing.md,
+    alignItems: "flex-start",
   },
   artwork: {
-    width: Spacing.artworkSm,
-    height: Spacing.artworkSm,
+    width: 56,
+    height: 56,
     borderRadius: BorderRadius.xs,
   },
   content: {
     flex: 1,
     marginLeft: Spacing.md,
-    justifyContent: "center",
   },
   title: {
+    fontWeight: "600",
     marginBottom: 2,
   },
   podcast: {
@@ -161,19 +175,23 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#6B7280",
     marginHorizontal: 6,
   },
   actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: Spacing.xs,
+    marginLeft: Spacing.sm,
   },
   actionButton: {
-    padding: Spacing.sm,
-  },
-  briefButton: {
-    padding: Spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  playButton: {
+    padding: Spacing.sm,
   },
 });

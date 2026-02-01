@@ -50,11 +50,7 @@ export function PodcastCard({
       onPress={onPress}
       onPressIn={() => (scale.value = withSpring(0.98))}
       onPressOut={() => (scale.value = withSpring(1))}
-      style={[
-        styles.container,
-        { backgroundColor: theme.backgroundDefault },
-        animatedStyle,
-      ]}
+      style={[styles.container, animatedStyle]}
     >
       <Image
         source={imageUrl ? { uri: imageUrl } : placeholderImage}
@@ -63,13 +59,17 @@ export function PodcastCard({
         transition={200}
       />
       <View style={styles.content}>
-        <ThemedText type="body" numberOfLines={2} style={styles.title}>
+        <ThemedText type="small" numberOfLines={2} style={styles.title}>
           {name}
         </ThemedText>
-        <ThemedText type="small" numberOfLines={1} style={styles.author}>
+        <ThemedText
+          type="caption"
+          numberOfLines={1}
+          style={[styles.meta, { color: theme.textSecondary }]}
+        >
           {authorName || "Unknown"}
         </ThemedText>
-        <ThemedText type="small" style={{ color: theme.textTertiary }}>
+        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
           {episodeCount} episodes
         </ThemedText>
       </View>
@@ -82,16 +82,17 @@ export function PodcastCard({
               backgroundColor: isFollowed
                 ? theme.backgroundSecondary
                 : theme.gold,
+              borderColor: isFollowed ? theme.border : theme.gold,
             },
           ]}
         >
           <Feather
             name={isFollowed ? "check" : "plus"}
-            size={16}
+            size={14}
             color={isFollowed ? theme.text : theme.buttonText}
           />
           <ThemedText
-            type="small"
+            type="caption"
             style={{
               color: isFollowed ? theme.text : theme.buttonText,
               fontWeight: "600",
@@ -109,14 +110,13 @@ export function PodcastCard({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
   },
   artwork: {
-    width: Spacing.artworkMd,
-    height: Spacing.artworkMd,
-    borderRadius: BorderRadius.sm,
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.xs,
   },
   content: {
     flex: 1,
@@ -124,9 +124,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
+    fontWeight: "600",
     marginBottom: 2,
   },
-  author: {
+  meta: {
     marginBottom: 2,
   },
   followButton: {
@@ -136,6 +137,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    alignSelf: "center",
+    borderWidth: 1,
   },
 });

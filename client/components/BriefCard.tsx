@@ -34,6 +34,24 @@ function formatDate(dateString: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function getLanguageName(code: string): string {
+  const languages: Record<string, string> = {
+    en: "English",
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    it: "Italian",
+    pt: "Portuguese",
+    zh: "Chinese",
+    ja: "Japanese",
+    ko: "Korean",
+    ru: "Russian",
+    ar: "Arabic",
+    hi: "Hindi",
+  };
+  return languages[code.toLowerCase()] || code;
+}
+
 function ProgressRing({
   progress,
   size = 36,
@@ -107,11 +125,7 @@ export function BriefCard({
       onPress={onPress}
       onPressIn={() => (scale.value = withSpring(0.98))}
       onPressOut={() => (scale.value = withSpring(1))}
-      style={[
-        styles.container,
-        { backgroundColor: theme.backgroundDefault },
-        animatedStyle,
-      ]}
+      style={[styles.container, animatedStyle]}
     >
       <View style={styles.artworkContainer}>
         <Image
@@ -134,30 +148,31 @@ export function BriefCard({
         ) : null}
       </View>
       <View style={styles.content}>
-        <ThemedText type="h4" numberOfLines={2} style={styles.title}>
+        <ThemedText type="small" numberOfLines={2} style={styles.title}>
           {name}
         </ThemedText>
-        <ThemedText type="small" numberOfLines={1} style={styles.podcast}>
+        <ThemedText
+          type="caption"
+          numberOfLines={1}
+          style={[styles.podcast, { color: theme.textSecondary }]}
+        >
           {podcastName}
         </ThemedText>
         <View style={styles.metaRow}>
-          <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             {formatDate(brief.created_at)}
           </ThemedText>
           {audioDuration > 0 ? (
             <>
-              <View style={styles.dot} />
-              <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+              <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                 {formatDuration(audioDuration)}
               </ThemedText>
             </>
           ) : null}
-          <View style={styles.dot} />
-          <ThemedText
-            type="caption"
-            style={{ color: theme.gold, fontWeight: "500" }}
-          >
-            {brief.preferred_language.toUpperCase()}
+          <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            {getLanguageName(brief.preferred_language)}
           </ThemedText>
         </View>
       </View>
@@ -191,17 +206,16 @@ export function BriefCard({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
   },
   artworkContainer: {
     position: "relative",
   },
   artwork: {
-    width: Spacing.artworkMd,
-    height: Spacing.artworkMd,
-    borderRadius: BorderRadius.sm,
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.xs,
   },
   progressOverlay: {
     position: "absolute",
@@ -223,9 +237,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     marginLeft: Spacing.md,
-    justifyContent: "center",
   },
   title: {
+    fontWeight: "600",
     marginBottom: 2,
   },
   podcast: {
@@ -234,12 +248,12 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
   },
   dot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#6B7280",
     marginHorizontal: 6,
   },
   actions: {
