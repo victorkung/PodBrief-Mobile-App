@@ -58,7 +58,7 @@ export default function PodcastDetailScreen() {
           body: {
             uuid: podcast.uuid,
             page: 1,
-            limitPerPage: 30,
+            limitPerPage: 25,
             searchTerm: searchTerm || undefined,
           },
         }
