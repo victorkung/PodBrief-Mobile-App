@@ -17,7 +17,8 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Expo SDK 54 with React Native 0.81, using the new architecture
 - **Navigation**: React Navigation v7 with a hybrid structure:
   - Root stack navigator for auth flow and modals
-  - Bottom tab navigator with 5 tabs (Discover, Shows, Library, Downloads, Profile)
+  - Bottom tab navigator with 4 tabs (Search, Shows, Library, Profile)
+  - Library screen has 3 inner tabs via SegmentedControl (Episodes, Summaries, Downloads)
   - Nested stack navigators for each tab
 - **State Management**: 
   - React Query for server state and caching
@@ -88,6 +89,15 @@ Preferred communication style: Simple, everyday language.
 - **Taddy API Limits**: `limitPerPage` must be between 1-25 (not 30)
 
 ### Recent Changes (Feb 2026)
+
+- **Library Screen Redesign**:
+  - Moved Downloads from bottom nav into Library as third tab (Episodes, Summaries, Downloads)
+  - Bottom nav now has 4 tabs: Search, Shows, Library, Profile
+  - New Spotify-style LibraryItemCard with content on top, action buttons below
+  - Action buttons: Mark Complete (checkmark), Download (arrow), Share, Three-dots menu, Play
+  - Three-dots menu: Remove from Library, Mark Complete/Unfinished, Summarize (episodes only)
+  - Auto-adds episodes to Library when downloading
+  - Download/remove download functionality from Library cards
 
 - **Shows Screen**: Fixed alphabetical sorting on initial load using `useMemo` to ensure podcasts are always sorted by name
 - **MiniPlayer**: Fixed `useBottomTabBarHeight` error by using `BottomTabBarHeightContext` with fallback to safe area insets for stack screens
