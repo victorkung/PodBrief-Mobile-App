@@ -52,12 +52,12 @@ export function SkeletonLoader({
 
 export function PodcastCardSkeleton() {
   return (
-    <View style={styles.podcastCard}>
-      <SkeletonLoader width={64} height={64} borderRadius={BorderRadius.sm} />
-      <View style={styles.podcastContent}>
-        <SkeletonLoader width="80%" height={18} />
-        <SkeletonLoader width="50%" height={14} style={{ marginTop: 6 }} />
-        <SkeletonLoader width="30%" height={12} style={{ marginTop: 6 }} />
+    <View style={styles.rowCard}>
+      <SkeletonLoader width={56} height={56} borderRadius={BorderRadius.xs} />
+      <View style={styles.rowContent}>
+        <SkeletonLoader width="75%" height={14} />
+        <SkeletonLoader width="50%" height={12} style={{ marginTop: 4 }} />
+        <SkeletonLoader width="30%" height={12} style={{ marginTop: 4 }} />
       </View>
     </View>
   );
@@ -65,11 +65,11 @@ export function PodcastCardSkeleton() {
 
 export function EpisodeCardSkeleton() {
   return (
-    <View style={styles.episodeCard}>
-      <SkeletonLoader width={48} height={48} borderRadius={BorderRadius.xs} />
-      <View style={styles.episodeContent}>
-        <SkeletonLoader width="90%" height={16} />
-        <SkeletonLoader width="60%" height={14} style={{ marginTop: 4 }} />
+    <View style={styles.rowCard}>
+      <SkeletonLoader width={56} height={56} borderRadius={BorderRadius.xs} />
+      <View style={styles.rowContent}>
+        <SkeletonLoader width="80%" height={14} />
+        <SkeletonLoader width="50%" height={12} style={{ marginTop: 4 }} />
         <SkeletonLoader width="40%" height={12} style={{ marginTop: 4 }} />
       </View>
     </View>
@@ -78,12 +78,12 @@ export function EpisodeCardSkeleton() {
 
 export function BriefCardSkeleton() {
   return (
-    <View style={styles.briefCard}>
-      <SkeletonLoader width={64} height={64} borderRadius={BorderRadius.sm} />
-      <View style={styles.briefContent}>
-        <SkeletonLoader width="85%" height={16} />
-        <SkeletonLoader width="50%" height={14} style={{ marginTop: 4 }} />
-        <SkeletonLoader width="60%" height={12} style={{ marginTop: 4 }} />
+    <View style={styles.rowCard}>
+      <SkeletonLoader width={56} height={56} borderRadius={BorderRadius.xs} />
+      <View style={styles.rowContent}>
+        <SkeletonLoader width="75%" height={14} />
+        <SkeletonLoader width="45%" height={12} style={{ marginTop: 4 }} />
+        <SkeletonLoader width="55%" height={12} style={{ marginTop: 4 }} />
       </View>
       <SkeletonLoader width={36} height={36} borderRadius={18} />
     </View>
@@ -91,33 +91,12 @@ export function BriefCardSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  podcastCard: {
-    flexDirection: "row",
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  podcastContent: {
-    flex: 1,
-    marginLeft: Spacing.md,
-    justifyContent: "center",
-  },
-  episodeCard: {
-    flexDirection: "row",
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  episodeContent: {
-    flex: 1,
-    marginLeft: Spacing.md,
-    justifyContent: "center",
-  },
-  briefCard: {
+  rowCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
+    paddingVertical: Spacing.md,
   },
-  briefContent: {
+  rowContent: {
     flex: 1,
     marginLeft: Spacing.md,
     justifyContent: "center",
