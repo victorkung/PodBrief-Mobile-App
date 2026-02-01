@@ -629,6 +629,12 @@ export default function LibraryScreen() {
           isDownloading={downloadingIds.has(episode.id)}
           hasSummary={hasSummaryForEpisode(episode)}
           onPlay={() => handlePlayEpisode(episode)}
+          onNavigateToDetails={() => {
+            (navigation as any).navigate("EpisodeDetail", {
+              episode,
+              source: "library",
+            });
+          }}
           onDownload={() => handleDownloadEpisode(episode)}
           onRemoveDownload={() => handleRemoveEpisodeDownload(episode)}
           onRemoveFromPlaylist={() => handleRemoveEpisode(episode)}
@@ -645,6 +651,12 @@ export default function LibraryScreen() {
           isDownloaded={isBriefDownloaded(brief)}
           isDownloading={downloadingIds.has(brief.id)}
           onPlay={() => handlePlayBrief(brief)}
+          onNavigateToDetails={() => {
+            (navigation as any).navigate("BriefDetail", {
+              brief,
+              source: "library",
+            });
+          }}
           onDownload={() => handleDownloadBrief(brief)}
           onRemoveDownload={() => handleRemoveBriefDownload(brief)}
           onRemoveFromPlaylist={() => handleRemoveBrief(brief)}
@@ -660,6 +672,38 @@ export default function LibraryScreen() {
           isDownloaded={true}
           hasSummary={hasSummaryForDownload(download)}
           onPlay={() => handlePlayDownload(download)}
+          onNavigateToDetails={() => {
+            if (download.type === "episode" && download.taddyEpisodeUuid) {
+              (navigation as any).navigate("EpisodeDetail", {
+                episode: {
+                  taddy_episode_uuid: download.taddyEpisodeUuid,
+                  taddy_podcast_uuid: download.taddyPodcastUuid,
+                  episode_name: download.title,
+                  podcast_name: download.podcast,
+                  episode_thumbnail: download.artwork,
+                  episode_audio_url: download.audioUrl,
+                  episode_duration_seconds: download.episodeDurationSeconds,
+                },
+                source: "downloads",
+              });
+            } else if (download.type === "summary" && download.masterBriefId) {
+              (navigation as any).navigate("BriefDetail", {
+                brief: {
+                  id: download.id,
+                  master_brief_id: download.masterBriefId,
+                  slug: download.slug,
+                  master_brief: {
+                    episode_name: download.title,
+                    podcast_name: download.podcast,
+                    episode_thumbnail: download.artwork,
+                    audio_url: download.audioUrl,
+                    audio_duration_seconds: download.episodeDurationSeconds,
+                  },
+                },
+                source: "downloads",
+              });
+            }
+          }}
           onRemoveFromPlaylist={() => handleRemoveDownload(download)}
           onRemoveDownload={() => handleRemoveDownload(download)}
           onSummarize={download.type === "episode" ? () => {

@@ -25,6 +25,7 @@ interface LibraryItemCardProps {
   download?: Download;
   isDownloaded?: boolean;
   onPlay: () => void;
+  onNavigateToDetails?: () => void;
   onDownload?: () => void;
   onRemoveDownload?: () => void;
   onRemoveFromPlaylist: () => void;
@@ -62,6 +63,7 @@ export function LibraryItemCard({
   download,
   isDownloaded = false,
   onPlay,
+  onNavigateToDetails,
   onDownload,
   onRemoveDownload,
   onRemoveFromPlaylist,
@@ -199,7 +201,7 @@ export function LibraryItemCard({
 
   return (
     <View style={[styles.card, { borderBottomColor: theme.border }]}>
-      <Pressable onPress={onPlay} style={styles.contentRow}>
+      <Pressable onPress={onNavigateToDetails || onPlay} style={styles.contentRow}>
         <View style={[styles.artwork, { backgroundColor: theme.backgroundTertiary }]}>
           {artwork ? (
             <Image source={{ uri: artwork }} style={styles.artworkImage} contentFit="cover" />
@@ -296,11 +298,9 @@ export function LibraryItemCard({
 
         <Pressable
           onPress={onPlay}
-          style={styles.actionButton}
+          style={[styles.playButton, { backgroundColor: theme.text }]}
         >
-          <View style={[styles.playCircle, { backgroundColor: theme.text }]}>
-            <Feather name="play" size={14} color={theme.backgroundRoot} style={{ marginLeft: 2 }} />
-          </View>
+          <Feather name="play" size={18} color={theme.backgroundRoot} />
         </Pressable>
       </View>
 
@@ -315,7 +315,7 @@ export function LibraryItemCard({
           onPress={() => setMenuVisible(false)}
         >
           <View style={[styles.menuContainer, { backgroundColor: theme.backgroundDefault }]}>
-            {showSummarizeOption && onSummarize ? (
+            {showSummarizeOption && onSummarize && !hasSummary ? (
               <Pressable
                 style={styles.menuItem}
                 onPress={handleSummarize}
@@ -438,12 +438,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  playCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    paddingLeft: 2,
   },
   modalOverlay: {
     flex: 1,
