@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
+import * as Google from "expo-auth-session/providers/google";
 import * as Linking from "expo-linking";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -27,6 +27,9 @@ import { supabase } from "@/lib/supabase";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_IOS_CLIENT_ID = "416134223258-rqqppgdag1437vnj8mgumpmeqjpeadph.apps.googleusercontent.com";
+const GOOGLE_ANDROID_CLIENT_ID = "416134223258-96slnmma4gn5skl363udag5ti58dflba.apps.googleusercontent.com";
 
 type AuthMode = "signin" | "signup";
 
@@ -64,8 +67,65 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const selectedLanguageLabel = LANGUAGES.find(l => l.value === preferredLanguage)?.label || "";
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      handleGoogleIdToken(response.params.id_token);
+    } else if (response?.type === "error") {
+      console.error("Google auth error:", response.error);
+      Alert.alert("Error", "Google sign in failed. Please try again.");
+      setIsGoogleLoading(false);
+    } else if (response?.type === "cancel") {
+      console.log("User cancelled Google sign in");
+      setIsGoogleLoading(false);
+    }
+  }, [response]);
+
+  const handleGoogleIdToken = async (idToken: string) => {
+    try {
+      console.log("=== GOOGLE SSO (ID Token Flow) ===");
+      console.log("Platform:", Platform.OS);
+      console.log("ID Token received:", !!idToken);
+
+      const { data, error } = await supabase.functions.invoke("mobile-google-auth", {
+        body: {
+          idToken,
+          platform: Platform.OS as "ios" | "android",
+        },
+      });
+
+      if (error) {
+        console.error("mobile-google-auth error:", error);
+        throw error;
+      }
+
+      console.log("Auth response received:", !!data);
+
+      if (data?.access_token && data?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        console.log("Session set successfully");
+      } else {
+        throw new Error("Missing tokens in response");
+      }
+    } catch (error: any) {
+      console.error("Google sign in error:", error);
+      Alert.alert("Error", error.message || "Google sign in failed. Please try again.");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (mode === "signup" && !firstName.trim()) {
@@ -95,80 +155,18 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
   };
 
   const handleGoogleSignIn = async () => {
+    if (!request) {
+      Alert.alert("Error", "Google sign in is not available on this platform.");
+      return;
+    }
+    
+    setIsGoogleLoading(true);
     try {
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: "podbrief",
-        path: "auth/callback",
-        preferLocalhost: false,
-      });
-
-      console.log("=== GOOGLE SSO DEBUG ===");
-      console.log("Redirect URL for Supabase whitelist:", redirectUrl);
-      console.log("========================");
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-
-      const result = await WebBrowser.openAuthSessionAsync(
-        data.url!,
-        redirectUrl
-      );
-
-      console.log("OAuth result type:", result.type);
-
-      if (result.type === "success") {
-        const resultUrl = result.url;
-        console.log("OAuth callback URL:", resultUrl);
-
-        let accessToken: string | null = null;
-        let refreshToken: string | null = null;
-
-        const url = new URL(resultUrl);
-        
-        const hashParams = new URLSearchParams(url.hash.substring(1));
-        accessToken = hashParams.get("access_token");
-        refreshToken = hashParams.get("refresh_token");
-
-        if (!accessToken) {
-          accessToken = url.searchParams.get("access_token");
-          refreshToken = url.searchParams.get("refresh_token");
-        }
-
-        if (!accessToken) {
-          const accessTokenMatch = resultUrl.match(/access_token=([^&]*)/);
-          const refreshTokenMatch = resultUrl.match(/refresh_token=([^&]*)/);
-          accessToken = accessTokenMatch ? accessTokenMatch[1] : null;
-          refreshToken = refreshTokenMatch ? refreshTokenMatch[1] : null;
-        }
-
-        console.log("Access token found:", !!accessToken);
-        console.log("Refresh token found:", !!refreshToken);
-
-        if (accessToken && refreshToken) {
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } else {
-          console.error("Missing tokens in OAuth response");
-          Alert.alert("Error", "Authentication failed. Missing tokens in response.");
-        }
-      } else if (result.type === "cancel") {
-        console.log("User cancelled Google sign in");
-      } else {
-        console.log("OAuth result:", result);
-      }
+      await promptAsync();
     } catch (error: any) {
-      console.error("Google sign in error:", error);
+      console.error("Google sign in prompt error:", error);
       Alert.alert("Error", "Google sign in failed. Please try again.");
+      setIsGoogleLoading(false);
     }
   };
 
@@ -239,14 +237,16 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
             <View style={styles.form}>
               <Pressable
                 onPress={handleGoogleSignIn}
+                disabled={isGoogleLoading || !request}
                 style={[
                   styles.googleButton,
                   { backgroundColor: theme.backgroundSecondary },
+                  (isGoogleLoading || !request) && styles.buttonDisabled,
                 ]}
               >
                 <Feather name="globe" size={20} color={theme.text} />
                 <ThemedText type="body" style={styles.googleText}>
-                  Continue with Google
+                  {isGoogleLoading ? "Signing in..." : "Continue with Google"}
                 </ThemedText>
               </Pressable>
 
@@ -489,6 +489,9 @@ const styles = StyleSheet.create({
   },
   googleText: {
     fontWeight: "500",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   divider: {
     flexDirection: "row",
