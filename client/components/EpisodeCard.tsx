@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     width: "100%",
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
     gap: Spacing.sm,
   },
   actionButton: {

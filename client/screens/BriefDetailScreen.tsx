@@ -10,17 +10,17 @@ import * as Haptics from "expo-haptics";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { UserBrief, AudioItem } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { formatDuration } from "@/lib/utils";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
 type ContentTab = "summary" | "condensed" | "transcript";
 
-function formatDuration(seconds: number): string {
+function formatAudioDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
@@ -65,6 +65,14 @@ export default function BriefDetailScreen() {
     }
   }, [brief]);
 
+  const handleDownload = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
+
+  const handleMarkComplete = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
+
   const segments = [
     { key: "summary" as ContentTab, label: "Summary" },
     { key: "condensed" as ContentTab, label: "Condensed" },
@@ -88,11 +96,13 @@ export default function BriefDetailScreen() {
     masterBrief?.pipeline_status !== "completed" &&
     masterBrief?.pipeline_status !== "failed";
 
+  const audioDuration = masterBrief?.audio_duration_seconds || 0;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
+          paddingTop: headerHeight + Spacing.lg,
           paddingBottom: insets.bottom + Spacing.miniPlayerHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
         }}
@@ -109,53 +119,62 @@ export default function BriefDetailScreen() {
             contentFit="cover"
             transition={200}
           />
-          <ThemedText type="h2" style={styles.title}>
-            {masterBrief?.episode_name || "Brief"}
-          </ThemedText>
-          <ThemedText type="small" style={styles.podcast}>
-            {masterBrief?.podcast_name}
-          </ThemedText>
-          {masterBrief?.audio_duration_seconds ? (
-            <View style={styles.durationRow}>
-              <Feather name="clock" size={14} color={theme.gold} />
+          <View style={styles.headerInfo}>
+            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.textSecondary }}>
+              {masterBrief?.podcast_name}
+            </ThemedText>
+            <ThemedText type="h3" numberOfLines={3} style={styles.title}>
+              {masterBrief?.episode_name || "Brief"}
+            </ThemedText>
+            <View style={styles.metaRow}>
+              <Feather name="clock" size={12} color={theme.gold} />
               <ThemedText type="caption" style={{ color: theme.gold, marginLeft: 4 }}>
-                {formatDuration(masterBrief.audio_duration_seconds)} summary
+                {formatAudioDuration(audioDuration)} summary
               </ThemedText>
             </View>
-          ) : null}
+          </View>
         </View>
 
-        <View style={styles.actions}>
-          <Button
-            onPress={handlePlay}
-            disabled={isProcessing}
-            style={styles.playButton}
-          >
-            <View style={styles.buttonContent}>
-              <Feather
-                name={isProcessing ? "loader" : "play"}
-                size={18}
-                color={theme.buttonText}
-              />
-              <ThemedText
-                type="body"
-                style={{ color: theme.buttonText, fontWeight: "600", marginLeft: 8 }}
-              >
-                {isProcessing ? "Processing..." : "Play"}
+        <View style={styles.actionsSection}>
+          <View style={styles.actionsGrid}>
+            <Pressable
+              onPress={handlePlay}
+              disabled={isProcessing}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            >
+              <Feather name={isProcessing ? "loader" : "play"} size={18} color={theme.text} />
+              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                {isProcessing ? "Processing..." : `Play (${formatAudioDuration(audioDuration)})`}
               </ThemedText>
-            </View>
-          </Button>
-          <Pressable
-            onPress={handleShare}
-            style={[styles.iconButton, { backgroundColor: theme.backgroundSecondary }]}
-          >
-            <Feather name="share" size={20} color={theme.text} />
-          </Pressable>
-          <Pressable
-            style={[styles.iconButton, { backgroundColor: theme.backgroundSecondary }]}
-          >
-            <Feather name="download" size={20} color={theme.text} />
-          </Pressable>
+            </Pressable>
+            <Pressable
+              onPress={handleShare}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            >
+              <Feather name="share-2" size={18} color={theme.text} />
+              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                Share
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={handleMarkComplete}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            >
+              <Feather name="check" size={18} color={theme.text} />
+              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                Mark Complete
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={handleDownload}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            >
+              <Feather name="download" size={18} color={theme.text} />
+              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                Download
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
 
         <SegmentedControl
@@ -167,7 +186,7 @@ export default function BriefDetailScreen() {
         <View
           style={[styles.contentCard, { backgroundColor: theme.backgroundDefault }]}
         >
-          <ThemedText type="caption" style={styles.contentMeta}>
+          <ThemedText type="caption" style={[styles.contentMeta, { color: theme.textTertiary }]}>
             {selectedTab === "summary" ? "AI-generated summary" : null}
             {selectedTab === "condensed" ? "AI-condensed transcript" : null}
             {selectedTab === "transcript" ? "Full episode transcript" : null}
@@ -186,47 +205,42 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
-  artwork: {
-    width: Spacing.artworkXl,
-    height: Spacing.artworkXl,
-    borderRadius: BorderRadius.lg,
+    flexDirection: "row",
     marginBottom: Spacing.lg,
   },
-  title: {
-    textAlign: "center",
-    marginBottom: Spacing.xs,
+  artwork: {
+    width: 100,
+    height: 100,
+    borderRadius: BorderRadius.md,
   },
-  podcast: {
-    marginBottom: Spacing.sm,
-    opacity: 0.7,
-  },
-  durationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-    gap: Spacing.md,
-  },
-  playButton: {
+  headerInfo: {
     flex: 1,
+    marginLeft: Spacing.md,
   },
-  buttonContent: {
+  title: {
+    marginVertical: Spacing.xs,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  actionsSection: {
+    marginBottom: Spacing.lg,
+  },
+  actionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  gridButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-  },
-  iconButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    width: "48.5%",
   },
   contentCard: {
     padding: Spacing.lg,
@@ -235,7 +249,6 @@ const styles = StyleSheet.create({
   },
   contentMeta: {
     marginBottom: Spacing.md,
-    opacity: 0.6,
   },
   contentText: {
     lineHeight: 26,

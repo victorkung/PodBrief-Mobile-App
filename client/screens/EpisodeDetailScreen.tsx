@@ -160,6 +160,12 @@ export default function EpisodeDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
+  const handleAddToLibrary = useCallback(() => {
+    if (!isSaved) {
+      saveMutation.mutate();
+    }
+  }, [isSaved, saveMutation]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
@@ -201,127 +207,90 @@ export default function EpisodeDetailScreen() {
         </View>
 
         <View style={styles.actionsSection}>
-          {source === "library" ? (
-            <>
+          <View style={styles.actionsGrid}>
+            <Pressable
+              onPress={handlePlay}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            >
+              <Feather name="play" size={18} color={theme.text} />
+              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                Play ({formatDuration(duration)})
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={handleShare}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            >
+              <Feather name="share-2" size={18} color={theme.text} />
+              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                Share
+              </ThemedText>
+            </Pressable>
+            {source === "library" ? (
               <Pressable
-                onPress={handlePlay}
-                style={[styles.actionButton, { backgroundColor: theme.gold }]}
+                onPress={() => markCompleteMutation.mutate()}
+                disabled={markCompleteMutation.isPending}
+                style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
               >
-                <Feather name="play" size={18} color={theme.buttonText} />
-                <ThemedText
-                  type="body"
-                  style={{
-                    color: theme.buttonText,
-                    marginLeft: Spacing.sm,
-                    fontWeight: "600",
-                  }}
-                >
-                  Play Episode
+                <Feather name="check" size={18} color={theme.text} />
+                <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                  Mark Complete
                 </ThemedText>
               </Pressable>
-              <View style={styles.secondaryActionsRow}>
-                <Pressable
-                  onPress={handleShare}
-                  style={[styles.secondaryButton, { backgroundColor: theme.backgroundTertiary }]}
-                >
-                  <Feather name="share" size={16} color={theme.text} />
-                  <ThemedText type="caption" style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}>
-                    Share
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  onPress={() => markCompleteMutation.mutate()}
-                  disabled={markCompleteMutation.isPending}
-                  style={[styles.secondaryButton, { backgroundColor: theme.backgroundTertiary }]}
-                >
-                  <Feather name="check-circle" size={16} color={theme.text} />
-                  <ThemedText type="caption" style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}>
-                    {markCompleteMutation.isPending ? "..." : "Complete"}
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  onPress={handleDownload}
-                  style={[styles.secondaryButton, { backgroundColor: theme.backgroundTertiary }]}
-                >
-                  <Feather name="download" size={16} color={theme.text} />
-                  <ThemedText type="caption" style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}>
-                    Download
-                  </ThemedText>
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.primaryActionsRow}>
-                {isSaved ? (
-                  <View style={styles.completedButton}>
-                    <Feather name="check" size={16} color={Colors.dark.success} />
-                    <ThemedText
-                      type="small"
-                      style={{ color: Colors.dark.success, marginLeft: 6, fontWeight: "500" }}
-                    >
-                      Added
-                    </ThemedText>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={() => saveMutation.mutate()}
-                    disabled={saveMutation.isPending}
-                    style={[styles.primaryButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
-                  >
-                    <Feather name="plus" size={16} color={theme.text} />
-                    <ThemedText
-                      type="small"
-                      style={{ color: theme.text, marginLeft: 6, fontWeight: "600" }}
-                    >
-                      {saveMutation.isPending ? "Adding..." : "Add Episode"}
-                    </ThemedText>
-                  </Pressable>
-                )}
-                {isSummarized ? (
-                  <View style={styles.completedButton}>
-                    <Feather name="check" size={16} color={Colors.dark.success} />
-                    <ThemedText
-                      type="small"
-                      style={{ color: Colors.dark.success, marginLeft: 6, fontWeight: "500" }}
-                    >
-                      Summarized
-                    </ThemedText>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={handleGenerateBrief}
-                    style={[styles.primaryButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
-                  >
-                    <Feather name="zap" size={16} color={theme.text} />
-                    <ThemedText
-                      type="small"
-                      style={{ color: theme.text, marginLeft: 6, fontWeight: "600" }}
-                    >
-                      Summarize
-                    </ThemedText>
-                  </Pressable>
-                )}
-              </View>
+            ) : (
               <Pressable
-                onPress={handlePlay}
-                style={[styles.actionButton, { backgroundColor: theme.gold }]}
+                onPress={handleAddToLibrary}
+                disabled={saveMutation.isPending || isSaved}
+                style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
               >
-                <Feather name="play" size={18} color={theme.buttonText} />
-                <ThemedText
-                  type="body"
-                  style={{
-                    color: theme.buttonText,
-                    marginLeft: Spacing.sm,
-                    fontWeight: "600",
-                  }}
-                >
-                  Play Episode
+                <Feather name={isSaved ? "check" : "plus"} size={18} color={isSaved ? Colors.dark.success : theme.text} />
+                <ThemedText type="small" style={{ color: isSaved ? Colors.dark.success : theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                  {isSaved ? "Added" : saveMutation.isPending ? "Adding..." : "Add Episode"}
                 </ThemedText>
               </Pressable>
-            </>
-          )}
+            )}
+            <Pressable
+              onPress={handleDownload}
+              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            >
+              <Feather name="download" size={18} color={theme.text} />
+              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                Download
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
+
+        {!isSummarized ? (
+          <View style={[styles.ctaBanner, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h4" style={styles.ctaTitle}>
+              Want a quick summary?
+            </ThemedText>
+            <ThemedText type="small" style={[styles.ctaDescription, { color: theme.textSecondary }]}>
+              Generate an AI-powered brief for this episode that comes with a podcast summary that you can read or listen to in ~5 min instead of {formatDuration(duration)}.
+            </ThemedText>
+            <Pressable
+              onPress={handleGenerateBrief}
+              style={[styles.ctaButton, { backgroundColor: theme.gold }]}
+            >
+              <ThemedText type="body" style={{ color: theme.buttonText, fontWeight: "600" }}>
+                Generate Brief
+              </ThemedText>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={[styles.ctaBanner, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={styles.ctaCompletedRow}>
+              <Feather name="check-circle" size={20} color={Colors.dark.success} />
+              <ThemedText type="h4" style={[styles.ctaTitle, { marginLeft: Spacing.sm, marginBottom: 0 }]}>
+                Summary Available
+              </ThemedText>
+            </View>
+            <ThemedText type="small" style={[styles.ctaDescription, { color: theme.textSecondary }]}>
+              You've already generated a brief for this episode. View it in your Library.
+            </ThemedText>
+          </View>
+        )}
 
         {description ? (
           <View style={styles.descriptionSection}>
@@ -372,48 +341,48 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   actionsSection: {
-    marginBottom: Spacing.xl,
-    gap: Spacing.md,
+    marginBottom: Spacing.lg,
   },
-  primaryActionsRow: {
+  actionsGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
   },
-  primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-  },
-  completedButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-  },
-  secondaryActionsRow: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-  },
-  secondaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-  },
-  actionButton: {
+  gridButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    width: "48.5%",
+  },
+  ctaBanner: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.xl,
+  },
+  ctaTitle: {
+    marginBottom: Spacing.sm,
+  },
+  ctaDescription: {
+    lineHeight: 20,
+    marginBottom: Spacing.md,
+  },
+  ctaButton: {
+    alignSelf: "flex-start",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.md,
   },
+  ctaCompletedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
   descriptionSection: {
-    marginTop: Spacing.lg,
+    marginTop: Spacing.sm,
   },
   sectionTitle: {
     marginBottom: Spacing.sm,
