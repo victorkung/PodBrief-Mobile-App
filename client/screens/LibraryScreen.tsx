@@ -3,10 +3,10 @@ import { FlatList, View, StyleSheet, RefreshControl, Alert } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { File } from "expo-file-system";
+import { File, Directory, Paths } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -276,6 +276,165 @@ export default function LibraryScreen() {
     [navigation]
   );
 
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+
+  const handleDownloadEpisode = useCallback(
+    async (episode: SavedEpisode) => {
+      if (!episode.episode_audio_url) {
+        Alert.alert("Error", "No audio available to download");
+        return;
+      }
+
+      setDownloadingIds((prev) => new Set(prev).add(episode.id));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      try {
+        const docDir = Paths.document;
+        const fileName = `episode_${episode.taddy_episode_uuid}.mp3`;
+        const downloadDir = new Directory(docDir, "downloads");
+
+        if (!downloadDir.exists) {
+          downloadDir.create();
+        }
+
+        const downloadedFile = new File(downloadDir, fileName);
+
+        const response = await fetch(episode.episode_audio_url);
+        if (!response.ok) throw new Error("Download failed");
+
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        downloadedFile.write(new Uint8Array(arrayBuffer));
+
+        const fileSize = blob.size || 0;
+
+        const downloadData: Download = {
+          id: `episode-${episode.taddy_episode_uuid}`,
+          type: "episode",
+          title: episode.episode_name,
+          podcast: episode.podcast_name,
+          artwork: episode.episode_thumbnail,
+          filePath: downloadedFile.uri,
+          fileSize: fileSize,
+          downloadedAt: new Date().toISOString(),
+          sourceId: episode.id,
+          taddyEpisodeUuid: episode.taddy_episode_uuid,
+          taddyPodcastUuid: episode.taddy_podcast_uuid,
+          episodeDurationSeconds: episode.episode_duration_seconds || undefined,
+          episodePublishedAt: episode.episode_published_at || undefined,
+          audioUrl: episode.episode_audio_url,
+        };
+
+        const updated = [...downloads.filter((d) => d.id !== downloadData.id), downloadData];
+        setDownloads(updated);
+        await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(updated));
+        setDownloadedIds(new Set(updated.map((d) => d.sourceId || d.taddyEpisodeUuid || d.id)));
+        setTotalDownloadSize(updated.reduce((acc, d) => acc + d.fileSize, 0));
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Downloaded", `"${episode.episode_name}" saved for offline listening.`);
+      } catch (error) {
+        console.error("Download error:", error);
+        Alert.alert("Download Failed", "Unable to download this episode.");
+      } finally {
+        setDownloadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(episode.id);
+          return next;
+        });
+      }
+    },
+    [downloads]
+  );
+
+  const handleDownloadBrief = useCallback(
+    async (brief: UserBrief) => {
+      if (!brief.master_brief?.audio_url) {
+        Alert.alert("Error", "No audio available to download");
+        return;
+      }
+
+      setDownloadingIds((prev) => new Set(prev).add(brief.id));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      try {
+        const docDir = Paths.document;
+        const fileName = `summary_${brief.master_brief_id}.mp3`;
+        const downloadDir = new Directory(docDir, "downloads");
+
+        if (!downloadDir.exists) {
+          downloadDir.create();
+        }
+
+        const downloadedFile = new File(downloadDir, fileName);
+
+        const response = await fetch(brief.master_brief.audio_url);
+        if (!response.ok) throw new Error("Download failed");
+
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        downloadedFile.write(new Uint8Array(arrayBuffer));
+
+        const fileSize = blob.size || 0;
+
+        const downloadData: Download = {
+          id: `summary-${brief.master_brief_id}`,
+          type: "summary",
+          title: brief.master_brief.episode_name || "Summary",
+          podcast: brief.master_brief.podcast_name || "",
+          artwork: brief.master_brief.episode_thumbnail,
+          filePath: downloadedFile.uri,
+          fileSize: fileSize,
+          downloadedAt: new Date().toISOString(),
+          sourceId: brief.id,
+          episodeDurationSeconds: brief.master_brief.audio_duration_seconds || undefined,
+          audioUrl: brief.master_brief.audio_url,
+        };
+
+        const updated = [...downloads.filter((d) => d.id !== downloadData.id), downloadData];
+        setDownloads(updated);
+        await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(updated));
+        setDownloadedIds(new Set(updated.map((d) => d.sourceId || d.id)));
+        setTotalDownloadSize(updated.reduce((acc, d) => acc + d.fileSize, 0));
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Downloaded", "Summary saved for offline listening.");
+      } catch (error) {
+        console.error("Download error:", error);
+        Alert.alert("Download Failed", "Unable to download this summary.");
+      } finally {
+        setDownloadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(brief.id);
+          return next;
+        });
+      }
+    },
+    [downloads]
+  );
+
+  const handleRemoveEpisodeDownload = useCallback(
+    async (episode: SavedEpisode) => {
+      const download = downloads.find(
+        (d) => d.sourceId === episode.id || d.taddyEpisodeUuid === episode.taddy_episode_uuid
+      );
+      if (download) {
+        await handleRemoveDownload(download);
+      }
+    },
+    [downloads, handleRemoveDownload]
+  );
+
+  const handleRemoveBriefDownload = useCallback(
+    async (brief: UserBrief) => {
+      const download = downloads.find((d) => d.sourceId === brief.id);
+      if (download) {
+        await handleRemoveDownload(download);
+      }
+    },
+    [downloads, handleRemoveDownload]
+  );
+
   const segments = [
     { key: "episodes" as TabType, label: "Episodes" },
     { key: "summaries" as TabType, label: "Summaries" },
@@ -326,7 +485,10 @@ export default function LibraryScreen() {
           type="episode"
           episode={episode}
           isDownloaded={isEpisodeDownloaded(episode)}
+          isDownloading={downloadingIds.has(episode.id)}
           onPlay={() => handlePlayEpisode(episode)}
+          onDownload={() => handleDownloadEpisode(episode)}
+          onRemoveDownload={() => handleRemoveEpisodeDownload(episode)}
           onRemoveFromPlaylist={() => handleRemoveEpisode(episode)}
           onMarkComplete={(isComplete) => handleMarkEpisodeComplete(episode, isComplete)}
           onSummarize={() => handleSummarizeEpisode(episode)}
@@ -339,7 +501,10 @@ export default function LibraryScreen() {
           type="summary"
           brief={brief}
           isDownloaded={isBriefDownloaded(brief)}
+          isDownloading={downloadingIds.has(brief.id)}
           onPlay={() => handlePlayBrief(brief)}
+          onDownload={() => handleDownloadBrief(brief)}
+          onRemoveDownload={() => handleRemoveBriefDownload(brief)}
           onRemoveFromPlaylist={() => handleRemoveBrief(brief)}
           onMarkComplete={(isComplete) => handleMarkBriefComplete(brief, isComplete)}
         />
