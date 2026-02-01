@@ -90,14 +90,30 @@ Preferred communication style: Simple, everyday language.
 
 ### Recent Changes (Feb 2026)
 
+- **Global Toast Notification System**:
+  - Added ToastContext and ToastProvider for app-wide toast messages
+  - Toast types: success (gold), error (red), info (gray)
+  - Auto-dismisses after 2.5 seconds with smooth animations
+  - Shows feedback for mark complete/unfinished actions
+
 - **Library Screen Redesign**:
   - Moved Downloads from bottom nav into Library as third tab (Episodes, Summaries, Downloads)
   - Bottom nav now has 4 tabs: Search, Shows, Library, Profile
   - New Spotify-style LibraryItemCard with content on top, action buttons below
   - Action buttons: Mark Complete (checkmark), Download (arrow), Share, Three-dots menu, Play
-  - Three-dots menu: Remove from Library, Mark Complete/Unfinished, Summarize (episodes only)
+  - Three-dots menu: Remove from Library, Summarize (episodes only) - white text
+  - Mark Complete removed from menu (only available as icon)
   - Auto-adds episodes to Library when downloading
   - Download/remove download functionality from Library cards
+  - useFocusEffect for data refetching when screen is focused
+  - Optimistic updates for mark complete actions (instant UI feedback)
+
+- **LibraryItemCard UI Updates**:
+  - Artwork: 56x56 (matches EpisodeCard row layout)
+  - Play button: 40x40 with 18px icon (matches other action buttons)
+  - Title: small font with bold weight
+  - Podcast name: caption font
+  - Menu items all use white text (no red/yellow colors)
 
 - **Shows Screen**: Fixed alphabetical sorting on initial load using `useMemo` to ensure podcasts are always sorted by name
 - **MiniPlayer**: Fixed `useBottomTabBarHeight` error by using `BottomTabBarHeightContext` with fallback to safe area insets for stack screens
