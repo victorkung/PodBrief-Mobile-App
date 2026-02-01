@@ -90,21 +90,20 @@ export function PodcastCard({
             styles.followButton,
             {
               backgroundColor: isFollowed
-                ? theme.backgroundSecondary
-                : "#FFFFFF",
-              borderColor: isFollowed ? theme.border : "#FFFFFF",
+                ? theme.backgroundTertiary
+                : theme.gold,
             },
           ]}
         >
           <Feather
             name={isFollowed ? "check" : "plus"}
             size={14}
-            color={isFollowed ? theme.text : "#000000"}
+            color={isFollowed ? theme.text : theme.buttonText}
           />
           <ThemedText
             type="caption"
             style={{
-              color: isFollowed ? theme.text : "#000000",
+              color: isFollowed ? theme.text : theme.buttonText,
               fontWeight: "600",
               marginLeft: 4,
             }}
@@ -147,6 +146,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    borderWidth: 1,
   },
 });

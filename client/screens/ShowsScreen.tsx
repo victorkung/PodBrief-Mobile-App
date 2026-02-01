@@ -182,7 +182,7 @@ export default function ShowsScreen() {
   );
 
   const segments = [
-    { key: "shows" as ShowsTabType, label: "Shows", count: followedPodcasts?.length || 0 },
+    { key: "shows" as ShowsTabType, label: "Shows" },
     { key: "newEpisodes" as ShowsTabType, label: "New Episodes" },
   ];
 

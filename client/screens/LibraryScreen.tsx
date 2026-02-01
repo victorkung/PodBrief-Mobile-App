@@ -162,8 +162,8 @@ export default function LibraryScreen() {
   );
 
   const segments = [
-    { key: "episodes" as TabType, label: "Episodes", count: savedEpisodes?.length || 0 },
-    { key: "summaries" as TabType, label: "Summaries", count: userBriefs?.length || 0 },
+    { key: "episodes" as TabType, label: "Episodes" },
+    { key: "summaries" as TabType, label: "Summaries" },
   ];
 
   const renderEpisodesEmpty = () => {

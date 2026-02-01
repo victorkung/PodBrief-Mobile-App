@@ -41,6 +41,7 @@ export default function PodcastDetailScreen() {
   const podcast = (route.params as any)?.podcast as TaddyPodcast;
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(true);
 
   const {
     data: podcastDetails,
@@ -171,7 +172,37 @@ export default function PodcastDetailScreen() {
     [navigation, podcast]
   );
 
+  const handleEpisodePress = useCallback(
+    (episode: TaddyEpisode) => {
+      (navigation as any).navigate("EpisodeDetail", { episode, podcast });
+    },
+    [navigation, podcast]
+  );
+
   const episodes = podcastDetails?.episodes || [];
+
+  const renderEmpty = () => {
+    if (isLoading) {
+      return (
+        <View>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <EpisodeCardSkeleton key={i} />
+          ))}
+        </View>
+      );
+    }
+    return (
+      <View style={styles.emptyContainer}>
+        <Feather name="mic" size={48} color={theme.textTertiary} />
+        <ThemedText type="body" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+          No Episodes Found
+        </ThemedText>
+        <ThemedText type="caption" style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+          {searchTerm ? `No episodes matching "${searchTerm}"` : "This podcast has no episodes yet"}
+        </ThemedText>
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -182,73 +213,74 @@ export default function PodcastDetailScreen() {
           <EpisodeCard
             episode={item}
             showPodcastName={false}
-            onPlayPress={() => handlePlayEpisode(item)}
+            onPress={() => handleEpisodePress(item)}
             onSavePress={() => saveMutation.mutate(item)}
             onGenerateBriefPress={() => handleGenerateBrief(item)}
           />
         )}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Image
-              source={podcast.imageUrl ? { uri: podcast.imageUrl } : placeholderImage}
-              style={styles.artwork}
-              contentFit="cover"
-              transition={200}
-            />
-            <ThemedText type="h2" style={styles.title}>
-              {podcast.name}
-            </ThemedText>
-            <ThemedText type="small" style={styles.author}>
-              {podcast.authorName || "Unknown"}
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-              {podcast.totalEpisodesCount} episodes
-            </ThemedText>
-
-            <Pressable
-              onPress={() =>
-                isFollowed ? unfollowMutation.mutate() : followMutation.mutate()
-              }
-              style={[
-                styles.followButton,
-                {
-                  backgroundColor: isFollowed
-                    ? theme.backgroundSecondary
-                    : theme.gold,
-                },
-              ]}
-            >
-              <Feather
-                name={isFollowed ? "check" : "plus"}
-                size={18}
-                color={isFollowed ? theme.text : theme.buttonText}
+            <View style={styles.headerRow}>
+              <Image
+                source={podcast.imageUrl ? { uri: podcast.imageUrl } : placeholderImage}
+                style={styles.artwork}
+                contentFit="cover"
+                transition={200}
               />
-              <ThemedText
-                type="body"
-                style={{
-                  color: isFollowed ? theme.text : theme.buttonText,
-                  fontWeight: "600",
-                  marginLeft: 6,
-                }}
-              >
-                {isFollowed ? "Following" : "Add to My Shows"}
-              </ThemedText>
-            </Pressable>
+              <View style={styles.headerInfo}>
+                <ThemedText type="h3" numberOfLines={3} style={styles.title}>
+                  {podcast.name}
+                </ThemedText>
+                <ThemedText type="caption" numberOfLines={1} style={[styles.author, { color: theme.textSecondary }]}>
+                  {podcast.authorName || "Unknown"}
+                </ThemedText>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  {podcast.totalEpisodesCount} episodes
+                </ThemedText>
+                <Pressable
+                  onPress={() =>
+                    isFollowed ? unfollowMutation.mutate() : followMutation.mutate()
+                  }
+                  style={[
+                    styles.followButton,
+                    {
+                      backgroundColor: isFollowed
+                        ? theme.backgroundTertiary
+                        : theme.gold,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name={isFollowed ? "check" : "plus"}
+                    size={14}
+                    color={isFollowed ? theme.text : theme.buttonText}
+                  />
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: isFollowed ? theme.text : theme.buttonText,
+                      fontWeight: "600",
+                      marginLeft: 4,
+                    }}
+                  >
+                    {isFollowed ? "Following" : "Follow"}
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
 
             {podcast.description ? (
-              <View
-                style={[styles.aboutSection, { backgroundColor: theme.backgroundDefault }]}
-              >
+              <View style={styles.aboutSection}>
                 <ThemedText type="h4" style={styles.aboutTitle}>
                   About This Show
                 </ThemedText>
-                <ThemedText type="small" numberOfLines={4} style={styles.description}>
+                <ThemedText type="small" style={[styles.description, { color: theme.textSecondary }]}>
                   {podcast.description}
                 </ThemedText>
               </View>
             ) : null}
 
-            <ThemedText type="h3" style={styles.episodesTitle}>
+            <ThemedText type="h4" style={styles.episodesTitle}>
               Episodes
             </ThemedText>
             <SearchInput
@@ -258,19 +290,12 @@ export default function PodcastDetailScreen() {
             />
           </View>
         }
-        ListEmptyComponent={
-          isLoading ? (
-            <View>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <EpisodeCardSkeleton key={i} />
-              ))}
-            </View>
-          ) : null
-        }
+        ListEmptyComponent={renderEmpty}
         contentContainerStyle={{
           paddingTop: headerHeight + Spacing.xl,
           paddingBottom: insets.bottom + Spacing.miniPlayerHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
+          flexGrow: 1,
         }}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         refreshControl={
@@ -291,48 +316,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
-  artwork: {
-    width: Spacing.artworkLg,
-    height: Spacing.artworkLg,
-    borderRadius: BorderRadius.lg,
     marginBottom: Spacing.lg,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  artwork: {
+    width: 100,
+    height: 100,
+    borderRadius: BorderRadius.md,
+  },
+  headerInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
   title: {
-    textAlign: "center",
     marginBottom: Spacing.xs,
   },
   author: {
-    marginBottom: 4,
-    opacity: 0.7,
+    marginBottom: 2,
   },
   followButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.sm,
   },
   aboutSection: {
-    width: "100%",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
   aboutTitle: {
     marginBottom: Spacing.sm,
   },
   description: {
-    opacity: 0.8,
     lineHeight: 22,
   },
   episodesTitle: {
-    alignSelf: "flex-start",
     marginTop: Spacing.xl,
     marginBottom: Spacing.md,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing["3xl"],
+  },
+  emptyTitle: {
+    textAlign: "center",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtitle: {
+    textAlign: "center",
+    maxWidth: 260,
   },
 });

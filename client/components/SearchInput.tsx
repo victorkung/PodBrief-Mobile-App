@@ -41,7 +41,7 @@ export function SearchInput({
       >
         <Feather
           name="search"
-          size={20}
+          size={18}
           color={isFocused ? theme.gold : theme.textTertiary}
         />
         <TextInput
@@ -70,13 +70,13 @@ export function SearchInput({
           disabled={isLoading || !value.trim()}
           style={[
             styles.searchButton,
-            { backgroundColor: "#FFFFFF" },
+            { backgroundColor: theme.backgroundTertiary },
             (isLoading || !value.trim()) && styles.searchButtonDisabled,
           ]}
         >
           <ThemedText
-            type="body"
-            style={{ color: "#000000", fontWeight: "600" }}
+            type="caption"
+            style={{ color: theme.text, fontWeight: "600" }}
           >
             {isLoading ? "..." : "Search"}
           </ThemedText>
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     marginLeft: Spacing.sm,
-    fontSize: 16,
+    fontSize: 14,
     ...Platform.select({
       web: {
         outlineStyle: "none",

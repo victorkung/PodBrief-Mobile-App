@@ -116,41 +116,43 @@ export function EpisodeCard({
           </ThemedText>
         </View>
       </View>
-      <View style={styles.actions}>
-        {onSavePress ? (
-          <Pressable
-            onPress={onSavePress}
-            style={[styles.actionButton, { backgroundColor: "#FFFFFF" }]}
-          >
-            <Feather name="plus" size={14} color="#000000" />
-            <ThemedText
-              type="caption"
-              style={{ color: "#000000", marginLeft: 4, fontWeight: "500" }}
+      {onPlayPress && !onSavePress && !onGenerateBriefPress ? (
+        <Pressable onPress={onPlayPress} style={styles.playButton}>
+          <Feather name="play" size={16} color={theme.gold} />
+        </Pressable>
+      ) : null}
+      {(onSavePress || onGenerateBriefPress) ? (
+        <View style={styles.actionsRow}>
+          {onSavePress ? (
+            <Pressable
+              onPress={onSavePress}
+              style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
             >
-              Save
-            </ThemedText>
-          </Pressable>
-        ) : null}
-        {onGenerateBriefPress ? (
-          <Pressable
-            onPress={onGenerateBriefPress}
-            style={[styles.actionButton, { backgroundColor: "#FFFFFF" }]}
-          >
-            <Feather name="zap" size={14} color="#000000" />
-            <ThemedText
-              type="caption"
-              style={{ color: "#000000", marginLeft: 4, fontWeight: "500" }}
+              <Feather name="plus" size={14} color={theme.text} />
+              <ThemedText
+                type="caption"
+                style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+              >
+                Add Episode
+              </ThemedText>
+            </Pressable>
+          ) : null}
+          {onGenerateBriefPress ? (
+            <Pressable
+              onPress={onGenerateBriefPress}
+              style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
             >
-              Summarize
-            </ThemedText>
-          </Pressable>
-        ) : null}
-        {onPlayPress && !onSavePress && !onGenerateBriefPress ? (
-          <Pressable onPress={onPlayPress} style={styles.playButton}>
-            <Feather name="play" size={16} color={theme.gold} />
-          </Pressable>
-        ) : null}
-      </View>
+              <Feather name="zap" size={14} color={theme.gold} />
+              <ThemedText
+                type="caption"
+                style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+              >
+                Summarize
+              </ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </AnimatedPressable>
   );
 }
@@ -158,6 +160,7 @@ export function EpisodeCard({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
+    flexWrap: "wrap",
     paddingVertical: Spacing.md,
     alignItems: "flex-start",
   },
@@ -187,11 +190,11 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     marginHorizontal: 6,
   },
-  actions: {
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: Spacing.xs,
-    marginLeft: Spacing.sm,
+  actionsRow: {
+    flexDirection: "row",
+    width: "100%",
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
   },
   actionButton: {
     flexDirection: "row",
