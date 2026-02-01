@@ -17,7 +17,6 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
-import { makeRedirectUri } from "expo-auth-session";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -72,19 +71,13 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
     try {
       setIsGoogleLoading(true);
       
-      const redirectUri = makeRedirectUri({
-        scheme: "podbrief",
-        path: "auth/callback",
-      });
-      
       console.log("=== GOOGLE SSO (Browser OAuth) ===");
       console.log("Platform:", Platform.OS);
-      console.log("Redirect URI:", redirectUri);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: redirectUri,
+          redirectTo: "https://podbrief.io",
           skipBrowserRedirect: true,
         },
       });
@@ -99,7 +92,10 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
       }
 
       console.log("Opening auth browser...");
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        "podbrief://auth/callback"
+      );
       
       console.log("Browser result type:", result.type);
 
@@ -111,10 +107,13 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
         const refreshToken = params.get("refresh_token");
         
         if (accessToken && refreshToken) {
-          await supabase.auth.setSession({
+          const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
+          
+          if (sessionError) throw sessionError;
+          
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           console.log("Session set successfully");
         } else {
@@ -122,10 +121,14 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
         }
       } else if (result.type === "cancel") {
         console.log("User cancelled Google sign in");
+      } else {
+        throw new Error("Sign-in failed");
       }
     } catch (error: any) {
       console.error("Google sign in error:", error);
-      Alert.alert("Error", error.message || "Google sign in failed. Please try again.");
+      if (error.message !== "Sign-in cancelled") {
+        Alert.alert("Sign-in failed", "Please try again.");
+      }
     } finally {
       setIsGoogleLoading(false);
     }
