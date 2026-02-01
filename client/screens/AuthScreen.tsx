@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import * as Google from "expo-auth-session/providers/google";
+import Constants from "expo-constants";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -29,7 +30,11 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID_PRODUCTION = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID_EXPO_GO = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID_EXPO_GO;
+
+const isExpoGo = Constants.appOwnership === "expo";
+const GOOGLE_IOS_CLIENT_ID = isExpoGo ? GOOGLE_IOS_CLIENT_ID_EXPO_GO : GOOGLE_IOS_CLIENT_ID_PRODUCTION;
 
 type AuthMode = "signin" | "signup";
 
