@@ -1,0 +1,145 @@
+Mobile Google Sign-In Implementation Guide
+
+Strategy: Unified Browser-Based OAuth
+
+PodBrief uses a unified browser-based OAuth approach where mobile apps use the same Google Sign-In flow as the web app. This eliminates the need for separate iOS/Android Google Client IDs and avoids app store verification requirements.
+
+How It Works
+
+Initiate OAuth - Call supabase.auth.signInWithOAuth with skipBrowserRedirect: true
+Open In-App Browser - Use expo-web-browser or @capacitor/browser to open the OAuth URL
+User Signs In - Google Sign-In happens in the browser (same as web)
+Intercept Redirect - The in-app browser intercepts the redirect back to the HTTPS URL
+Extract Tokens - Parse access_token and refresh_token from the URL fragment
+Set Session - Call supabase.auth.setSession() with the tokens
+Implementation (Expo)
+
+
+import * as WebBrowser from 'expo-web-browser';
+import { supabase } from './supabase';
+
+// Ensure auth session completion is handled
+WebBrowser.maybeCompleteAuthSession();
+
+async function signInWithGoogle() {
+  // 1. Get OAuth URL from Supabase
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://podbrief.io', // HTTPS URL authorized in backend
+      skipBrowserRedirect: true,         // We handle the browser ourselves
+    },
+  });
+
+  if (error) throw error;
+
+  // 2. Open in-app browser with return scheme hint
+  const result = await WebBrowser.openAuthSessionAsync(
+    data.url,
+    'podbrief://auth/callback'  // Custom scheme for iOS/Android to return to app
+  );
+
+  if (result.type === 'success') {
+    // 3. Extract tokens from URL fragment
+    const url = new URL(result.url);
+    const params = new URLSearchParams(url.hash.slice(1)); // Remove leading #
+    
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    
+    if (accessToken && refreshToken) {
+      // 4. Set the Supabase session
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      
+      if (sessionError) throw sessionError;
+      return sessionData.user;
+    }
+  }
+  
+  if (result.type === 'cancel') {
+    throw new Error('Sign-in cancelled');
+  }
+  
+  throw new Error('Sign-in failed');
+}
+Implementation (Capacitor)
+
+
+import { Browser } from '@capacitor/browser';
+import { App } from '@capacitor/app';
+import { supabase } from './supabase';
+
+async function signInWithGoogle() {
+  // 1. Get OAuth URL
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://podbrief.io',
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error) throw error;
+
+  // 2. Set up deep link listener BEFORE opening browser
+  return new Promise((resolve, reject) => {
+    const listener = App.addListener('appUrlOpen', async ({ url }) => {
+      if (url.includes('access_token')) {
+        await listener.remove();
+        await Browser.close();
+        
+        // 3. Extract tokens
+        const hashParams = new URLSearchParams(url.split('#')[1]);
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          
+          if (error) reject(error);
+          else resolve(data.user);
+        }
+      }
+    });
+
+    // 4. Open browser
+    Browser.open({ url: data.url });
+  });
+}
+Deep Linking Configuration
+
+Expo (app.json):
+
+
+{
+  "expo": {
+    "scheme": "podbrief"
+  }
+}
+Capacitor (iOS - Info.plist):
+
+
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>podbrief</string>
+    </array>
+  </dict>
+</array>
+Capacitor (Android - AndroidManifest.xml):
+
+
+<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="podbrief" />
+</intent-filter>
