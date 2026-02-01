@@ -29,6 +29,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
 type AuthMode = "signin" | "signup";
 
@@ -72,6 +73,7 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
     scopes: ["openid", "profile", "email"],
   });
 
