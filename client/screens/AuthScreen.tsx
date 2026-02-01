@@ -77,7 +77,7 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "https://podbrief.io",
+          redirectTo: "https://podbrief.io?mobile=1",
           skipBrowserRedirect: true,
         },
       });
