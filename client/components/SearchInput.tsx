@@ -70,13 +70,13 @@ export function SearchInput({
           disabled={isLoading || !value.trim()}
           style={[
             styles.searchButton,
-            { backgroundColor: theme.gold },
+            { backgroundColor: "#FFFFFF" },
             (isLoading || !value.trim()) && styles.searchButtonDisabled,
           ]}
         >
           <ThemedText
             type="body"
-            style={{ color: theme.buttonText, fontWeight: "600" }}
+            style={{ color: "#000000", fontWeight: "600" }}
           >
             {isLoading ? "..." : "Search"}
           </ThemedText>

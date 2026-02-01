@@ -156,6 +156,16 @@ export default function ShowsScreen() {
     [navigation]
   );
 
+  const handleEpisodePress = useCallback(
+    (episode: TaddyEpisode) => {
+      (navigation as any).navigate("EpisodeDetail", {
+        episode,
+        source: "newEpisodes",
+      });
+    },
+    [navigation]
+  );
+
   const handlePodcastPress = useCallback(
     (podcast: FollowedPodcast) => {
       (navigation as any).navigate("PodcastDetail", {
@@ -244,7 +254,7 @@ export default function ShowsScreen() {
           ) : (
             <EpisodeCard
               episode={item as TaddyEpisode}
-              onPlayPress={() => handlePlayEpisode(item as TaddyEpisode)}
+              onPress={() => handleEpisodePress(item as TaddyEpisode)}
               onSavePress={() => saveMutation.mutate(item as TaddyEpisode)}
               onGenerateBriefPress={() => handleGenerateBrief(item as TaddyEpisode)}
             />
@@ -252,10 +262,10 @@ export default function ShowsScreen() {
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedText type="h1" style={styles.title}>
+            <ThemedText type="pageTitle" style={styles.title}>
               {profile?.first_name ? `${profile.first_name}'s Shows` : "Your Shows"}
             </ThemedText>
-            <ThemedText type="small" style={styles.subtitle}>
+            <ThemedText type="caption" style={[styles.subtitle, { color: theme.textSecondary }]}>
               View your shows and their latest episodes
             </ThemedText>
             <SegmentedControl

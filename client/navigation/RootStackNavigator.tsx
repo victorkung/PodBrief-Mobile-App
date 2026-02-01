@@ -17,8 +17,9 @@ import PodcastDetailScreen from "@/screens/PodcastDetailScreen";
 import BriefDetailScreen from "@/screens/BriefDetailScreen";
 import GenerateBriefScreen from "@/screens/GenerateBriefScreen";
 import NowPlayingScreen from "@/screens/NowPlayingScreen";
+import EpisodeDetailScreen from "@/screens/EpisodeDetailScreen";
 
-import { TaddyPodcast, TaddyEpisode, UserBrief } from "@/lib/types";
+import { TaddyPodcast, TaddyEpisode, SavedEpisode, UserBrief } from "@/lib/types";
 
 const ONBOARDING_COMPLETE_KEY = "@podbrief_onboarding_complete";
 
@@ -29,6 +30,7 @@ export type RootStackParamList = {
   PodcastDetail: { podcast: TaddyPodcast };
   BriefDetail: { brief: UserBrief };
   GenerateBrief: { episode: TaddyEpisode; podcast?: TaddyPodcast };
+  EpisodeDetail: { episode: TaddyEpisode | SavedEpisode; source: "newEpisodes" | "library" };
   NowPlaying: undefined;
 };
 
@@ -140,6 +142,14 @@ export function RootStackNavigator() {
             component={GenerateBriefScreen}
             options={{
               headerTitle: "Generate Brief",
+              headerBackTitle: "Back",
+            }}
+          />
+          <Stack.Screen
+            name="EpisodeDetail"
+            component={EpisodeDetailScreen}
+            options={{
+              headerTitle: "Episode",
               headerBackTitle: "Back",
             }}
           />

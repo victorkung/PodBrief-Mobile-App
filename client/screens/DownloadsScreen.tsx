@@ -165,7 +165,7 @@ export default function DownloadsScreen() {
         renderItem={renderItem}
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedText type="h1" style={styles.title}>
+            <ThemedText type="pageTitle" style={styles.title}>
               Downloads
             </ThemedText>
             <View

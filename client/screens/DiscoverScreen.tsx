@@ -188,10 +188,10 @@ export default function DiscoverScreen() {
         renderItem={renderItem}
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedText type="h1" style={styles.title}>
+            <ThemedText type="pageTitle" style={styles.title}>
               Search Podcasts
             </ThemedText>
-            <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
+            <ThemedText type="caption" style={[styles.subtitle, { color: theme.textSecondary }]}>
               Find shows, add them to your list, and generate summaries for specific episodes.
             </ThemedText>
             <SearchInput

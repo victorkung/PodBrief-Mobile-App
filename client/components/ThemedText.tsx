@@ -6,7 +6,7 @@ import { Typography } from "@/constants/theme";
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: "h1" | "h2" | "h3" | "h4" | "body" | "small" | "caption" | "link";
+  type?: "pageTitle" | "h1" | "h2" | "h3" | "h4" | "body" | "small" | "caption" | "link";
 };
 
 export function ThemedText({
@@ -40,6 +40,8 @@ export function ThemedText({
 
   const getTypeStyle = () => {
     switch (type) {
+      case "pageTitle":
+        return Typography.pageTitle;
       case "h1":
         return Typography.h1;
       case "h2":

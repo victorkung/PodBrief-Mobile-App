@@ -152,6 +152,16 @@ export default function LibraryScreen() {
     [navigation]
   );
 
+  const handleEpisodePress = useCallback(
+    (episode: SavedEpisode) => {
+      (navigation as any).navigate("EpisodeDetail", {
+        episode,
+        source: "library",
+      });
+    },
+    [navigation]
+  );
+
   const segments = [
     { key: "episodes" as TabType, label: "Episodes", count: savedEpisodes?.length || 0 },
     { key: "summaries" as TabType, label: "Summaries", count: userBriefs?.length || 0 },
@@ -205,6 +215,7 @@ export default function LibraryScreen() {
             <EpisodeCard
               episode={item as SavedEpisode}
               showPodcastName
+              onPress={() => handleEpisodePress(item as SavedEpisode)}
               onPlayPress={() => handlePlayEpisode(item as SavedEpisode)}
             />
           ) : (
@@ -218,10 +229,10 @@ export default function LibraryScreen() {
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedText type="h1" style={styles.title}>
+            <ThemedText type="pageTitle" style={styles.title}>
               {profile?.first_name ? `${profile.first_name}'s Library` : "Your Library"}
             </ThemedText>
-            <ThemedText type="small" style={styles.subtitle}>
+            <ThemedText type="caption" style={[styles.subtitle, { color: theme.textSecondary }]}>
               Your saved episodes and AI summaries
             </ThemedText>
             <SegmentedControl

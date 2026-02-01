@@ -77,6 +77,12 @@ export const BorderRadius = {
 };
 
 export const Typography = {
+  pageTitle: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700" as const,
+    fontFamily: "GoogleSansFlex",
+  },
   h1: {
     fontSize: 28,
     lineHeight: 36,

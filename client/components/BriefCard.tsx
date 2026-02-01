@@ -17,6 +17,7 @@ const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
 interface BriefCardProps {
   brief: UserBrief;
+  showDivider?: boolean;
   onPress?: () => void;
   onPlayPress?: () => void;
   onSharePress?: () => void;
@@ -94,6 +95,7 @@ function ProgressRing({
 
 export function BriefCard({
   brief,
+  showDivider = true,
   onPress,
   onPlayPress,
   onSharePress,
@@ -125,7 +127,11 @@ export function BriefCard({
       onPress={onPress}
       onPressIn={() => (scale.value = withSpring(0.98))}
       onPressOut={() => (scale.value = withSpring(1))}
-      style={[styles.container, animatedStyle]}
+      style={[
+        styles.container,
+        showDivider && { borderBottomWidth: 1, borderBottomColor: "#394256" },
+        animatedStyle,
+      ]}
     >
       <View style={styles.artworkContainer}>
         <Image
@@ -148,7 +154,11 @@ export function BriefCard({
         ) : null}
       </View>
       <View style={styles.content}>
-        <ThemedText type="small" numberOfLines={2} style={styles.title}>
+        <ThemedText
+          type="small"
+          numberOfLines={2}
+          style={[styles.title, { color: "#FFFFFF" }]}
+        >
           {name}
         </ThemedText>
         <ThemedText

@@ -17,6 +17,7 @@ const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 interface EpisodeCardProps {
   episode: TaddyEpisode | SavedEpisode;
   showPodcastName?: boolean;
+  showDivider?: boolean;
   onPress?: () => void;
   onPlayPress?: () => void;
   onSavePress?: () => void;
@@ -43,6 +44,7 @@ function formatDate(date: number | string | null): string {
 export function EpisodeCard({
   episode,
   showPodcastName = true,
+  showDivider = true,
   onPress,
   onPlayPress,
   onSavePress,
@@ -75,7 +77,11 @@ export function EpisodeCard({
       onPress={onPress}
       onPressIn={() => (scale.value = withSpring(0.98))}
       onPressOut={() => (scale.value = withSpring(1))}
-      style={[styles.container, animatedStyle]}
+      style={[
+        styles.container,
+        showDivider && { borderBottomWidth: 1, borderBottomColor: "#394256" },
+        animatedStyle,
+      ]}
     >
       <Image
         source={imageUrl ? { uri: imageUrl } : placeholderImage}
@@ -84,7 +90,11 @@ export function EpisodeCard({
         transition={200}
       />
       <View style={styles.content}>
-        <ThemedText type="small" numberOfLines={2} style={styles.title}>
+        <ThemedText
+          type="small"
+          numberOfLines={2}
+          style={[styles.title, { color: "#FFFFFF" }]}
+        >
           {name}
         </ThemedText>
         {showPodcastName && podcastName ? (
@@ -110,26 +120,26 @@ export function EpisodeCard({
         {onSavePress ? (
           <Pressable
             onPress={onSavePress}
-            style={[styles.actionButton, { borderColor: theme.border }]}
+            style={[styles.actionButton, { backgroundColor: "#FFFFFF" }]}
           >
-            <Feather name="plus" size={14} color={theme.text} />
+            <Feather name="plus" size={14} color="#000000" />
             <ThemedText
               type="caption"
-              style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+              style={{ color: "#000000", marginLeft: 4, fontWeight: "500" }}
             >
-              Add Episode
+              Save
             </ThemedText>
           </Pressable>
         ) : null}
         {onGenerateBriefPress ? (
           <Pressable
             onPress={onGenerateBriefPress}
-            style={[styles.actionButton, { borderColor: theme.border }]}
+            style={[styles.actionButton, { backgroundColor: "#FFFFFF" }]}
           >
-            <Feather name="zap" size={14} color={theme.text} />
+            <Feather name="zap" size={14} color="#000000" />
             <ThemedText
               type="caption"
-              style={{ color: theme.text, marginLeft: 4, fontWeight: "500" }}
+              style={{ color: "#000000", marginLeft: 4, fontWeight: "500" }}
             >
               Summarize
             </ThemedText>
@@ -189,7 +199,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    borderWidth: 1,
   },
   playButton: {
     padding: Spacing.sm,

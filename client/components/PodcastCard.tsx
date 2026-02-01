@@ -19,6 +19,7 @@ interface PodcastCardProps {
   isFollowed?: boolean;
   onPress?: () => void;
   onFollowPress?: () => void;
+  showDivider?: boolean;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -28,6 +29,7 @@ export function PodcastCard({
   isFollowed = false,
   onPress,
   onFollowPress,
+  showDivider = true,
 }: PodcastCardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
@@ -50,7 +52,11 @@ export function PodcastCard({
       onPress={onPress}
       onPressIn={() => (scale.value = withSpring(0.98))}
       onPressOut={() => (scale.value = withSpring(1))}
-      style={[styles.container, animatedStyle]}
+      style={[
+        styles.container,
+        showDivider && { borderBottomWidth: 1, borderBottomColor: "#394256" },
+        animatedStyle,
+      ]}
     >
       <Image
         source={imageUrl ? { uri: imageUrl } : placeholderImage}
@@ -59,7 +65,11 @@ export function PodcastCard({
         transition={200}
       />
       <View style={styles.content}>
-        <ThemedText type="small" numberOfLines={2} style={styles.title}>
+        <ThemedText
+          type="small"
+          numberOfLines={2}
+          style={[styles.title, { color: "#FFFFFF" }]}
+        >
           {name}
         </ThemedText>
         <ThemedText
@@ -81,25 +91,25 @@ export function PodcastCard({
             {
               backgroundColor: isFollowed
                 ? theme.backgroundSecondary
-                : theme.gold,
-              borderColor: isFollowed ? theme.border : theme.gold,
+                : "#FFFFFF",
+              borderColor: isFollowed ? theme.border : "#FFFFFF",
             },
           ]}
         >
           <Feather
             name={isFollowed ? "check" : "plus"}
             size={14}
-            color={isFollowed ? theme.text : theme.buttonText}
+            color={isFollowed ? theme.text : "#000000"}
           />
           <ThemedText
             type="caption"
             style={{
-              color: isFollowed ? theme.text : theme.buttonText,
+              color: isFollowed ? theme.text : "#000000",
               fontWeight: "600",
               marginLeft: 4,
             }}
           >
-            {isFollowed ? "Added" : "Add"}
+            {isFollowed ? "Following" : "Follow"}
           </ThemedText>
         </Pressable>
       ) : null}
