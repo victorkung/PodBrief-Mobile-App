@@ -257,16 +257,15 @@ export function LibraryItemCard({
         <View style={styles.leftActions}>
           <Pressable
             onPress={handleToggleComplete}
-            style={[
-              styles.actionButton,
-              completed && { backgroundColor: theme.gold },
-            ]}
+            style={styles.actionButton}
           >
-            <Feather
-              name="check"
-              size={20}
-              color={completed ? theme.buttonText : theme.textSecondary}
-            />
+            {completed ? (
+              <View style={[styles.completedCircle, { backgroundColor: theme.gold }]}>
+                <Feather name="check" size={14} color={theme.buttonText} />
+              </View>
+            ) : (
+              <Feather name="check" size={20} color={theme.textSecondary} />
+            )}
           </Pressable>
 
           {type !== "download" ? (
@@ -427,6 +426,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  completedCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
