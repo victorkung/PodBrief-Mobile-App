@@ -99,7 +99,12 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
       const redirectUrl = AuthSession.makeRedirectUri({
         scheme: "podbrief",
         path: "auth/callback",
+        preferLocalhost: false,
       });
+
+      console.log("=== GOOGLE SSO DEBUG ===");
+      console.log("Redirect URL for Supabase whitelist:", redirectUrl);
+      console.log("========================");
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -116,18 +121,50 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
         redirectUrl
       );
 
-      if (result.type === "success") {
-        const url = new URL(result.url);
-        const accessTokenMatch = url.hash.match(/access_token=([^&]*)/);
-        const refreshTokenMatch = url.hash.match(/refresh_token=([^&]*)/);
+      console.log("OAuth result type:", result.type);
 
-        if (accessTokenMatch && refreshTokenMatch) {
+      if (result.type === "success") {
+        const resultUrl = result.url;
+        console.log("OAuth callback URL:", resultUrl);
+
+        let accessToken: string | null = null;
+        let refreshToken: string | null = null;
+
+        const url = new URL(resultUrl);
+        
+        const hashParams = new URLSearchParams(url.hash.substring(1));
+        accessToken = hashParams.get("access_token");
+        refreshToken = hashParams.get("refresh_token");
+
+        if (!accessToken) {
+          accessToken = url.searchParams.get("access_token");
+          refreshToken = url.searchParams.get("refresh_token");
+        }
+
+        if (!accessToken) {
+          const accessTokenMatch = resultUrl.match(/access_token=([^&]*)/);
+          const refreshTokenMatch = resultUrl.match(/refresh_token=([^&]*)/);
+          accessToken = accessTokenMatch ? accessTokenMatch[1] : null;
+          refreshToken = refreshTokenMatch ? refreshTokenMatch[1] : null;
+        }
+
+        console.log("Access token found:", !!accessToken);
+        console.log("Refresh token found:", !!refreshToken);
+
+        if (accessToken && refreshToken) {
           await supabase.auth.setSession({
-            access_token: accessTokenMatch[1],
-            refresh_token: refreshTokenMatch[1],
+            access_token: accessToken,
+            refresh_token: refreshToken,
           });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+          console.error("Missing tokens in OAuth response");
+          Alert.alert("Error", "Authentication failed. Missing tokens in response.");
         }
+      } else if (result.type === "cancel") {
+        console.log("User cancelled Google sign in");
+      } else {
+        console.log("OAuth result:", result);
       }
     } catch (error: any) {
       console.error("Google sign in error:", error);
