@@ -9,7 +9,7 @@ import Animated, {
   FadeOut,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -25,7 +25,8 @@ interface MiniPlayerProps {
 export function MiniPlayer({ onPress }: MiniPlayerProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeightContext = React.useContext(BottomTabBarHeightContext);
+  const tabBarHeight = tabBarHeightContext ?? insets.bottom;
   const {
     currentItem,
     isPlaying,

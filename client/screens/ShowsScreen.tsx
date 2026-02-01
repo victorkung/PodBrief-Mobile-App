@@ -62,6 +62,13 @@ export default function ShowsScreen() {
     enabled: !!user,
   });
 
+  const sortedFollowedPodcasts = useMemo(() => {
+    if (!followedPodcasts) return [];
+    return [...followedPodcasts].sort((a, b) =>
+      (a.podcast_name || "").localeCompare(b.podcast_name || "")
+    );
+  }, [followedPodcasts]);
+
   const podcastUuids = useMemo(
     () => followedPodcasts?.map((p) => p.taddy_podcast_uuid) || [],
     [followedPodcasts]
@@ -293,7 +300,7 @@ export default function ShowsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
-        data={selectedTab === "shows" ? followedPodcasts || [] : newEpisodes || []}
+        data={selectedTab === "shows" ? sortedFollowedPodcasts : newEpisodes || []}
         keyExtractor={(item) =>
           "uuid" in item ? item.uuid : item.taddy_podcast_uuid
         }
