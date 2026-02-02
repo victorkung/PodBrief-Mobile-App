@@ -14,14 +14,27 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInDown,
+  SlideOutDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext, SPEED_OPTIONS } from "@/contexts/AudioPlayerContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useToast } from "@/contexts/ToastContext";
+import { supabase } from "@/lib/supabase";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
@@ -46,6 +59,11 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [showSpeedPicker, setShowSpeedPicker] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  const translateY = useSharedValue(0);
 
   const {
     currentItem,
@@ -62,6 +80,23 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     setSpeed,
     stop,
   } = useAudioPlayerContext();
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > 100 || event.velocityY > 500) {
+        runOnJS(onClose)();
+      }
+      translateY.value = withSpring(0);
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   if (!currentItem) return null;
 
@@ -85,9 +120,32 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     }
   };
 
-  const handleMarkComplete = () => {
+  const handleMarkComplete = async () => {
+    const newComplete = !isComplete;
+    setIsComplete(newComplete);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert("Marked Complete", "Episode marked as complete.");
+
+    try {
+      if (currentItem.type === "summary" && currentItem.userBriefId) {
+        await supabase
+          .from("user_briefs")
+          .update({ is_completed: newComplete })
+          .eq("id", currentItem.userBriefId);
+        queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+      } else if (currentItem.type === "episode" && currentItem.savedEpisodeId) {
+        await supabase
+          .from("saved_episodes")
+          .update({ is_completed: newComplete })
+          .eq("id", currentItem.savedEpisodeId);
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
+      }
+      showToast(newComplete ? "Marked as complete" : "Marked as unfinished", "success");
+    } catch (error) {
+      console.error("Error marking complete:", error);
+      setIsComplete(!newComplete);
+      showToast("Failed to update", "error");
+    }
   };
 
   const handleRemove = () => {
@@ -101,10 +159,6 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     ]);
   };
 
-  const handleBluetooth = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert("Bluetooth", "Connect to a Bluetooth device from your device's settings.");
-  };
 
   const handleDownload = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -131,24 +185,29 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
       >
         <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
       </Animated.View>
-      <Animated.View
-        entering={SlideInDown.duration(300).springify()}
-        exiting={SlideOutDown.duration(250)}
-        style={[
-          styles.container,
-          {
-            backgroundColor: theme.backgroundDefault,
-            paddingTop: insets.top + Spacing.md,
-            paddingBottom: insets.bottom + Spacing.lg,
-          },
-        ]}
-      >
-        <Pressable onPress={onClose} style={styles.closeButton}>
-          <Feather name="chevron-down" size={24} color={theme.textSecondary} />
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-            Close
-          </ThemedText>
-        </Pressable>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          entering={SlideInDown.duration(300).springify()}
+          exiting={SlideOutDown.duration(250)}
+          style={[
+            styles.container,
+            animatedStyle,
+            {
+              backgroundColor: theme.backgroundDefault,
+              paddingTop: insets.top + Spacing.md,
+              paddingBottom: insets.bottom + Spacing.lg,
+            },
+          ]}
+        >
+          <View style={styles.swipeHandle}>
+            <View style={[styles.handleBar, { backgroundColor: theme.textTertiary }]} />
+          </View>
+          <Pressable onPress={onClose} style={styles.closeButton}>
+            <Feather name="chevron-down" size={24} color={theme.textSecondary} />
+            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+              Close
+            </ThemedText>
+          </Pressable>
 
         <ScrollView
           contentContainerStyle={styles.content}
@@ -216,7 +275,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
 
             <Pressable onPress={skipBackward} style={styles.skipButton}>
               <Feather name="rotate-ccw" size={28} color={theme.text} />
-              <ThemedText type="caption" style={styles.skipLabel}>15</ThemedText>
+              <ThemedText type="caption" style={[styles.skipLabel, { color: theme.text }]}>15</ThemedText>
             </Pressable>
 
             <Pressable
@@ -237,19 +296,21 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
 
             <Pressable onPress={skipForward} style={styles.skipButton}>
               <Feather name="rotate-cw" size={28} color={theme.text} />
-              <ThemedText type="caption" style={styles.skipLabel}>15</ThemedText>
+              <ThemedText type="caption" style={[styles.skipLabel, { color: theme.text }]}>15</ThemedText>
             </Pressable>
 
-            <Pressable onPress={handleBluetooth} style={styles.speedButton}>
-              <Feather name="cast" size={20} color={theme.text} />
-            </Pressable>
+            <View style={{ width: 50 }} />
           </View>
 
           <View style={[styles.actionsRow, { borderTopColor: theme.border }]}>
             <Pressable onPress={handleMarkComplete} style={styles.actionButton}>
-              <Feather name="check-circle" size={22} color={theme.textSecondary} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                Complete
+              <Feather 
+                name={isComplete ? "check-circle" : "circle"} 
+                size={22} 
+                color={isComplete ? theme.gold : theme.textSecondary} 
+              />
+              <ThemedText type="caption" style={{ color: isComplete ? theme.gold : theme.textSecondary, marginTop: 4 }}>
+                {isComplete ? "Completed" : "Complete"}
               </ThemedText>
             </Pressable>
 
@@ -273,61 +334,55 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
                 Remove
               </ThemedText>
             </Pressable>
-
-            <Pressable onPress={handleBluetooth} style={styles.actionButton}>
-              <Feather name="bluetooth" size={22} color={theme.textSecondary} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                Connect
-              </ThemedText>
-            </Pressable>
           </View>
         </ScrollView>
 
-        {showSpeedPicker ? (
-          <View style={[styles.speedPicker, { backgroundColor: theme.backgroundSecondary }]}>
-            <View style={styles.speedPickerHeader}>
-              <ThemedText type="body" style={{ fontWeight: "600" }}>
-                Playback Speed
-              </ThemedText>
-              <Pressable onPress={() => setShowSpeedPicker(false)}>
-                <Feather name="x" size={24} color={theme.text} />
-              </Pressable>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.speedOptions}>
-                {SPEED_OPTIONS.map((option) => (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => handleSpeedChange(option.value)}
-                    style={[
-                      styles.speedOption,
-                      {
-                        backgroundColor:
-                          playbackSpeed === option.value
-                            ? theme.gold
-                            : theme.backgroundTertiary,
-                      },
-                    ]}
-                  >
-                    <ThemedText
-                      type="small"
-                      style={{
-                        color:
-                          playbackSpeed === option.value
-                            ? theme.buttonText
-                            : theme.text,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {option.label}
-                    </ThemedText>
-                  </Pressable>
-                ))}
+          {showSpeedPicker ? (
+            <View style={[styles.speedPicker, { backgroundColor: theme.backgroundSecondary }]}>
+              <View style={styles.speedPickerHeader}>
+                <ThemedText type="body" style={{ fontWeight: "600" }}>
+                  Playback Speed
+                </ThemedText>
+                <Pressable onPress={() => setShowSpeedPicker(false)}>
+                  <Feather name="x" size={24} color={theme.text} />
+                </Pressable>
               </View>
-            </ScrollView>
-          </View>
-        ) : null}
-      </Animated.View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.speedOptions}>
+                  {SPEED_OPTIONS.map((option) => (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => handleSpeedChange(option.value)}
+                      style={[
+                        styles.speedOption,
+                        {
+                          backgroundColor:
+                            playbackSpeed === option.value
+                              ? theme.gold
+                              : theme.backgroundTertiary,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        type="small"
+                        style={{
+                          color:
+                            playbackSpeed === option.value
+                              ? theme.buttonText
+                              : theme.text,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {option.label}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          ) : null}
+        </Animated.View>
+      </GestureDetector>
     </Modal>
   );
 }
@@ -338,6 +393,16 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  swipeHandle: {
+    alignItems: "center",
+    paddingVertical: Spacing.xs,
+  },
+  handleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.5,
   },
   closeButton: {
     flexDirection: "row",
@@ -359,8 +424,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   artwork: {
-    width: 280,
-    height: 280,
+    width: 220,
+    height: 220,
     borderRadius: BorderRadius.lg,
   },
   badge: {
@@ -408,17 +473,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   skipButton: {
-    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.sm,
   },
   skipLabel: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    marginTop: -4,
-    marginLeft: -6,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
+    marginTop: -8,
   },
   playButton: {
     width: 72,

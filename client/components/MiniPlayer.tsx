@@ -101,13 +101,6 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
           </View>
           <View style={styles.controls}>
             <Pressable
-              onPress={() => {}}
-              style={styles.controlButton}
-              hitSlop={8}
-            >
-              <Feather name="cast" size={18} color={theme.textSecondary} />
-            </Pressable>
-            <Pressable
               onPress={isPlaying ? pause : resume}
               style={[styles.playButton, { backgroundColor: theme.gold }]}
               hitSlop={4}
@@ -177,9 +170,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
-  },
-  controlButton: {
-    padding: Spacing.xs,
   },
   playButton: {
     width: 36,
