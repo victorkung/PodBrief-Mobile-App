@@ -56,4 +56,15 @@ Preferred communication style: Simple, everyday language.
 - **ExpandedPlayer UX**:
   - Skip labels (15s) display below icons with proper spacing
   - Added "Next" button (skip-forward icon) to play next item in queue
-  - Progress bar seeking uses local state during drag for immediate visual feedback before actual seek
+  - Progress bar seeking uses local state during drag for immediate visual feedback, with 500ms delay before resetting isSeeking to prevent visual jump-back
+  - Removed "Remove" button from actions row
+- **Playlist Queue System**: 
+  - `playWithQueue(item, queue)` function in AudioPlayerContext for playing with a queue
+  - Library tabs (Episodes, Summaries, Downloads) auto-populate queue with remaining items when starting playback
+  - Next button plays the next item in queue
+- **Audio Switching UI Feedback**:
+  - LibraryItemCard shows loading indicator on play button when that specific item is loading
+  - `isPlaying` checks now include `isLoading` state so items show as active during loading
+- **Mark Complete Fix**: 
+  - EpisodeDetailScreen now passes `savedEpisodeId` when playing saved episodes, enabling Mark Complete functionality
+  - BriefDetailScreen already correctly passes `masterBriefId` and `userBriefId`
