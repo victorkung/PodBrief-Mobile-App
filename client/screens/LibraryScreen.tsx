@@ -148,14 +148,14 @@ export default function LibraryScreen() {
   const handlePlayEpisode = useCallback(
     (episode: SavedEpisode) => {
       const audioItem: AudioItem = {
-        id: episode.id,
+        id: episode.taddy_episode_uuid,
         type: "episode",
         title: episode.episode_name,
         podcast: episode.podcast_name,
         artwork: episode.episode_thumbnail,
         audioUrl: episode.episode_audio_url || "",
         duration: (episode.episode_duration_seconds || 0) * 1000,
-        progress: episode.audio_progress_seconds * 1000,
+        progress: (episode.audio_progress_seconds || 0) * 1000,
         savedEpisodeId: episode.id,
       };
       play(audioItem);
@@ -188,7 +188,7 @@ export default function LibraryScreen() {
   const handlePlayDownload = useCallback(
     (download: Download) => {
       const audioItem: AudioItem = {
-        id: download.id,
+        id: download.type === "episode" ? (download.taddyEpisodeUuid || download.id) : download.id,
         type: download.type,
         title: download.title,
         podcast: download.podcast,
@@ -196,6 +196,7 @@ export default function LibraryScreen() {
         audioUrl: download.filePath,
         duration: (download.episodeDurationSeconds || 0) * 1000,
         progress: 0,
+        masterBriefId: download.type === "summary" ? download.masterBriefId : undefined,
       };
       play(audioItem);
     },
