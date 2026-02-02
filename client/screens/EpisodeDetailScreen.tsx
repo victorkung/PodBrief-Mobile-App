@@ -347,8 +347,8 @@ export default function EpisodeDetailScreen() {
               onPress={handlePlay}
               style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
             >
-              <Feather name="play" size={18} color={theme.text} />
-              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+              <Feather name="play" size={16} color={theme.text} />
+              <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
                 Play ({formatDuration(duration)})
               </ThemedText>
             </Pressable>
@@ -356,8 +356,8 @@ export default function EpisodeDetailScreen() {
               onPress={handleShare}
               style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
             >
-              <Feather name="share-2" size={18} color={theme.text} />
-              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+              <Feather name="share-2" size={16} color={theme.text} />
+              <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
                 Share
               </ThemedText>
             </Pressable>
@@ -367,8 +367,8 @@ export default function EpisodeDetailScreen() {
                 disabled={markCompleteMutation.isPending}
                 style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
               >
-                <Feather name="check" size={18} color={theme.text} />
-                <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                <Feather name="check" size={16} color={theme.text} />
+                <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
                   Mark Complete
                 </ThemedText>
               </Pressable>
@@ -378,8 +378,8 @@ export default function EpisodeDetailScreen() {
                 disabled={saveMutation.isPending || removeSavedMutation.isPending}
                 style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
               >
-                <Feather name={isSaved ? "check" : "plus"} size={18} color={isSaved ? Colors.dark.success : theme.text} />
-                <ThemedText type="small" style={{ color: isSaved ? Colors.dark.success : theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+                <Feather name={isSaved ? "check" : "plus"} size={16} color={isSaved ? Colors.dark.success : theme.text} />
+                <ThemedText type="caption" style={{ color: isSaved ? Colors.dark.success : theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
                   {saveMutation.isPending ? "Adding..." : removeSavedMutation.isPending ? "Removing..." : isSaved ? "Added" : "Add Episode"}
                 </ThemedText>
               </Pressable>
@@ -389,8 +389,8 @@ export default function EpisodeDetailScreen() {
               disabled={isDownloading}
               style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, opacity: isDownloading ? 0.6 : 1 }]}
             >
-              <Feather name={isDownloading ? "loader" : "download"} size={18} color={theme.text} />
-              <ThemedText type="small" style={{ color: theme.text, marginLeft: Spacing.sm, fontWeight: "500" }}>
+              <Feather name={isDownloading ? "loader" : "download"} size={16} color={theme.text} />
+              <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
                 {isDownloading ? "Downloading..." : "Download"}
               </ThemedText>
             </Pressable>
@@ -403,14 +403,14 @@ export default function EpisodeDetailScreen() {
               Want a quick summary?
             </ThemedText>
             <ThemedText type="small" style={[styles.ctaDescription, { color: theme.textSecondary }]}>
-              Generate an AI-powered brief for this episode that comes with a podcast summary that you can read or listen to in ~5 min instead of {formatDuration(duration)}.
+              Generate an AI-powered summary for this episode that you can read or listen to in ~5 min instead of spending {formatDuration(duration)} on the full episode.
             </ThemedText>
             <Pressable
               onPress={handleGenerateBrief}
               style={[styles.ctaButton, { backgroundColor: theme.gold }]}
             >
-              <ThemedText type="body" style={{ color: theme.buttonText, fontWeight: "600" }}>
-                Generate Brief
+              <ThemedText type="small" style={{ color: theme.buttonText, fontWeight: "500" }}>
+                Summarize
               </ThemedText>
             </Pressable>
           </View>
@@ -488,8 +488,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     width: "48.5%",
@@ -524,6 +524,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   description: {
-    lineHeight: 22,
+    lineHeight: 18,
   },
 });

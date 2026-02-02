@@ -76,6 +76,9 @@ export function RootStackNavigator() {
       fontSize: 17,
       color: theme.text,
     },
+    headerBackTitleStyle: {
+      fontSize: 14,
+    },
     headerBackground: () => (
       <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
     ),

@@ -173,7 +173,6 @@ const styles = StyleSheet.create({
   toastText: {
     marginLeft: Spacing.sm,
     fontSize: 14,
-    fontWeight: "600",
     fontFamily: "GoogleSansFlex_400Regular",
   },
 });
