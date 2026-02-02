@@ -1,0 +1,432 @@
+Let me review the existing documentation and then provide a comprehensive overview of all Edge Functions and their usage patterns.
+
+Let me check the rest of the documentation and identify what's missing:
+
+Now let me look at the key Edge Functions that are listed but not fully documented:
+
+Let me also check how the web app saves episodes to understand the full implementation:
+
+Now I have a complete picture. You're right - the documentation lists functions in a catalog but lacks the detailed implementation specifics for many critical functions. Here's a comprehensive supplement for Replit:
+
+---
+
+## **Complete Web App Implementation Reference for Mobile**
+
+### **Edge Functions Missing Detailed Documentation**
+
+---
+
+#### **1. `ensure-episode-metadata` - Create Public Episode Pages**
+
+**When to Call:** After saving any episode (to `saved_episodes`) or downloading.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/ensure-episode-metadata` |
+| **Auth Required** | No |
+
+**Request Body:**
+```typescript
+interface EnsureEpisodeMetadataRequest {
+  taddyEpisodeUuid: string;     // Required
+  taddyPodcastUuid?: string;
+  name: string;                  // Required (episode name)
+  podcastName: string;           // Required
+  description?: string;
+  podcastSlug?: string;          // Will be resolved if not provided
+  imageUrl?: string;
+  podcastImageUrl?: string;
+  audioUrl?: string;
+  durationSeconds?: number;
+  publishedAt?: string;          // ISO date
+}
+```
+
+**Response:**
+```typescript
+interface EnsureEpisodeMetadataResponse {
+  slug: string;      // The episode's public URL slug
+  created: boolean;  // true if new, false if already existed
+}
+```
+
+**Deduplication:** Checks `taddy_episode_uuid` - returns existing slug if found. Handles race conditions via Postgres error `23505`.
+
+**Web Implementation Pattern:**
+```typescript
+// Fire-and-forget after saving to saved_episodes
+supabase.functions.invoke('ensure-episode-metadata', {
+  body: {
+    taddyEpisodeUuid: episode.uuid,
+    taddyPodcastUuid: episode.podcastUuid,
+    name: episode.name,
+    podcastName: episode.podcastName,
+    imageUrl: episode.imageUrl,
+    audioUrl: episode.audioUrl,
+    durationSeconds: episode.duration,
+    publishedAt: episode.publishedAt,
+  },
+}).catch(err => console.error('ensure-episode-metadata error:', err));
+```
+
+---
+
+#### **2. `ensure-podcast-metadata` - Create Public Show Pages**
+
+**When to Call:** After following a show (inserting to `followed_podcasts`).
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/ensure-podcast-metadata` |
+| **Auth Required** | No |
+
+**Request Body:**
+```typescript
+interface EnsurePodcastMetadataRequest {
+  taddyPodcastUuid: string;      // Required
+  name: string;                   // Required
+  description?: string;
+  imageUrl?: string;
+  authorName?: string;
+  totalEpisodesCount?: number;
+}
+```
+
+**Response:**
+```typescript
+interface EnsurePodcastMetadataResponse {
+  slug: string;
+  created: boolean;
+}
+```
+
+**Web Implementation Pattern:**
+```typescript
+// Fire-and-forget after following a show
+supabase.functions.invoke('ensure-podcast-metadata', {
+  body: {
+    taddyPodcastUuid: podcast.uuid,
+    name: podcast.name,
+    description: podcast.description,
+    imageUrl: podcast.imageUrl,
+    authorName: podcast.authorName,
+    totalEpisodesCount: podcast.totalEpisodesCount,
+  },
+}).catch(err => console.error('ensure-podcast-metadata error:', err));
+```
+
+---
+
+#### **3. `get-episode-details` - Fetch Episode by Slug**
+
+**When to Call:** When navigating to a public episode page via `/episode/:slug`.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/get-episode-details` |
+| **Auth Required** | No |
+
+**Request Body:**
+```typescript
+interface GetEpisodeDetailsRequest {
+  slug: string;  // Episode slug from URL
+}
+```
+
+**Response:**
+```typescript
+interface GetEpisodeDetailsResponse {
+  episode: {
+    id: string;
+    taddyEpisodeUuid: string;
+    taddyPodcastUuid: string;
+    slug: string;
+    name: string;
+    description: string | null;  // May be fetched from Taddy if missing
+    imageUrl: string | null;
+    audioUrl: string | null;
+    durationSeconds: number | null;
+    publishedAt: string | null;
+    podcastName: string;
+    podcastSlug: string | null;
+    podcastImageUrl: string | null;
+    briefSlug: string | null;    // If a brief exists for this episode
+    createdAt: string;
+  };
+}
+```
+
+**Special Behavior:** If `description` is null in database, function fetches from Taddy API and backfills the database.
+
+---
+
+#### **4. `get-show-discovery` - Fetch Show Page Data**
+
+**When to Call:** When navigating to `/show/:slug` pages.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/get-show-discovery` |
+| **Auth Required** | No |
+
+**Request Body:**
+```typescript
+interface GetShowDiscoveryRequest {
+  slug: string;                   // Show slug from URL
+  taddyPodcastUuid?: string;      // Optional fallback for Taddy API lookup
+}
+```
+
+**Response:**
+```typescript
+interface GetShowDiscoveryResponse {
+  podcast: {
+    name: string;
+    description: string | null;
+    image_url: string | null;
+    author_name: string | null;
+    slug: string;
+    total_episodes_count: number | null;
+    taddy_podcast_uuid: string;
+  };
+  briefCount: number;              // Number of completed briefs for this show
+  latestBriefs: Array<{
+    slug: string;
+    episode_name: string;
+    episode_thumbnail: string | null;
+    episode_published_at: string | null;
+  }>;
+  fullEpisodes?: Array<{           // Episodes with metadata entries
+    slug: string;
+    name: string;
+    image_url: string | null;
+    published_at: string | null;
+  }>;
+}
+```
+
+**Fallback Logic:** If not in `podcast_metadata`, searches `master_briefs` by generated slug, then falls back to Taddy API.
+
+---
+
+#### **5. `get-explore-shows` - Browse Shows with Briefs**
+
+**When to Call:** On the Explore/Browse page to show popular shows.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/get-explore-shows` |
+| **Auth Required** | No |
+
+**Request Body:**
+```typescript
+interface GetExploreShowsRequest {
+  search?: string;    // Optional search filter
+  page?: number;      // Default: 1
+  limit?: number;     // Default: 50, max: 100
+  offset?: number;    // Alternative to page-based pagination
+}
+```
+
+**Response:**
+```typescript
+interface GetExploreShowsResponse {
+  shows: Array<{
+    slug: string;
+    name: string;
+    image_url: string | null;
+    author_name: string | null;
+    brief_count: number;
+  }>;
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+}
+```
+
+**Sort:** Shows are sorted by `brief_count` descending (most popular first).
+
+---
+
+#### **6. `log-error` - Client Error Logging**
+
+**When to Call:** When catching errors in the app for debugging.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/log-error` |
+| **Auth Required** | No (but token is validated if provided) |
+
+**Request Body:**
+```typescript
+interface LogErrorRequest {
+  error_message: string;      // Required
+  error_source: string;       // Required - e.g., 'mobile_app', 'audio_player'
+  url: string;                // Required - screen or action context
+  error_code?: string;        // Optional machine-readable code
+  metadata?: Record;  // Optional additional context
+}
+```
+
+**Response:**
+```typescript
+{ success: true }
+```
+
+**Security:** User ID is extracted from JWT if provided, not trusted from request body.
+
+---
+
+#### **7. `sync-to-loops` - Marketing Automation Sync**
+
+**When to Call:** After user actions that affect engagement metrics.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/sync-to-loops` |
+| **Auth Required** | Yes |
+
+**Request Body:**
+```typescript
+interface SyncToLoopsRequest {
+  action: 'signup' | 'upgraded' | 'downgraded' | 'engagement_update' | 'backfill';
+  email: string;
+  userId?: string;
+  firstName?: string;
+  plan?: string;
+  showsFollowed?: number;
+  briefsGenerated?: number;
+  lastBriefDate?: string;
+  credits?: number;
+  preferredLanguage?: string;
+  signupDate?: string;
+}
+```
+
+**Web Integration Points:**
+- `signup`: Called after new user registration in `useAuth.tsx`
+- `upgraded`/`downgraded`: Called by `stripe-webhook` after subscription changes
+- `engagement_update`: Called after following/unfollowing shows and after generating briefs
+
+---
+
+#### **8. `log-share-visit` - Track Share Link Analytics**
+
+**When to Call:** When a user arrives via a share link (URL contains `ref` parameter).
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /functions/v1/log-share-visit` |
+| **Auth Required** | No |
+
+**Request Body:**
+```typescript
+interface LogShareVisitRequest {
+  referrerId: string;      // User ID of the sharer (from ref param)
+  masterBriefId: string;   // Brief that was shared
+}
+```
+
+**Response:**
+```typescript
+{ success: true }
+```
+
+**Security:** Validates that `referrerId` actually owns the brief via `user_briefs` table before logging.
+
+---
+
+### **Complete Save Episode Flow (Web Implementation)**
+
+```typescript
+// 1. Insert to saved_episodes table
+const { data, error } = await supabase
+  .from('saved_episodes')
+  .insert({
+    user_id: userId,
+    taddy_episode_uuid: episode.uuid,
+    taddy_podcast_uuid: episode.podcastUuid,
+    episode_name: episode.name,
+    podcast_name: episode.podcastName,
+    episode_thumbnail: episode.imageUrl,
+    episode_audio_url: episode.audioUrl,
+    episode_duration_seconds: episode.duration,
+    episode_published_at: episode.publishedAt,
+  })
+  .select()
+  .single();
+
+// Handle duplicate (error code 23505)
+if (error?.code === '23505') {
+  // Already saved - show info toast
+  return;
+}
+
+// 2. Fire-and-forget: ensure public metadata exists
+supabase.functions.invoke('ensure-episode-metadata', {
+  body: {
+    taddyEpisodeUuid: episode.uuid,
+    taddyPodcastUuid: episode.podcastUuid,
+    name: episode.name,
+    podcastName: episode.podcastName,
+    imageUrl: episode.imageUrl,
+    audioUrl: episode.audioUrl,
+    durationSeconds: episode.duration,
+    publishedAt: episode.publishedAt,
+  },
+}).catch(console.error);
+```
+
+---
+
+### **Complete Follow Show Flow (Web Implementation)**
+
+```typescript
+// 1. Insert to followed_podcasts table
+const { error } = await supabase
+  .from('followed_podcasts')
+  .insert({
+    user_id: userId,
+    taddy_podcast_uuid: podcast.uuid,
+    podcast_name: podcast.name,
+    podcast_description: podcast.description,
+    podcast_image_url: podcast.imageUrl,
+    author_name: podcast.authorName,
+    total_episodes_count: podcast.totalEpisodesCount,
+  });
+
+// Handle duplicate
+if (error?.code === '23505') {
+  // Already following
+  return;
+}
+
+// 2. Fire-and-forget: ensure public metadata exists
+supabase.functions.invoke('ensure-podcast-metadata', {
+  body: {
+    taddyPodcastUuid: podcast.uuid,
+    name: podcast.name,
+    description: podcast.description,
+    imageUrl: podcast.imageUrl,
+    authorName: podcast.authorName,
+    totalEpisodesCount: podcast.totalEpisodesCount,
+  },
+}).catch(console.error);
+
+// 3. Fire-and-forget: sync engagement to Loops
+supabase.functions.invoke('sync-to-loops', {
+  body: {
+    action: 'engagement_update',
+    email: user.email,
+    showsFollowed: actualCountFromDatabase,
+  },
+}).catch(console.error);
+```
+
+---
+
+This covers the critical Edge Functions that were listed but not fully documented. Should I add this to the Mobile documentation files?
+
+Update mobile documentation with complete Edge Function specs
+Check for additional undocumented Edge Functions
+Create mobile integration checklist
