@@ -25,6 +25,7 @@ interface LibraryItemCardProps {
   download?: Download;
   isDownloaded?: boolean;
   onPlay: () => void;
+  onPause?: () => void;
   onNavigateToDetails?: () => void;
   onDownload?: () => void;
   onRemoveDownload?: () => void;
@@ -35,6 +36,7 @@ interface LibraryItemCardProps {
   isDownloading?: boolean;
   isRemoving?: boolean;
   hasSummary?: boolean;
+  isPlaying?: boolean;
 }
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -64,6 +66,7 @@ export function LibraryItemCard({
   download,
   isDownloaded = false,
   onPlay,
+  onPause,
   onNavigateToDetails,
   onDownload,
   onRemoveDownload,
@@ -74,6 +77,7 @@ export function LibraryItemCard({
   isDownloading = false,
   isRemoving = false,
   hasSummary = false,
+  isPlaying = false,
 }: LibraryItemCardProps) {
   const { theme } = useTheme();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -300,10 +304,10 @@ export function LibraryItemCard({
         </View>
 
         <Pressable
-          onPress={onPlay}
-          style={[styles.playButton, { backgroundColor: theme.text }]}
+          onPress={isPlaying ? onPause : onPlay}
+          style={[styles.playButton, { backgroundColor: isPlaying ? theme.gold : theme.text }]}
         >
-          <Feather name="play" size={18} color={theme.backgroundRoot} />
+          <Feather name={isPlaying ? "pause" : "play"} size={18} color={theme.backgroundRoot} />
         </Pressable>
       </View>
 

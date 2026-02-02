@@ -7,11 +7,12 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
-import { useAudioPlayer, AudioPlayer } from "expo-audio";
+import { useAudioPlayer, AudioPlayer, setAudioModeAsync } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase";
 import { AudioItem } from "@/lib/types";
+import { Platform } from "react-native";
 
 export type PlaybackState = "idle" | "loading" | "playing" | "paused" | "error";
 
@@ -218,6 +219,23 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const configureAudioMode = async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          shouldPlayInBackground: true,
+          interruptionMode: "doNotMix",
+          interruptionModeAndroid: "doNotMix",
+        });
+        console.log("[AudioPlayer] Audio mode configured for background playback");
+      } catch (error) {
+        console.error("[AudioPlayer] Error configuring audio mode:", error);
+      }
+    };
+    configureAudioMode();
+  }, []);
+
+  useEffect(() => {
     if (isPlaying) {
       progressInterval.current = setInterval(() => {
         if (player.currentTime !== undefined && player.duration !== undefined) {
@@ -376,6 +394,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         await player.play();
         setPlaybackState("playing");
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+        if (Platform.OS !== "web") {
+          setTimeout(() => {
+            try {
+              player.setActiveForLockScreen(true, {
+                title: item.title,
+                artist: item.podcast || "PodBrief",
+                artworkUrl: item.artwork || undefined,
+              });
+              console.log("[AudioPlayer] Lock screen controls enabled");
+            } catch (e) {
+              console.error("[AudioPlayer] Error setting lock screen controls:", e);
+            }
+          }, 500);
+        }
       } catch (error) {
         console.error("[AudioPlayer] Error playing audio:", error);
         setPlaybackState("error");
@@ -402,6 +435,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       saveProgress(currentItem, position, playbackSpeed);
     }
     player.pause();
+    if (Platform.OS !== "web") {
+      try {
+        player.clearLockScreenControls();
+      } catch (e) {
+        console.error("[AudioPlayer] Error clearing lock screen controls:", e);
+      }
+    }
     setCurrentItem(null);
     setPlaybackState("idle");
     setPosition(0);

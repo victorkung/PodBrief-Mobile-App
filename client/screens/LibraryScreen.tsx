@@ -37,7 +37,7 @@ export default function LibraryScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
-  const { play } = useAudioPlayerContext();
+  const { play, pause, currentItem, isPlaying } = useAudioPlayerContext();
   const { showToast } = useToast();
 
   const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
@@ -654,6 +654,21 @@ export default function LibraryScreen() {
     );
   };
 
+  const isEpisodePlaying = useCallback((episode: SavedEpisode) => {
+    return isPlaying && currentItem?.type === "episode" && currentItem?.id === episode.taddy_episode_uuid;
+  }, [isPlaying, currentItem]);
+
+  const isBriefPlaying = useCallback((brief: UserBrief) => {
+    return isPlaying && currentItem?.type === "summary" && currentItem?.masterBriefId === brief.master_brief_id;
+  }, [isPlaying, currentItem]);
+
+  const isDownloadPlaying = useCallback((download: Download) => {
+    if (download.type === "episode") {
+      return isPlaying && currentItem?.type === "episode" && currentItem?.id === download.taddyEpisodeUuid;
+    }
+    return isPlaying && currentItem?.type === "summary" && currentItem?.masterBriefId === download.masterBriefId;
+  }, [isPlaying, currentItem]);
+
   const renderItem = ({ item }: { item: SavedEpisode | UserBrief | Download }) => {
     if (selectedTab === "episodes") {
       const episode = item as SavedEpisode;
@@ -665,7 +680,9 @@ export default function LibraryScreen() {
           isDownloading={downloadingIds.has(episode.id)}
           isRemoving={removingIds.has(episode.id)}
           hasSummary={hasSummaryForEpisode(episode)}
+          isPlaying={isEpisodePlaying(episode)}
           onPlay={() => handlePlayEpisode(episode)}
+          onPause={pause}
           onNavigateToDetails={() => {
             (navigation as any).navigate("EpisodeDetail", {
               episode,
@@ -688,7 +705,9 @@ export default function LibraryScreen() {
           isDownloaded={isBriefDownloaded(brief)}
           isDownloading={downloadingIds.has(brief.id)}
           isRemoving={removingIds.has(brief.id)}
+          isPlaying={isBriefPlaying(brief)}
           onPlay={() => handlePlayBrief(brief)}
+          onPause={pause}
           onNavigateToDetails={() => {
             (navigation as any).navigate("BriefDetail", {
               brief,
@@ -709,7 +728,9 @@ export default function LibraryScreen() {
           download={download}
           isDownloaded={true}
           hasSummary={hasSummaryForDownload(download)}
+          isPlaying={isDownloadPlaying(download)}
           onPlay={() => handlePlayDownload(download)}
+          onPause={pause}
           onNavigateToDetails={() => {
             if (download.type === "episode" && download.taddyEpisodeUuid) {
               (navigation as any).navigate("EpisodeDetail", {
