@@ -255,13 +255,14 @@ export default function EpisodeDetailScreen() {
         audioUrl: audioUrl,
         duration: duration * 1000,
         progress: 0,
+        savedEpisodeId: !isTaddyEpisode ? (episode as SavedEpisode).id : undefined,
       };
       await play(audioItem);
     } catch (error) {
       console.error("Error playing episode:", error);
       Alert.alert("Error", "Failed to play episode. Please try again.");
     }
-  }, [uuid, name, podcastName, imageUrl, audioUrl, duration, play]);
+  }, [uuid, name, podcastName, imageUrl, audioUrl, duration, play, isTaddyEpisode, episode]);
 
   const handleShare = useCallback(async () => {
     try {
