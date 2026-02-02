@@ -44,7 +44,7 @@ export default function GenerateBriefScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const queryClient = useQueryClient();
-  const { profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
 
   const episode = (route.params as any)?.episode as TaddyEpisode;
   const podcast = (route.params as any)?.podcast as TaddyPodcast | undefined;
@@ -81,6 +81,24 @@ export default function GenerateBriefScreen() {
       await refreshProfile();
       queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      if (user?.email && !data.existing) {
+        const { count } = await supabase
+          .from("user_briefs")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("is_hidden", false);
+        
+        supabase.functions.invoke('sync-to-loops', {
+          body: {
+            action: 'engagement_update',
+            email: user.email,
+            userId: user.id,
+            briefsGenerated: count || 0,
+            lastBriefDate: new Date().toISOString(),
+          },
+        }).catch(err => console.error('[generateMutation] sync-to-loops error:', err));
+      }
       
       Alert.alert(
         "Brief Generation Started",
