@@ -37,7 +37,7 @@ export default function LibraryScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
-  const { play, pause, currentItem, isPlaying } = useAudioPlayerContext();
+  const { play, pause, resume, currentItem, isPlaying } = useAudioPlayerContext();
   const { showToast } = useToast();
 
   const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
@@ -147,6 +147,10 @@ export default function LibraryScreen() {
 
   const handlePlayEpisode = useCallback(
     (episode: SavedEpisode) => {
+      if (currentItem?.id === episode.taddy_episode_uuid && currentItem?.type === "episode") {
+        resume();
+        return;
+      }
       const audioItem: AudioItem = {
         id: episode.taddy_episode_uuid,
         type: "episode",
@@ -160,12 +164,16 @@ export default function LibraryScreen() {
       };
       play(audioItem);
     },
-    [play]
+    [play, resume, currentItem]
   );
 
   const handlePlayBrief = useCallback(
     (brief: UserBrief) => {
       if (!brief.master_brief || brief.master_brief.pipeline_status !== "completed") {
+        return;
+      }
+      if (currentItem?.masterBriefId === brief.master_brief_id && currentItem?.type === "summary") {
+        resume();
         return;
       }
       const audioItem: AudioItem = {
@@ -182,13 +190,18 @@ export default function LibraryScreen() {
       };
       play(audioItem);
     },
-    [play]
+    [play, resume, currentItem]
   );
 
   const handlePlayDownload = useCallback(
     (download: Download) => {
+      const downloadId = download.type === "episode" ? (download.taddyEpisodeUuid || download.id) : download.id;
+      if (currentItem?.id === downloadId) {
+        resume();
+        return;
+      }
       const audioItem: AudioItem = {
-        id: download.type === "episode" ? (download.taddyEpisodeUuid || download.id) : download.id,
+        id: downloadId,
         type: download.type,
         title: download.title,
         podcast: download.podcast,
@@ -200,7 +213,7 @@ export default function LibraryScreen() {
       };
       play(audioItem);
     },
-    [play]
+    [play, resume, currentItem]
   );
 
   const handleRemoveEpisode = useCallback(
