@@ -44,9 +44,27 @@ export default function EpisodeDetailScreen() {
   const isTaddyEpisode = "uuid" in episode;
   const uuid = isTaddyEpisode ? episode.uuid : episode.taddy_episode_uuid;
   const name = isTaddyEpisode ? episode.name : episode.episode_name;
+
+  // Fetch episode details from Edge Function when viewing a SavedEpisode (to get description)
+  const { data: episodeDetails } = useQuery({
+    queryKey: ["episodeDetails", uuid],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("get-episode-details", {
+        body: { slug: uuid },
+      });
+      if (error) {
+        console.error("[EpisodeDetailScreen] Error fetching episode details:", error);
+        return null;
+      }
+      return data?.episode || null;
+    },
+    enabled: !isTaddyEpisode && !!uuid, // Only fetch for SavedEpisodes
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+  });
+
   const rawDescription = isTaddyEpisode 
     ? episode.description 
-    : "";
+    : (episodeDetails?.description || "");
   const description = stripHtml(rawDescription);
   const imageUrl = isTaddyEpisode
     ? episode.imageUrl || episode.podcastSeries?.imageUrl || podcast?.imageUrl
