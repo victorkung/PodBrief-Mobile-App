@@ -60,6 +60,8 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
   const insets = useSafeAreaInsets();
   const [showSpeedPicker, setShowSpeedPicker] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekValue, setSeekValue] = useState(0);
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
@@ -72,6 +74,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     position,
     duration,
     playbackSpeed,
+    queue,
     pause,
     resume,
     seekTo,
@@ -79,6 +82,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     skipBackward,
     setSpeed,
     stop,
+    playNext,
   } = useAudioPlayerContext();
 
   const panGesture = Gesture.Pan()
@@ -102,11 +106,30 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
 
   const typeLabel = currentItem.type === "summary" ? "Summary" : "Full Episode";
   const progress = duration > 0 ? position / duration : 0;
+  const displayProgress = isSeeking ? seekValue : progress;
+  const displayPosition = isSeeking ? seekValue * duration : position;
+
+  const handleSliderStart = () => {
+    setIsSeeking(true);
+    setSeekValue(progress);
+  };
 
   const handleSliderChange = (value: number) => {
+    setSeekValue(value);
+  };
+
+  const handleSliderComplete = (value: number) => {
     const newPosition = value * duration;
     seekTo(newPosition);
+    setIsSeeking(false);
     Haptics.selectionAsync();
+  };
+
+  const handlePlayNext = () => {
+    if (queue.length > 0) {
+      playNext();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   const handleShare = async () => {
@@ -247,8 +270,10 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
           <View style={styles.progressContainer}>
             <Slider
               style={styles.slider}
-              value={progress}
-              onSlidingComplete={handleSliderChange}
+              value={displayProgress}
+              onSlidingStart={handleSliderStart}
+              onValueChange={handleSliderChange}
+              onSlidingComplete={handleSliderComplete}
               minimumValue={0}
               maximumValue={1}
               minimumTrackTintColor={theme.gold}
@@ -257,7 +282,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
             />
             <View style={styles.timeRow}>
               <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-                {formatTime(position)}
+                {formatTime(displayPosition)}
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textTertiary }}>
                 {formatTime(duration)}
@@ -299,7 +324,17 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
               <ThemedText type="caption" style={[styles.skipLabel, { color: theme.text }]}>15</ThemedText>
             </Pressable>
 
-            <View style={{ width: 50 }} />
+            <Pressable 
+              onPress={handlePlayNext} 
+              style={styles.nextButton}
+              disabled={queue.length === 0}
+            >
+              <Feather 
+                name="skip-forward" 
+                size={24} 
+                color={queue.length > 0 ? theme.text : theme.textTertiary} 
+              />
+            </Pressable>
           </View>
 
           <View style={[styles.actionsRow, { borderTopColor: theme.border }]}>
@@ -480,7 +515,13 @@ const styles = StyleSheet.create({
   skipLabel: {
     fontSize: 9,
     fontWeight: "700",
-    marginTop: -8,
+    marginTop: 4,
+  },
+  nextButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.sm,
+    width: 50,
   },
   playButton: {
     width: 72,

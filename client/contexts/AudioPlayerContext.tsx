@@ -341,6 +341,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         setPlaybackState("loading");
         setCurrentItem(item);
 
+        // Set audio mode before each play to ensure silent mode works on iOS
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          shouldPlayInBackground: true,
+          interruptionMode: "doNotMix",
+          interruptionModeAndroid: "doNotMix",
+        });
+
         engagementSession.current = {
           sessionId: generateSessionId(),
           startLogged: false,
@@ -422,7 +430,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [player, currentItem, position, playbackSpeed, saveProgress]);
 
-  const resume = useCallback(() => {
+  const resume = useCallback(async () => {
+    // Set audio mode before resume to ensure silent mode works on iOS
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: "doNotMix",
+      interruptionModeAndroid: "doNotMix",
+    });
     player.play();
     setPlaybackState("playing");
   }, [player]);
