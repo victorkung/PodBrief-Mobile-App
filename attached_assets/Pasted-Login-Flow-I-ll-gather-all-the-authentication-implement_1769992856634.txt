@@ -1,0 +1,343 @@
+Login Flow
+I'll gather all the authentication implementation details for you to share with Replit.
+
+Now let me also get the useAuth hook which contains the core auth functions:
+
+Here's the complete authentication implementation for Replit to review:
+
+---
+
+## **PodBrief Web App Authentication Implementation**
+
+### **1. Password Validation Rules**
+
+All password fields (signup and reset) must enforce these rules:
+
+```typescript
+// src/lib/passwordValidation.ts
+
+export const PASSWORD_REQUIREMENTS = [
+  { key: 'minLength', label: 'At least 8 characters' },
+  { key: 'hasUppercase', label: 'One uppercase letter' },
+  { key: 'hasLowercase', label: 'One lowercase letter' },
+  { key: 'hasNumber', label: 'One number' },
+];
+
+export function validatePassword(password: string) {
+  const checks = {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+  };
+
+  const errors: string[] = [];
+  if (!checks.minLength) errors.push('At least 8 characters');
+  if (!checks.hasUppercase) errors.push('One uppercase letter');
+  if (!checks.hasLowercase) errors.push('One lowercase letter');
+  if (!checks.hasNumber) errors.push('One number');
+
+  return { isValid: errors.length === 0, errors, checks };
+}
+
+// Maps Supabase "weak password" errors to friendly message
+export function mapPasswordError(errorMessage: string): string {
+  if (
+    errorMessage.toLowerCase().includes('weak') ||
+    errorMessage.toLowerCase().includes('easy to guess')
+  ) {
+    return 'Please choose a different password. Try adding more unique characters or avoiding common words.';
+  }
+  return errorMessage;
+}
+```
+
+---
+
+### **2. Sign Up Flow**
+
+**Endpoint:** `supabase.auth.signUp()`
+
+**Required Fields:**
+- `email` (string, required)
+- `password` (string, required - must pass validation)
+- `firstName` (string, required)
+- `preferredLanguage` (string, default: 'en')
+- `referredBy` (string, optional - for referral tracking)
+
+**Implementation:**
+```typescript
+const signUp = async (
+  email: string, 
+  password: string, 
+  firstName?: string, 
+  referredBy?: string, 
+  preferredLanguage?: string
+) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/library`,
+      data: {
+        ...(firstName ? { first_name: firstName } : {}),
+        ...(referredBy ? { referred_by: referredBy } : {}),
+        ...(preferredLanguage ? { preferred_language: preferredLanguage } : {}),
+      },
+    },
+  });
+
+  // Fire-and-forget sync to email marketing (Loops)
+  if (!error && data?.user) {
+    supabase.functions.invoke('sync-to-loops', {
+      body: {
+        action: 'signup',
+        email,
+        firstName: firstName || undefined,
+        userId: data.user.id,
+        plan: 'free',
+        preferredLanguage: preferredLanguage || 'en',
+        showsFollowed: 0,
+        briefsGenerated: 0,
+        credits: 5,
+      }
+    }).catch(err => console.error('[Loops] Signup sync failed:', err));
+  }
+
+  return { error };
+};
+```
+
+**Client-side Validation Before Submit:**
+```typescript
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!firstName.trim()) {
+    toast.error('Please enter your first name');
+    return;
+  }
+  if (!email.trim()) {
+    toast.error('Please enter your email address');
+    return;
+  }
+  if (!password.trim()) {
+    toast.error('Please enter a password');
+    return;
+  }
+
+  // Validate password against rules
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.isValid) {
+    toast.error('Please meet all password requirements');
+    return;
+  }
+
+  const { error } = await signUp(email, password, firstName, referredBy, preferredLanguage);
+
+  if (error) {
+    if (error.message.includes('User already registered')) {
+      toast.error('An account with this email already exists. Try signing in instead.');
+    } else {
+      toast.error(mapPasswordError(error.message));
+    }
+    return;
+  }
+
+  toast.success('Account created! Welcome to PodBrief.');
+};
+```
+
+---
+
+### **3. Login Flow**
+
+**Endpoint:** `supabase.auth.signInWithPassword()`
+
+**Required Fields:**
+- `email` (string, required)
+- `password` (string, required)
+
+**Implementation:**
+```typescript
+const signIn = async (email: string, password: string) => {
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  return { error };
+};
+```
+
+**Error Handling:**
+```typescript
+if (error) {
+  if (error.message.includes('Invalid login credentials')) {
+    toast.error('Invalid email or password');
+  } else if (error.message.includes('User already registered')) {
+    toast.error('An account with this email already exists. Try signing in instead.');
+  } else if (error.message.includes('Email not confirmed')) {
+    toast.error('Please check your email to confirm your account');
+  } else {
+    toast.error(error.message);
+  }
+  return;
+}
+```
+
+---
+
+### **4. Forgot Password Flow**
+
+**Step 1 - Request Reset Email:**
+
+**Endpoint:** `supabase.auth.resetPasswordForEmail()`
+
+```typescript
+const resetPassword = async (email: string) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  return { error };
+};
+
+// Usage
+const { error } = await resetPassword(email);
+if (error) {
+  toast.error(error.message);
+} else {
+  toast.success('Password reset email sent! Check your inbox.');
+}
+```
+
+**Step 2 - Set New Password (on /reset-password page):**
+
+**Endpoint:** `supabase.auth.updateUser()`
+
+```typescript
+// Listen for PASSWORD_RECOVERY event in auth state listener
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    // Redirect to reset password page
+    window.location.href = '/reset-password';
+  }
+});
+
+// On reset password page, update the password
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!password.trim()) {
+    toast.error('Please enter a new password');
+    return;
+  }
+
+  // Validate password against rules
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.isValid) {
+    toast.error('Please meet all password requirements');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    toast.error('Passwords do not match');
+    return;
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    toast.error(mapPasswordError(error.message));
+    return;
+  }
+
+  toast.success('Password updated successfully!');
+  navigate('/library');
+};
+```
+
+---
+
+### **6. Sign Out Flow**
+
+```typescript
+const signOut = async () => {
+  // Local sign-out (clears browser state even if server session is gone)
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // Silently fail
+  }
+
+  // Fallback: clear persisted auth tokens
+  for (const key of Object.keys(window.localStorage)) {
+    if (key.startsWith('sb-') && key.includes('-auth-token')) {
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  // Clear state and redirect
+  window.location.href = '/login';
+};
+```
+
+---
+
+### **7. Auth State Management**
+
+**Critical Pattern:** Set up listener FIRST, then check existing session:
+
+```typescript
+useEffect(() => {
+  // 1. Set up listener FIRST
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setTimeout(() => window.location.href = '/reset-password', 0);
+        return;
+      }
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Defer Supabase calls to avoid deadlock
+        setTimeout(() => {
+          fetchProfile(session.user.id).then(setProfile);
+        }, 0);
+      }
+    }
+  );
+
+  // 2. THEN check existing session
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    setSession(session);
+    setUser(session?.user ?? null);
+    if (session?.user) {
+      fetchProfile(session.user.id).then(setProfile);
+    }
+    setLoading(false);
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
+```
+
+---
+
+### **8. Profile Schema**
+
+```typescript
+interface Profile {
+  id: string;              // UUID, matches auth.users.id
+  email: string;
+  email_canonical: string;
+  credits: number;         // Default: 5
+  plan: 'free' | 'pro';
+  pro_expires_at: string | null;
+  subscription_cancel_at: string | null;
+  preferred_language: string;  // Default: 'en'
+  created_at: string;
+  first_name: string | null;
+}
+```
