@@ -80,7 +80,7 @@ Preferred communication style: Simple, everyday language.
 
 - **Project URL**: `https://wdylkaiyoelfcmphoaqs.supabase.co`
 - **Edge Functions Base**: `https://wdylkaiyoelfcmphoaqs.supabase.co/functions/v1/`
-- **Key Edge Functions**: `taddy-search`, `taddy-podcast-details`, `create-checkout`, `customer-portal`, `ensure-episode-metadata`, `sync-to-loops`
+- **Key Edge Functions**: `taddy-search`, `taddy-podcast-details`, `create-checkout`, `customer-portal`, `ensure-episode-metadata`, `ensure-podcast-metadata`, `sync-to-loops`, `generate-taddy-brief`, `log-error`
 
 ### Known Issues
 
@@ -110,12 +110,28 @@ Preferred communication style: Simple, everyday language.
   - Download function also stores description when auto-adding to library
   - EpisodeDetailScreen displays saved description when navigating from Library
 
-- **ensure-episode-metadata Integration**:
-  - Mobile app now calls `ensure-episode-metadata` Edge Function when saving or downloading episodes
-  - Creates SEO-friendly public URLs for episode sharing (matches web app behavior)
-  - Fire-and-forget pattern with `.catch()` so failures don't block main flow
-  - Edge function handles deduplication (checks by `taddy_episode_uuid` before inserting)
-  - Called in: `saveMutation.onSuccess`, `handleDownload` (when auto-adding to library)
+- **Edge Function Integrations (Matching Web App)**:
+  - All Edge Function calls use fire-and-forget pattern with `.catch()` so failures don't block main user flow
+  
+  - **ensure-episode-metadata**: Creates SEO-friendly public URLs for episode sharing
+    - Called in: `EpisodeDetailScreen.tsx` - `saveMutation.onSuccess`, `handleDownload`
+    - Deduplication: Checks by `taddy_episode_uuid` before inserting
+    - Body: `{ taddyEpisodeUuid, taddyPodcastUuid, name, podcastName, imageUrl, audioUrl, durationSeconds, publishedAt }`
+  
+  - **ensure-podcast-metadata**: Creates SEO-friendly public URLs for show pages
+    - Called in: `PodcastDetailScreen.tsx` - `followMutation.onSuccess`
+    - Deduplication: Checks by `taddy_podcast_uuid` before inserting
+    - Body: `{ taddyPodcastUuid, name, description, imageUrl, authorName, totalEpisodesCount }`
+  
+  - **sync-to-loops**: Marketing automation sync for engagement metrics
+    - Called in: `AuthContext.tsx` - after signup with action='signup'
+    - Called in: `PodcastDetailScreen.tsx` - after follow/unfollow with action='engagement_update' and showsFollowed count
+    - Called in: `GenerateBriefScreen.tsx` - after brief generation with action='engagement_update' and briefsGenerated count
+    - Body: `{ action, email, userId, showsFollowed?, briefsGenerated?, lastBriefDate? }`
+  
+  - **log-error**: Client-side error logging for debugging
+    - Called in: `ErrorBoundary` via `createErrorHandler()` utility in `client/lib/errorLogger.ts`
+    - Body: `{ error_message, error_source, url, error_code?, metadata? }`
 
 - **Global Toast Notification System**:
   - Added ToastContext and ToastProvider for app-wide toast messages
