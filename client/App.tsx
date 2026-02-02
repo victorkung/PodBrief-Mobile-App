@@ -17,6 +17,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { Colors } from "@/constants/theme";
+import { createErrorHandler } from "@/lib/errorLogger";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -51,7 +52,7 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary onError={createErrorHandler('app_root')}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <GestureHandlerRootView style={styles.root} onLayout={onLayoutRootView}>
