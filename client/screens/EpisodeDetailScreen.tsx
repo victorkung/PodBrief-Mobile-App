@@ -46,20 +46,27 @@ export default function EpisodeDetailScreen() {
   const name = isTaddyEpisode ? episode.name : episode.episode_name;
 
   // Fetch episode details from Edge Function when viewing a SavedEpisode (to get description)
+  // This may fail if episode_metadata doesn't exist yet - that's OK, we just won't show description
   const { data: episodeDetails } = useQuery({
     queryKey: ["episodeDetails", uuid],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("get-episode-details", {
-        body: { slug: uuid },
-      });
-      if (error) {
-        console.error("[EpisodeDetailScreen] Error fetching episode details:", error);
+      try {
+        const { data, error } = await supabase.functions.invoke("get-episode-details", {
+          body: { slug: uuid },
+        });
+        if (error) {
+          // Edge function returned an error - episode metadata may not exist yet
+          return null;
+        }
+        return data?.episode || null;
+      } catch (e) {
+        // Network error or edge function failure - fail silently
         return null;
       }
-      return data?.episode || null;
     },
     enabled: !isTaddyEpisode && !!uuid, // Only fetch for SavedEpisodes
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
+    retry: false, // Don't retry on failure - metadata may not exist
   });
 
   const rawDescription = isTaddyEpisode 
