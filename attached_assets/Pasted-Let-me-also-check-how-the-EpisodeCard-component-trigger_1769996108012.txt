@@ -1,0 +1,247 @@
+Let me also check how the EpisodeCard component triggers saving and how slugs are used for navigation:
+
+Here's a comprehensive technical overview for Replit on how the **Add Episode** feature works:
+
+---
+
+## Add Episode Feature - Technical Specification
+
+### Overview
+
+The system uses a **two-table architecture** to separate user-specific saved episodes from SEO-friendly public episode pages:
+
+1. **`saved_episodes`** - User's personal library (per-user, private)
+2. **`episode_metadata`** - Public episode data with SEO slugs (global, public)
+
+---
+
+### 1. Saving Episodes to Library
+
+**Client-Side Hook:** `src/hooks/useSavedEpisodes.ts`
+
+When a user clicks "Add Episode", the `useSaveEpisode` mutation:
+
+```typescript
+// Insert into saved_episodes table
+const { data, error } = await supabase
+  .from('saved_episodes')
+  .insert({
+    user_id: params.userId,
+    taddy_episode_uuid: params.taddyEpisodeUuid,
+    taddy_podcast_uuid: params.taddyPodcastUuid,
+    episode_name: params.episodeName,
+    podcast_name: params.podcastName,
+    episode_thumbnail: params.episodeThumbnail || null,
+    episode_audio_url: params.episodeAudioUrl || null,
+    episode_duration_seconds: params.episodeDurationSeconds || null,
+    episode_published_at: params.episodePublishedAt || null,
+  })
+  .select()
+  .single();
+```
+
+**After successful save**, it fires-and-forgets a call to create public metadata:
+
+```typescript
+// Fire-and-forget: ensure episode_metadata exists for navigation
+supabase.functions.invoke('ensure-episode-metadata', {
+  body: {
+    taddyEpisodeUuid: variables.taddyEpisodeUuid,
+    taddyPodcastUuid: variables.taddyPodcastUuid,
+    name: variables.episodeName,
+    podcastName: variables.podcastName,
+    imageUrl: variables.episodeThumbnail,
+    audioUrl: variables.episodeAudioUrl,
+    durationSeconds: variables.episodeDurationSeconds,
+    publishedAt: variables.episodePublishedAt,
+  },
+}).catch(err => console.error('[useSaveEpisode] ensure-episode-metadata error:', err));
+```
+
+---
+
+### 2. Public URL Generation (ensure-episode-metadata)
+
+**Edge Function:** `supabase/functions/ensure-episode-metadata/index.ts`
+
+This function creates SEO-friendly slugs and stores episode data for public `/episode/:slug` pages.
+
+**Deduplication Logic:**
+
+```typescript
+// Step 1: Check if episode_metadata already exists
+const { data: existing } = await supabase
+  .from('episode_metadata')
+  .select('slug, description')
+  .eq('taddy_episode_uuid', taddyEpisodeUuid)
+  .maybeSingle();
+
+// If exists, return existing slug (no duplicate creation)
+if (existing) {
+  return { slug: existing.slug, created: false };
+}
+```
+
+**Slug Generation:**
+
+```typescript
+function generateSlug(name: string): string {
+  let slug = name.toLowerCase();
+  slug = slug.replace(/[^a-z0-9\s-]/g, '');  // Remove special chars
+  slug = slug.replace(/\s+/g, '-');           // Spaces to hyphens
+  slug = slug.replace(/-+/g, '-');            // Collapse multiple hyphens
+  slug = slug.replace(/^-|-$/g, '');          // Trim hyphens
+  return slug.substring(0, 80);               // Max 80 chars
+}
+
+// Ensure uniqueness by appending counter if needed
+let finalSlug = baseSlug;
+let counter = 0;
+while (true) {
+  const { data: slugCheck } = await supabase
+    .from('episode_metadata')
+    .select('id')
+    .eq('slug', finalSlug)
+    .maybeSingle();
+
+  if (!slugCheck) break;
+  counter++;
+  finalSlug = `${baseSlug}-${counter}`;  // e.g., "my-episode-1"
+}
+```
+
+**Race Condition Handling:**
+
+```typescript
+if (insertError) {
+  // Handle race condition - another request may have inserted
+  if (insertError.code === '23505') {  // Unique constraint violation
+    const { data: raceData } = await supabase
+      .from('episode_metadata')
+      .select('slug')
+      .eq('taddy_episode_uuid', taddyEpisodeUuid)
+      .single();
+
+    if (raceData) {
+      return { slug: raceData.slug, created: false };
+    }
+  }
+}
+```
+
+---
+
+### 3. Deduplication Enforcement (3 Layers)
+
+| Layer | Location | How It Works |
+|-------|----------|--------------|
+| **Database Constraint** | `saved_episodes` table | Unique constraint on `(user_id, taddy_episode_uuid)` prevents duplicate saves |
+| **Client Check** | `useSavedEpisodes` hook | Checks `savedEpisodes.some(ep => ep.taddyEpisodeUuid === episode.uuid)` before showing "Add" button |
+| **Edge Function Check** | `ensure-episode-metadata` | Queries by `taddy_episode_uuid` before inserting; returns existing slug if found |
+
+**Client-Side Deduplication (UI):**
+
+```typescript
+// In EpisodeCard.tsx
+const isSaved = savedEpisodes?.some(ep => ep.taddyEpisodeUuid === episode.uuid) ?? false;
+
+// Button shows "Added Episode" instead of "Add Episode" when isSaved=true
+
+  {isSaved ?  : }
+  {isSaved ? 'Added Episode' : 'Add Episode'}
+
+```
+
+**Server-Side Deduplication (saved_episodes):**
+
+```typescript
+// Handle unique constraint violation (already saved)
+if (error.code === '23505') {
+  throw new Error('Episode already saved');
+}
+
+// Display friendly message
+onError: (error: Error) => {
+  if (error.message === 'Episode already saved') {
+    toast.info('Episode is already in your Library');
+  }
+}
+```
+
+---
+
+### 4. Database Schema
+
+**saved_episodes table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | Primary key |
+| user_id | uuid | FK to auth.users |
+| taddy_episode_uuid | text | Unique per user |
+| taddy_podcast_uuid | text | |
+| episode_name | text | |
+| podcast_name | text | |
+| episode_thumbnail | text | nullable |
+| episode_audio_url | text | nullable |
+| episode_duration_seconds | integer | nullable |
+| episode_published_at | timestamptz | nullable |
+| is_completed | boolean | Default: false |
+| audio_progress_seconds | integer | Default: 0 |
+
+**episode_metadata table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | Primary key |
+| taddy_episode_uuid | text | Unique globally |
+| taddy_podcast_uuid | text | |
+| slug | text | Unique, SEO-friendly |
+| name | text | |
+| description | text | nullable |
+| podcast_name | text | |
+| podcast_slug | text | nullable, links to podcast_metadata |
+| image_url | text | nullable |
+| audio_url | text | nullable |
+| duration_seconds | integer | nullable |
+| published_at | timestamptz | nullable |
+
+---
+
+### 5. claim-episode Edge Function (For Shared Links)
+
+**Purpose:** When a user visits a shared episode link (`/episode/:slug`), they can "claim" it to their library.
+
+```typescript
+// Looks up episode by slug from episode_metadata
+const { data: episode } = await supabase
+  .from('episode_metadata')
+  .select('*')
+  .eq('slug', episodeSlug)
+  .maybeSingle();
+
+// Deduplication check before inserting
+const { data: existing } = await supabase
+  .from('saved_episodes')
+  .select('id')
+  .eq('user_id', user.id)
+  .eq('taddy_episode_uuid', episode.taddy_episode_uuid)
+  .maybeSingle();
+
+if (existing) {
+  return { success: true, alreadySaved: true };
+}
+
+// Insert to saved_episodes using data from episode_metadata
+```
+
+---
+
+### Key Points for Mobile Implementation
+
+1. **Always use `taddy_episode_uuid`** as the canonical identifier for deduplication
+2. **Check locally first** before making save requests to reduce unnecessary API calls
+3. **Handle error code `23505`** gracefully - it means "already saved"
+4. **`ensure-episode-metadata` is idempotent** - safe to call multiple times, always returns a slug
+5. **Audio progress tracking** uses `audio_progress_seconds` field for resume functionality
+
+Test the Add Episode flow
+Update Mobile API Contract docs
