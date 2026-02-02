@@ -112,30 +112,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
 
     // Sync to Loops for marketing automation (critical for mobile-only users)
+    // Fire-and-forget pattern - don't block signup flow
     if (data?.user) {
-      try {
-        const response = await fetch('https://wdylkaiyoelfcmphoaqs.supabase.co/functions/v1/sync-to-loops', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email,
-            firstName: firstName || '',
-            userId: data.user.id,
-            preferredLanguage: preferredLanguage || 'en',
-            source: 'mobile_app',
-          }),
-        });
-        if (!response.ok) {
-          console.error('[Auth] Loops sync failed:', await response.text());
-        } else {
-          console.log('[Auth] Loops sync successful');
+      supabase.functions.invoke('sync-to-loops', {
+        body: {
+          action: 'signup',
+          email,
+          firstName: firstName || undefined,
+          userId: data.user.id,
+          plan: 'free',
+          preferredLanguage: preferredLanguage || 'en',
+          showsFollowed: 0,
+          briefsGenerated: 0,
+          credits: 5,
         }
-      } catch (loopsError) {
-        // Don't throw - Loops sync failure shouldn't block signup
-        console.error('[Auth] Loops sync error:', loopsError);
-      }
+      }).catch(err => console.error('[Loops] Signup sync failed:', err));
     }
   };
 
