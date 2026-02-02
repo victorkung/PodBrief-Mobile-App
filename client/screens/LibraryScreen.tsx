@@ -259,7 +259,7 @@ export default function LibraryScreen() {
           e.id === episode.id ? { ...e, is_completed: isComplete } : e
         );
       });
-      showToast(isComplete ? "Marked as complete" : "Marked as unfinished", "success");
+      showToast(isComplete ? "Marked as complete" : "Marked as unfinished", isComplete ? "success" : "info");
 
       try {
         const { error } = await supabase
@@ -289,7 +289,7 @@ export default function LibraryScreen() {
           b.id === brief.id ? { ...b, is_completed: isComplete } : b
         );
       });
-      showToast(isComplete ? "Marked as complete" : "Marked as unfinished", "success");
+      showToast(isComplete ? "Marked as complete" : "Marked as unfinished", isComplete ? "success" : "info");
 
       try {
         const { error } = await supabase

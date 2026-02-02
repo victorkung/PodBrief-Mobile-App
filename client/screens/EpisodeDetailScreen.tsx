@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useRef } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Share, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -95,6 +95,8 @@ export default function EpisodeDetailScreen() {
   const isSaved = savedEpisodes?.some((e) => e.taddy_episode_uuid === uuid);
   const isSummarized = userBriefs?.some((b) => b.taddy_episode_uuid === uuid);
 
+  const isMutatingRef = useRef(false);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!user || !isTaddyEpisode) throw new Error("Cannot save");
@@ -113,9 +115,13 @@ export default function EpisodeDetailScreen() {
       if (error) throw error;
     },
     onSuccess: () => {
+      isMutatingRef.current = false;
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
+    },
+    onError: () => {
+      isMutatingRef.current = false;
     },
   });
 
@@ -131,9 +137,13 @@ export default function EpisodeDetailScreen() {
       if (error) throw error;
     },
     onSuccess: () => {
+      isMutatingRef.current = false;
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       showToast("Episode removed from your library", "info");
+    },
+    onError: () => {
+      isMutatingRef.current = false;
     },
   });
 
@@ -282,6 +292,8 @@ export default function EpisodeDetailScreen() {
   }, [uuid, name, podcastName, imageUrl, audioUrl, duration, publishedAt, podcastUuid, isTaddyEpisode, isSaved, user, episode, queryClient]);
 
   const handleAddToLibrary = useCallback(() => {
+    if (isMutatingRef.current) return;
+    isMutatingRef.current = true;
     if (isSaved) {
       removeSavedMutation.mutate();
     } else {

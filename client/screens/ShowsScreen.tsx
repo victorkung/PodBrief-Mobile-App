@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import {
   FlatList,
   View,
@@ -142,6 +142,8 @@ export default function ShowsScreen() {
     },
   });
 
+  const mutatingEpisodesRef = useRef<Set<string>>(new Set());
+
   const saveMutation = useMutation({
     mutationFn: async (episode: TaddyEpisode) => {
       if (!user) throw new Error("Not authenticated");
@@ -157,11 +159,16 @@ export default function ShowsScreen() {
         episode_published_at: new Date(episode.datePublished * 1000).toISOString(),
       });
       if (error) throw error;
+      return episode.uuid;
     },
-    onSuccess: () => {
+    onSuccess: (uuid) => {
+      mutatingEpisodesRef.current.delete(uuid);
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
+    },
+    onError: (_, episode) => {
+      mutatingEpisodesRef.current.delete(episode.uuid);
     },
   });
 
@@ -174,13 +181,28 @@ export default function ShowsScreen() {
         .eq("user_id", user.id)
         .eq("taddy_episode_uuid", episodeUuid);
       if (error) throw error;
+      return episodeUuid;
     },
-    onSuccess: () => {
+    onSuccess: (uuid) => {
+      mutatingEpisodesRef.current.delete(uuid);
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       showToast("Episode removed from your library", "info");
     },
+    onError: (_, episodeUuid) => {
+      mutatingEpisodesRef.current.delete(episodeUuid);
+    },
   });
+
+  const handleSaveToggle = useCallback((episode: TaddyEpisode, isSaved: boolean) => {
+    if (mutatingEpisodesRef.current.has(episode.uuid)) return;
+    mutatingEpisodesRef.current.add(episode.uuid);
+    if (isSaved) {
+      removeSavedMutation.mutate(episode.uuid);
+    } else {
+      saveMutation.mutate(episode);
+    }
+  }, [saveMutation, removeSavedMutation]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -330,7 +352,7 @@ export default function ShowsScreen() {
                   isSaved={isSaved}
                   isSummarized={isSummarized}
                   onPress={() => handleEpisodePress(ep)}
-                  onSavePress={() => isSaved ? removeSavedMutation.mutate(ep.uuid) : saveMutation.mutate(ep)}
+                  onSavePress={() => handleSaveToggle(ep, isSaved ?? false)}
                   onGenerateBriefPress={() => handleGenerateBrief(ep)}
                 />
               );
