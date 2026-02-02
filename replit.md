@@ -187,6 +187,21 @@ Preferred communication style: Simple, everyday language.
   - Library briefs query now filters by `profile.preferred_language`
   - Summary downloads use `get-signed-audio-url` Edge Function instead of direct URLs
 
+- **Background Audio & Lock Screen Controls**:
+  - Audio mode configured in AudioPlayerContext via `Audio.setAudioModeAsync`:
+    - `playsInSilentMode: true` - plays audio even when device is on silent/vibrate mode
+    - `shouldPlayInBackground: true` - continues playing when app is backgrounded
+    - `interruptionMode: "doNotMix"` - pauses other audio apps when playing
+    - `staysActiveInBackground: true` - keeps audio session active in background
+  - Lock screen / Now Playing controls via `player.setActiveForLockScreen(true, metadata)`:
+    - Called 500ms after playback starts to ensure stable metadata
+    - Metadata: `title`, `artist`, `artworkUrl` (artwork property name in expo-audio)
+    - Cleared on stop via `player.setActiveForLockScreen(false)`
+  - UIBackgroundModes already configured in app.json: `["audio"]`
+  - Play button state parity: LibraryItemCard accepts `isPlaying` and `onPause` props
+    - Helper functions in LibraryScreen check `currentItem.id` against episode/brief/download
+    - Play icon shows pause when item is currently playing
+
 ### Key NPM Packages
 
 - `@supabase/supabase-js` - Supabase client
