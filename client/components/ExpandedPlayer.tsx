@@ -81,7 +81,6 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     skipForward,
     skipBackward,
     setSpeed,
-    stop,
     playNext,
   } = useAudioPlayerContext();
 
@@ -121,8 +120,11 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
   const handleSliderComplete = (value: number) => {
     const newPosition = value * duration;
     seekTo(newPosition);
-    setIsSeeking(false);
     Haptics.selectionAsync();
+    // Keep seeking state active briefly until player catches up
+    setTimeout(() => {
+      setIsSeeking(false);
+    }, 500);
   };
 
   const handlePlayNext = () => {
@@ -170,18 +172,6 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
       showToast("Failed to update", "error");
     }
   };
-
-  const handleRemove = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert("Remove", "This will remove the episode from your library.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => {
-        stop();
-        onClose();
-      }},
-    ]);
-  };
-
 
   const handleDownload = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -360,13 +350,6 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
               <Feather name="share" size={22} color={theme.textSecondary} />
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
                 Share
-              </ThemedText>
-            </Pressable>
-
-            <Pressable onPress={handleRemove} style={styles.actionButton}>
-              <Feather name="trash-2" size={22} color={theme.textSecondary} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                Remove
               </ThemedText>
             </Pressable>
           </View>

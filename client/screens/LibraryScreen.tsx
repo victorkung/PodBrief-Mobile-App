@@ -37,7 +37,7 @@ export default function LibraryScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
-  const { play, pause, resume, currentItem, isPlaying } = useAudioPlayerContext();
+  const { play, playWithQueue, pause, resume, currentItem, isPlaying } = useAudioPlayerContext();
   const { showToast } = useToast();
 
   const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
@@ -146,7 +146,7 @@ export default function LibraryScreen() {
   );
 
   const handlePlayEpisode = useCallback(
-    (episode: SavedEpisode) => {
+    (episode: SavedEpisode, allEpisodes: SavedEpisode[]) => {
       if (currentItem?.id === episode.taddy_episode_uuid && currentItem?.type === "episode") {
         resume();
         return;
@@ -162,13 +162,28 @@ export default function LibraryScreen() {
         progress: (episode.audio_progress_seconds || 0) * 1000,
         savedEpisodeId: episode.id,
       };
-      play(audioItem);
+      
+      const currentIndex = allEpisodes.findIndex(e => e.id === episode.id);
+      const remainingEpisodes = allEpisodes.slice(currentIndex + 1);
+      const queueItems: AudioItem[] = remainingEpisodes.map(ep => ({
+        id: ep.taddy_episode_uuid,
+        type: "episode" as const,
+        title: ep.episode_name,
+        podcast: ep.podcast_name,
+        artwork: ep.episode_thumbnail,
+        audioUrl: ep.episode_audio_url || "",
+        duration: (ep.episode_duration_seconds || 0) * 1000,
+        progress: (ep.audio_progress_seconds || 0) * 1000,
+        savedEpisodeId: ep.id,
+      }));
+      
+      playWithQueue(audioItem, queueItems);
     },
-    [play, resume, currentItem]
+    [playWithQueue, resume, currentItem]
   );
 
   const handlePlayBrief = useCallback(
-    (brief: UserBrief) => {
+    (brief: UserBrief, allBriefs: UserBrief[]) => {
       if (!brief.master_brief || brief.master_brief.pipeline_status !== "completed") {
         return;
       }
@@ -188,13 +203,31 @@ export default function LibraryScreen() {
         masterBriefId: brief.master_brief_id,
         userBriefId: brief.id,
       };
-      play(audioItem);
+      
+      const currentIndex = allBriefs.findIndex(b => b.id === brief.id);
+      const remainingBriefs = allBriefs.slice(currentIndex + 1).filter(
+        b => b.master_brief?.pipeline_status === "completed"
+      );
+      const queueItems: AudioItem[] = remainingBriefs.map(b => ({
+        id: b.id,
+        type: "summary" as const,
+        title: b.master_brief?.episode_name || "Summary",
+        podcast: b.master_brief?.podcast_name || "",
+        artwork: b.master_brief?.episode_thumbnail || null,
+        audioUrl: b.master_brief?.audio_url || "",
+        duration: (b.master_brief?.audio_duration_seconds || 0) * 1000,
+        progress: b.audio_progress_seconds * 1000,
+        masterBriefId: b.master_brief_id,
+        userBriefId: b.id,
+      }));
+      
+      playWithQueue(audioItem, queueItems);
     },
-    [play, resume, currentItem]
+    [playWithQueue, resume, currentItem]
   );
 
   const handlePlayDownload = useCallback(
-    (download: Download) => {
+    (download: Download, allDownloads: Download[]) => {
       const downloadId = download.type === "episode" ? (download.taddyEpisodeUuid || download.id) : download.id;
       if (currentItem?.id === downloadId) {
         resume();
@@ -211,9 +244,27 @@ export default function LibraryScreen() {
         progress: 0,
         masterBriefId: download.type === "summary" ? download.masterBriefId : undefined,
       };
-      play(audioItem);
+      
+      const currentIndex = allDownloads.findIndex(d => d.id === download.id);
+      const remainingDownloads = allDownloads.slice(currentIndex + 1);
+      const queueItems: AudioItem[] = remainingDownloads.map(d => {
+        const dId = d.type === "episode" ? (d.taddyEpisodeUuid || d.id) : d.id;
+        return {
+          id: dId,
+          type: d.type,
+          title: d.title,
+          podcast: d.podcast,
+          artwork: d.artwork,
+          audioUrl: d.filePath,
+          duration: (d.episodeDurationSeconds || 0) * 1000,
+          progress: 0,
+          masterBriefId: d.type === "summary" ? d.masterBriefId : undefined,
+        };
+      });
+      
+      playWithQueue(audioItem, queueItems);
     },
-    [play, resume, currentItem]
+    [playWithQueue, resume, currentItem]
   );
 
   const handleRemoveEpisode = useCallback(
@@ -686,6 +737,7 @@ export default function LibraryScreen() {
   const renderItem = ({ item }: { item: SavedEpisode | UserBrief | Download }) => {
     if (selectedTab === "episodes") {
       const episode = item as SavedEpisode;
+      const episodesList = getFilteredData as SavedEpisode[];
       return (
         <LibraryItemCard
           type="episode"
@@ -695,7 +747,7 @@ export default function LibraryScreen() {
           isRemoving={removingIds.has(episode.id)}
           hasSummary={hasSummaryForEpisode(episode)}
           isPlaying={isEpisodePlaying(episode)}
-          onPlay={() => handlePlayEpisode(episode)}
+          onPlay={() => handlePlayEpisode(episode, episodesList)}
           onPause={pause}
           onNavigateToDetails={() => {
             (navigation as any).navigate("EpisodeDetail", {
@@ -712,6 +764,7 @@ export default function LibraryScreen() {
       );
     } else if (selectedTab === "summaries") {
       const brief = item as UserBrief;
+      const briefsList = getFilteredData as UserBrief[];
       return (
         <LibraryItemCard
           type="summary"
@@ -720,7 +773,7 @@ export default function LibraryScreen() {
           isDownloading={downloadingIds.has(brief.id)}
           isRemoving={removingIds.has(brief.id)}
           isPlaying={isBriefPlaying(brief)}
-          onPlay={() => handlePlayBrief(brief)}
+          onPlay={() => handlePlayBrief(brief, briefsList)}
           onPause={pause}
           onNavigateToDetails={() => {
             (navigation as any).navigate("BriefDetail", {
@@ -736,6 +789,7 @@ export default function LibraryScreen() {
       );
     } else {
       const download = item as Download;
+      const downloadsList = getFilteredData as Download[];
       return (
         <LibraryItemCard
           type="download"
@@ -743,7 +797,7 @@ export default function LibraryScreen() {
           isDownloaded={true}
           hasSummary={hasSummaryForDownload(download)}
           isPlaying={isDownloadPlaying(download)}
-          onPlay={() => handlePlayDownload(download)}
+          onPlay={() => handlePlayDownload(download, downloadsList)}
           onPause={pause}
           onNavigateToDetails={() => {
             if (download.type === "episode" && download.taddyEpisodeUuid) {

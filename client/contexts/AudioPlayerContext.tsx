@@ -52,6 +52,7 @@ interface AudioPlayerContextType {
   queue: AudioItem[];
   isExpanded: boolean;
   play: (item: AudioItem) => Promise<void>;
+  playWithQueue: (item: AudioItem, queue: AudioItem[]) => Promise<void>;
   pause: () => void;
   resume: () => void;
   stop: () => void;
@@ -511,6 +512,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [queue, play]);
 
+  const playWithQueue = useCallback(
+    async (item: AudioItem, newQueue: AudioItem[]) => {
+      setQueue(newQueue);
+      await play(item);
+    },
+    [play]
+  );
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -524,6 +533,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         queue,
         isExpanded,
         play,
+        playWithQueue,
         pause,
         resume,
         stop,
