@@ -80,7 +80,7 @@ Preferred communication style: Simple, everyday language.
 
 - **Project URL**: `https://wdylkaiyoelfcmphoaqs.supabase.co`
 - **Edge Functions Base**: `https://wdylkaiyoelfcmphoaqs.supabase.co/functions/v1/`
-- **Key Edge Functions**: `taddy-search`, `taddy-podcast-details`, `create-checkout`, `customer-portal`
+- **Key Edge Functions**: `taddy-search`, `taddy-podcast-details`, `create-checkout`, `customer-portal`, `ensure-episode-metadata`, `sync-to-loops`
 
 ### Known Issues
 
@@ -109,6 +109,13 @@ Preferred communication style: Simple, everyday language.
   - Save mutation now stores `taddyEpisode.description` when adding episodes to library
   - Download function also stores description when auto-adding to library
   - EpisodeDetailScreen displays saved description when navigating from Library
+
+- **ensure-episode-metadata Integration**:
+  - Mobile app now calls `ensure-episode-metadata` Edge Function when saving or downloading episodes
+  - Creates SEO-friendly public URLs for episode sharing (matches web app behavior)
+  - Fire-and-forget pattern with `.catch()` so failures don't block main flow
+  - Edge function handles deduplication (checks by `taddy_episode_uuid` before inserting)
+  - Called in: `saveMutation.onSuccess`, `handleDownload` (when auto-adding to library)
 
 - **Global Toast Notification System**:
   - Added ToastContext and ToastProvider for app-wide toast messages
