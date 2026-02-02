@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from "react";
+import React, { useCallback, useState, useRef, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Share, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -9,6 +9,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Paths, File, Directory } from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -47,7 +48,7 @@ export default function EpisodeDetailScreen() {
 
   // Fetch episode details from Edge Function when viewing a SavedEpisode (to get description)
   // If episode_metadata doesn't exist yet, we create it via ensure-episode-metadata then retry
-  const { data: episodeDetails } = useQuery({
+  const { data: episodeDetails, isLoading: isLoadingDetails, isFetched: isDetailsFetched } = useQuery({
     queryKey: ["episodeDetails", uuid],
     queryFn: async () => {
       const savedEp = episode as SavedEpisode;
@@ -389,6 +390,84 @@ export default function EpisodeDetailScreen() {
       saveMutation.mutate();
     }
   }, [isSaved, saveMutation, removeSavedMutation]);
+
+  const shouldShowSkeleton = !isTaddyEpisode && isLoadingDetails;
+
+  const SkeletonBox = ({ width, height, style }: { width: number | string; height: number; style?: any }) => {
+    const opacity = useSharedValue(0.3);
+    
+    useEffect(() => {
+      opacity.value = withRepeat(
+        withTiming(0.7, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      opacity: opacity.value,
+    }));
+
+    return (
+      <Animated.View
+        style={[
+          {
+            width,
+            height,
+            backgroundColor: theme.backgroundTertiary,
+            borderRadius: BorderRadius.sm,
+          },
+          animatedStyle,
+          style,
+        ]}
+      />
+    );
+  };
+
+  if (shouldShowSkeleton) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingTop: headerHeight + Spacing.lg,
+            paddingBottom: insets.bottom + Spacing.miniPlayerHeight + Spacing.xl,
+            paddingHorizontal: Spacing.lg,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <SkeletonBox width={100} height={100} style={{ borderRadius: BorderRadius.md }} />
+            <View style={[styles.headerInfo, { gap: Spacing.xs }]}>
+              <SkeletonBox width={120} height={14} />
+              <SkeletonBox width="90%" height={20} />
+              <SkeletonBox width="70%" height={20} />
+              <SkeletonBox width={100} height={14} />
+            </View>
+          </View>
+
+          <View style={styles.actionsSection}>
+            <View style={styles.actionsGrid}>
+              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
+              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
+              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
+              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
+            </View>
+          </View>
+
+          <SkeletonBox width="100%" height={120} style={{ borderRadius: BorderRadius.md, marginBottom: Spacing.xl }} />
+
+          <View style={styles.descriptionSection}>
+            <SkeletonBox width={150} height={18} style={{ marginBottom: Spacing.sm }} />
+            <SkeletonBox width="100%" height={14} style={{ marginBottom: Spacing.xs }} />
+            <SkeletonBox width="95%" height={14} style={{ marginBottom: Spacing.xs }} />
+            <SkeletonBox width="88%" height={14} style={{ marginBottom: Spacing.xs }} />
+            <SkeletonBox width="92%" height={14} style={{ marginBottom: Spacing.xs }} />
+            <SkeletonBox width="60%" height={14} />
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
