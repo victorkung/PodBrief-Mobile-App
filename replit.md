@@ -106,7 +106,8 @@ Preferred communication style: Simple, everyday language.
 
 - **Episode Description Fetching**:
   - EpisodeDetailScreen fetches description via `get-episode-details` Edge Function when viewing SavedEpisodes from Library
-  - Fail silently if `episode_metadata` doesn't exist yet (no error modal)
+  - Uses `taddyEpisodeUuid` parameter (not slug) to look up episode metadata
+  - If episode_metadata doesn't exist yet, calls `ensure-episode-metadata` to create it, then retries the fetch
   - Database schema: `saved_episodes` table does NOT have `episode_description` column - descriptions stored in `episode_metadata` table instead
 
 - **Edge Function Integrations (Matching Web App)**:
