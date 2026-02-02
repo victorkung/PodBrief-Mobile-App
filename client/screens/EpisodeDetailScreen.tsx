@@ -44,7 +44,9 @@ export default function EpisodeDetailScreen() {
   const isTaddyEpisode = "uuid" in episode;
   const uuid = isTaddyEpisode ? episode.uuid : episode.taddy_episode_uuid;
   const name = isTaddyEpisode ? episode.name : episode.episode_name;
-  const rawDescription = isTaddyEpisode ? episode.description : "";
+  const rawDescription = isTaddyEpisode 
+    ? episode.description 
+    : (episode as SavedEpisode).episode_description || "";
   const description = stripHtml(rawDescription);
   const imageUrl = isTaddyEpisode
     ? episode.imageUrl || episode.podcastSeries?.imageUrl || podcast?.imageUrl
@@ -111,6 +113,7 @@ export default function EpisodeDetailScreen() {
         episode_audio_url: taddyEpisode.audioUrl,
         episode_duration_seconds: taddyEpisode.duration,
         episode_published_at: new Date(taddyEpisode.datePublished * 1000).toISOString(),
+        episode_description: taddyEpisode.description || null,
       });
       if (error) throw error;
     },
@@ -279,6 +282,7 @@ export default function EpisodeDetailScreen() {
           episode_audio_url: taddyEpisode.audioUrl,
           episode_duration_seconds: taddyEpisode.duration,
           episode_published_at: new Date(taddyEpisode.datePublished * 1000).toISOString(),
+          episode_description: taddyEpisode.description || null,
         });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
@@ -412,7 +416,7 @@ export default function EpisodeDetailScreen() {
               onPress={handleGenerateBrief}
               style={[styles.ctaButton, { backgroundColor: theme.gold }]}
             >
-              <ThemedText type="small" style={{ color: theme.buttonText, fontWeight: "500" }}>
+              <ThemedText type="caption" style={{ color: theme.buttonText, fontWeight: "500" }}>
                 Summarize
               </ThemedText>
             </Pressable>
@@ -512,7 +516,7 @@ const styles = StyleSheet.create({
   ctaButton: {
     alignSelf: "flex-start",
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
   },
   ctaCompletedRow: {

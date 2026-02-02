@@ -4,7 +4,8 @@ import {
   NativeStackNavigationOptions,
 } from "@react-navigation/native-stack";
 import { BlurView } from "expo-blur";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -79,6 +80,8 @@ export function RootStackNavigator() {
     headerBackTitleStyle: {
       fontSize: 14,
     },
+    headerBackImageSource: undefined,
+    headerBackButtonDisplayMode: "minimal",
     headerBackground: () => (
       <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
     ),
