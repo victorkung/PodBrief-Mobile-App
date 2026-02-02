@@ -98,11 +98,17 @@ Preferred communication style: Simple, everyday language.
 
 - **UI Polish**:
   - Toast font: Removed fontWeight from toastText style to use GoogleSansFlex_400Regular properly
-  - Back button: Added headerBackTitleStyle with fontSize 14 for smaller back button text
+  - Back button: Set `headerBackButtonDisplayMode: "minimal"` for smaller arrow-only back button
   - Episode description: Reduced lineHeight from 22 to 18 for tighter text
   - Summary banner: Updated text to "Generate an AI-powered summary for this episode that you can read or listen to in ~5 min instead of spending X min on the full episode"
-  - Generate Brief button: Changed to "Summarize" with type="small" and fontWeight="500"
+  - Summarize button: Changed to use `type="caption"` and `paddingHorizontal: Spacing.md` to match action buttons
   - Episode action buttons: Reduced icon size from 18 to 16, changed text type from "small" to "caption", reduced padding from md/lg to sm/md
+
+- **Episode Description Persistence**:
+  - Added `episode_description` field to SavedEpisode type
+  - Save mutation now stores `taddyEpisode.description` when adding episodes to library
+  - Download function also stores description when auto-adding to library
+  - EpisodeDetailScreen displays saved description when navigating from Library
 
 - **Global Toast Notification System**:
   - Added ToastContext and ToastProvider for app-wide toast messages
