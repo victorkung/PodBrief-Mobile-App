@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -23,6 +23,7 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { validatePassword, mapAuthError, PASSWORD_REQUIREMENTS } from "@/lib/passwordValidation";
 
 type AuthMode = "signin" | "signup";
 
@@ -63,6 +64,9 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
 
   const selectedLanguageLabel = LANGUAGES.find(l => l.value === preferredLanguage)?.label || "";
 
+  const passwordValidation = useMemo(() => validatePassword(password), [password]);
+  const showPasswordRequirements = mode === "signup" && password.length > 0;
+
   const handleSubmit = async () => {
     if (mode === "signup" && !firstName.trim()) {
       Alert.alert("Error", "Please enter your first name.");
@@ -70,6 +74,10 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
     }
     if (!email || !password) {
       Alert.alert("Error", "Please enter your email and password.");
+      return;
+    }
+    if (mode === "signup" && !passwordValidation.isValid) {
+      Alert.alert("Password Requirements", "Your password must meet all requirements: " + passwordValidation.errors.join(", "));
       return;
     }
 
@@ -83,7 +91,8 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Authentication failed.");
+      const friendlyMessage = mapAuthError(error.message || "Authentication failed.");
+      Alert.alert("Error", friendlyMessage);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsLoading(false);
@@ -241,6 +250,31 @@ export default function AuthScreen({ initialMode = "signin" }: AuthScreenProps) 
                   />
                 </Pressable>
               </View>
+
+              {showPasswordRequirements ? (
+                <View style={styles.passwordRequirements}>
+                  {PASSWORD_REQUIREMENTS.map(({ key, label }) => {
+                    const isValid = passwordValidation.checks[key as keyof typeof passwordValidation.checks];
+                    return (
+                      <View key={key} style={styles.requirementRow}>
+                        <Feather 
+                          name={isValid ? "check-circle" : "circle"} 
+                          size={14} 
+                          color={isValid ? "#4ADE80" : theme.textTertiary} 
+                        />
+                        <ThemedText 
+                          style={[
+                            styles.requirementText,
+                            { color: isValid ? "#4ADE80" : theme.textTertiary }
+                          ]}
+                        >
+                          {label}
+                        </ThemedText>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
 
               {mode === "signin" ? (
                 <Pressable onPress={handleForgotPassword} style={styles.forgotPassword}>
@@ -405,6 +439,18 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     lineHeight: 18,
     marginTop: -Spacing.xs,
+  },
+  passwordRequirements: {
+    marginTop: Spacing.xs,
+    gap: 4,
+  },
+  requirementRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  requirementText: {
+    fontSize: 12,
   },
   forgotPassword: {
     alignSelf: "flex-end",
