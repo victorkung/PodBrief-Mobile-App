@@ -123,6 +123,22 @@ export default function EpisodeDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
       setTimeout(() => { isMutatingRef.current = false; }, 500);
+      
+      if (isTaddyEpisode) {
+        const taddyEpisode = episode as TaddyEpisode;
+        supabase.functions.invoke('ensure-episode-metadata', {
+          body: {
+            taddyEpisodeUuid: taddyEpisode.uuid,
+            taddyPodcastUuid: podcastUuid,
+            name: taddyEpisode.name,
+            podcastName: podcastName,
+            imageUrl: imageUrl,
+            audioUrl: taddyEpisode.audioUrl,
+            durationSeconds: taddyEpisode.duration,
+            publishedAt: new Date(taddyEpisode.datePublished * 1000).toISOString(),
+          },
+        }).catch(err => console.error('[saveMutation] ensure-episode-metadata error:', err));
+      }
     },
     onError: () => {
       setTimeout(() => { isMutatingRef.current = false; }, 500);
@@ -286,6 +302,19 @@ export default function EpisodeDetailScreen() {
         });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
+        
+        supabase.functions.invoke('ensure-episode-metadata', {
+          body: {
+            taddyEpisodeUuid: taddyEpisode.uuid,
+            taddyPodcastUuid: podcastUuid,
+            name: taddyEpisode.name,
+            podcastName: podcastName,
+            imageUrl: imageUrl,
+            audioUrl: taddyEpisode.audioUrl,
+            durationSeconds: taddyEpisode.duration,
+            publishedAt: new Date(taddyEpisode.datePublished * 1000).toISOString(),
+          },
+        }).catch(err => console.error('[handleDownload] ensure-episode-metadata error:', err));
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
