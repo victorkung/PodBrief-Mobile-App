@@ -103,6 +103,7 @@ export default function LibraryScreen() {
           *,
           master_brief:master_briefs(
             id,
+            taddy_episode_uuid,
             episode_name,
             podcast_name,
             episode_thumbnail,
@@ -730,10 +731,11 @@ export default function LibraryScreen() {
     }
   };
 
-  const getKeyExtractor = (item: SavedEpisode | UserBrief | Download) => {
-    if (selectedTab === "episodes") return `episode-${item.id}`;
-    if (selectedTab === "summaries") return `summary-${item.id}`;
-    return `download-${item.id}`;
+  const getKeyExtractor = (item: SavedEpisode | UserBrief | Download, index: number) => {
+    const id = item.id || `fallback-${index}`;
+    if (selectedTab === "episodes") return `episode-${id}`;
+    if (selectedTab === "summaries") return `summary-${id}`;
+    return `download-${id}`;
   };
 
   const getSearchPlaceholder = () => {

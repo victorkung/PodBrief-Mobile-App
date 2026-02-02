@@ -94,6 +94,7 @@ export default function ShowsScreen() {
       return data.episodes as TaddyEpisode[];
     },
     enabled: podcastUuids.length > 0,
+    staleTime: 1000 * 60 * 60,
   });
 
   const { data: savedEpisodes } = useQuery({

@@ -43,7 +43,7 @@ export default function DiscoverScreen() {
       return data.podcasts as TaddyPodcast[];
     },
     enabled: !!submittedTerm,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 15,
   });
 
   const { data: followedPodcasts } = useQuery({
