@@ -49,3 +49,11 @@ Preferred communication style: Simple, everyday language.
 - **Resend**: Transactional email delivery.
 - **Loops.so**: Marketing automation.
 - **PostHog**: Analytics.
+
+## Recent Audio Player Improvements
+
+- **iOS Silent Mode Fix**: `setAudioModeAsync` is now called before each `play()` and `resume()` action to ensure `playsInSilentMode: true` is always active
+- **ExpandedPlayer UX**:
+  - Skip labels (15s) display below icons with proper spacing
+  - Added "Next" button (skip-forward icon) to play next item in queue
+  - Progress bar seeking uses local state during drag for immediate visual feedback before actual seek
