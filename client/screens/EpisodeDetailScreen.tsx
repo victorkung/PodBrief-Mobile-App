@@ -46,7 +46,7 @@ export default function EpisodeDetailScreen() {
   const name = isTaddyEpisode ? episode.name : episode.episode_name;
   const rawDescription = isTaddyEpisode 
     ? episode.description 
-    : (episode as SavedEpisode).episode_description || "";
+    : "";
   const description = stripHtml(rawDescription);
   const imageUrl = isTaddyEpisode
     ? episode.imageUrl || episode.podcastSeries?.imageUrl || podcast?.imageUrl
@@ -113,7 +113,6 @@ export default function EpisodeDetailScreen() {
         episode_audio_url: taddyEpisode.audioUrl,
         episode_duration_seconds: taddyEpisode.duration,
         episode_published_at: new Date(taddyEpisode.datePublished * 1000).toISOString(),
-        episode_description: taddyEpisode.description || null,
       });
       if (error) throw error;
     },
@@ -298,7 +297,6 @@ export default function EpisodeDetailScreen() {
           episode_audio_url: taddyEpisode.audioUrl,
           episode_duration_seconds: taddyEpisode.duration,
           episode_published_at: new Date(taddyEpisode.datePublished * 1000).toISOString(),
-          episode_description: taddyEpisode.description || null,
         });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });

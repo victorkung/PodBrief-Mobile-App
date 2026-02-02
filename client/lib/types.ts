@@ -62,7 +62,6 @@ export interface SavedEpisode {
   episode_audio_url: string | null;
   episode_duration_seconds: number | null;
   episode_published_at: string | null;
-  episode_description: string | null;
   is_completed: boolean;
   audio_progress_seconds: number;
   created_at: string;

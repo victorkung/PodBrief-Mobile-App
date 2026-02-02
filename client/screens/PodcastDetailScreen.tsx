@@ -218,7 +218,6 @@ export default function PodcastDetailScreen() {
         episode_audio_url: episode.audioUrl,
         episode_duration_seconds: episode.duration,
         episode_published_at: new Date(episode.datePublished * 1000).toISOString(),
-        episode_description: episode.description || null,
       });
       if (error) throw error;
       return episode.uuid;
