@@ -461,7 +461,7 @@ export default function LibraryScreen() {
           type: "summary",
           title: brief.master_brief?.episode_name || "Summary",
           podcast: brief.master_brief?.podcast_name || "",
-          artwork: brief.master_brief?.episode_thumbnail,
+          artwork: brief.master_brief?.episode_thumbnail || null,
           filePath: downloadedFile.uri,
           fileSize: fileSize,
           downloadedAt: new Date().toISOString(),

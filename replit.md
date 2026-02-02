@@ -104,11 +104,10 @@ Preferred communication style: Simple, everyday language.
   - Summarize button: Changed to use `type="caption"` and `paddingHorizontal: Spacing.md` to match action buttons
   - Episode action buttons: Reduced icon size from 18 to 16, changed text type from "small" to "caption", reduced padding from md/lg to sm/md
 
-- **Episode Description Persistence**:
-  - Added `episode_description` field to SavedEpisode type
-  - Save mutation now stores `taddyEpisode.description` when adding episodes to library
-  - Download function also stores description when auto-adding to library
-  - EpisodeDetailScreen displays saved description when navigating from Library
+- **Episode Description Fetching**:
+  - EpisodeDetailScreen fetches description via `get-episode-details` Edge Function when viewing SavedEpisodes from Library
+  - Fail silently if `episode_metadata` doesn't exist yet (no error modal)
+  - Database schema: `saved_episodes` table does NOT have `episode_description` column - descriptions stored in `episode_metadata` table instead
 
 - **Edge Function Integrations (Matching Web App)**:
   - All Edge Function calls use fire-and-forget pattern with `.catch()` so failures don't block main user flow
@@ -174,6 +173,18 @@ Preferred communication style: Simple, everyday language.
   - **Add/Remove**: Toggles saved_episodes with haptic feedback (success for add, medium for remove)
   - **Download**: Full implementation using new expo-file-system API (`Paths`, `File`, `Directory` classes), saves to AsyncStorage for Downloads screen
 - **expo-file-system**: Updated to use new class-based API (`Paths.document`, `Directory`, `File`) instead of legacy `documentDirectory`
+
+- **Audio Analytics & Progress Tracking (Feb 2 Audit Fixes)**:
+  - Added `audio_engagement_events` tracking to `AudioPlayerContext`:
+    - Logs `start` event after 30 seconds of accumulated listening time
+    - Logs `completion` event when playback reaches 75%
+    - Each playback session gets a unique `session_id`
+  - Added database sync for progress (throttled every 15 seconds):
+    - `user_briefs.audio_progress_seconds` and `user_briefs.is_completed`
+    - `saved_episodes.audio_progress_seconds` and `saved_episodes.is_completed`
+  - Auto-complete: Marks episodes/briefs as complete when playback reaches 75%
+  - Library briefs query now filters by `profile.preferred_language`
+  - Summary downloads use `get-signed-audio-url` Edge Function instead of direct URLs
 
 ### Key NPM Packages
 
