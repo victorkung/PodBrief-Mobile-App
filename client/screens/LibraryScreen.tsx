@@ -90,12 +90,14 @@ export default function LibraryScreen() {
     enabled: !!user,
   });
 
+  const preferredLanguage = profile?.preferred_language || "en";
+
   const {
     data: userBriefs,
     isLoading: isLoadingBriefs,
     refetch: refetchBriefs,
   } = useQuery({
-    queryKey: ["userBriefs"],
+    queryKey: ["userBriefs", preferredLanguage],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -103,7 +105,7 @@ export default function LibraryScreen() {
         .select(
           `
           *,
-          master_brief:master_briefs(
+          master_brief:master_briefs!inner(
             id,
             taddy_episode_uuid,
             episode_name,
@@ -112,12 +114,14 @@ export default function LibraryScreen() {
             summary_text,
             audio_url,
             audio_duration_seconds,
-            pipeline_status
+            pipeline_status,
+            language
           )
         `
         )
         .eq("user_id", user.id)
         .eq("is_hidden", false)
+        .eq("master_brief.language", preferredLanguage)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as UserBrief[];
@@ -416,7 +420,7 @@ export default function LibraryScreen() {
 
   const handleDownloadBrief = useCallback(
     async (brief: UserBrief) => {
-      if (!brief.master_brief?.audio_url) {
+      if (!brief.master_brief_id) {
         Alert.alert("Error", "No audio available to download");
         return;
       }
@@ -425,6 +429,14 @@ export default function LibraryScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       try {
+        const { data: signedData, error: signedError } = await supabase.functions.invoke(
+          "get-signed-audio-url",
+          { body: { masterBriefId: brief.master_brief_id } }
+        );
+        if (signedError || !signedData?.signedUrl) {
+          throw new Error("Failed to get signed URL");
+        }
+
         const docDir = Paths.document;
         const fileName = `summary_${brief.master_brief_id}.mp3`;
         const downloadDir = new Directory(docDir, "downloads");
@@ -435,7 +447,7 @@ export default function LibraryScreen() {
 
         const downloadedFile = new File(downloadDir, fileName);
 
-        const response = await fetch(brief.master_brief.audio_url);
+        const response = await fetch(signedData.signedUrl);
         if (!response.ok) throw new Error("Download failed");
 
         const blob = await response.blob();
@@ -447,15 +459,15 @@ export default function LibraryScreen() {
         const downloadData: Download = {
           id: `summary-${brief.master_brief_id}`,
           type: "summary",
-          title: brief.master_brief.episode_name || "Summary",
-          podcast: brief.master_brief.podcast_name || "",
-          artwork: brief.master_brief.episode_thumbnail,
+          title: brief.master_brief?.episode_name || "Summary",
+          podcast: brief.master_brief?.podcast_name || "",
+          artwork: brief.master_brief?.episode_thumbnail,
           filePath: downloadedFile.uri,
           fileSize: fileSize,
           downloadedAt: new Date().toISOString(),
           sourceId: brief.id,
-          episodeDurationSeconds: brief.master_brief.audio_duration_seconds || undefined,
-          audioUrl: brief.master_brief.audio_url,
+          episodeDurationSeconds: brief.master_brief?.audio_duration_seconds || undefined,
+          audioUrl: downloadedFile.uri,
           masterBriefId: brief.master_brief_id,
           slug: brief.slug,
         };
