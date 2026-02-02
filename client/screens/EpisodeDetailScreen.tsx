@@ -46,19 +46,43 @@ export default function EpisodeDetailScreen() {
   const name = isTaddyEpisode ? episode.name : episode.episode_name;
 
   // Fetch episode details from Edge Function when viewing a SavedEpisode (to get description)
-  // This may fail if episode_metadata doesn't exist yet - that's OK, we just won't show description
+  // If episode_metadata doesn't exist yet, we create it via ensure-episode-metadata then retry
   const { data: episodeDetails } = useQuery({
     queryKey: ["episodeDetails", uuid],
     queryFn: async () => {
+      const savedEp = episode as SavedEpisode;
+      
       try {
+        // First attempt - fetch using taddyEpisodeUuid
         const { data, error } = await supabase.functions.invoke("get-episode-details", {
-          body: { slug: uuid },
+          body: { taddyEpisodeUuid: uuid },
         });
-        if (error) {
-          // Edge function returned an error - episode metadata may not exist yet
-          return null;
+        
+        // If found, return the episode
+        if (!error && data?.episode) {
+          return data.episode;
         }
-        return data?.episode || null;
+        
+        // Episode metadata doesn't exist yet - create it first
+        await supabase.functions.invoke("ensure-episode-metadata", {
+          body: {
+            taddyEpisodeUuid: savedEp.taddy_episode_uuid,
+            taddyPodcastUuid: savedEp.taddy_podcast_uuid,
+            name: savedEp.episode_name,
+            podcastName: savedEp.podcast_name,
+            imageUrl: savedEp.episode_thumbnail,
+            audioUrl: savedEp.episode_audio_url,
+            durationSeconds: savedEp.episode_duration_seconds,
+            publishedAt: savedEp.episode_published_at,
+          },
+        });
+        
+        // Retry the details fetch after creating metadata
+        const retryResult = await supabase.functions.invoke("get-episode-details", {
+          body: { taddyEpisodeUuid: uuid },
+        });
+        
+        return retryResult.data?.episode || null;
       } catch (e) {
         // Network error or edge function failure - fail silently
         return null;
@@ -66,7 +90,7 @@ export default function EpisodeDetailScreen() {
     },
     enabled: !isTaddyEpisode && !!uuid, // Only fetch for SavedEpisodes
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
-    retry: false, // Don't retry on failure - metadata may not exist
+    retry: false, // Don't retry on failure
   });
 
   const rawDescription = isTaddyEpisode 
