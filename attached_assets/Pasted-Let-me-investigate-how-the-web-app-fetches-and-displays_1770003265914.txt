@@ -1,0 +1,46 @@
+Let me investigate how the web app fetches and displays episode descriptions on the Episode Details page to understand what might be missing in the mobile implementation.
+
+Let me check exactly what data is passed when saving an episode and what the `ensure-episode-metadata` function expects:
+
+I found the issue. Let me trace the complete flow:
+
+Now I understand the root cause. Here's the full picture:
+
+## Root Cause Analysis
+
+**The description is NOT stored in `saved_episodes`** (which is correct). The mobile app must fetch episode details from `episode_metadata` via the `get-episode-details` edge function when displaying the Episode Details page.
+
+### Web App Flow:
+
+1. **Saving an episode**: Inserts into `saved_episodes` (no description) → fires `ensure-episode-metadata` (creates `episode_metadata` record, but web doesn't pass description here either)
+
+2. **Navigating to Episode Details**: The web app calls `get-episode-details` which:
+   - Fetches from `episode_metadata` table
+   - **If description is null, fetches from Taddy API and backfills** (lines 247-280 of `get-episode-details/index.ts`)
+   - Returns the complete episode data including description
+
+### What the mobile app is likely doing wrong:
+
+1. **Not calling `get-episode-details`** when showing the Episode Details page
+2. Instead, trying to display data from `saved_episodes` (which doesn't have description)
+
+### The Fix for Replit:
+
+The mobile Episode Details screen must call `get-episode-details` with the episode slug to get the full data including description:
+
+```typescript
+// Mobile should do this when showing Episode Details
+const { data } = await supabase.functions.invoke('get-episode-details', {
+  body: { slug: episodeSlug }
+});
+
+// data.episode will contain:
+// - name, podcastName, imageUrl, audioUrl, durationSeconds
+// - description (backfilled from Taddy if needed)
+// - briefSlug (if a brief exists)
+```
+
+Would you like me to update the Mobile documentation to clarify this critical flow - that Episode Details must call `get-episode-details` for the description (and Taddy backfill) to work?
+
+Add Episode Details flow to mobile docs
+Create mobile Edge Function reference table
