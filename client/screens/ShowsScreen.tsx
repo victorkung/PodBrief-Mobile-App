@@ -98,7 +98,7 @@ export default function ShowsScreen() {
   });
 
   const { data: savedEpisodes } = useQuery({
-    queryKey: ["savedEpisodes"],
+    queryKey: ["savedEpisodes", "uuidsOnly"],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -163,6 +163,7 @@ export default function ShowsScreen() {
     },
     onSuccess: (uuid) => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
       setTimeout(() => mutatingEpisodesRef.current.delete(uuid), 500);
@@ -185,6 +186,7 @@ export default function ShowsScreen() {
     },
     onSuccess: (uuid) => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       showToast("Episode removed from your library", "info");
       setTimeout(() => mutatingEpisodesRef.current.delete(uuid), 500);

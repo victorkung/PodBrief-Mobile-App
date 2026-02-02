@@ -64,7 +64,7 @@ export default function EpisodeDetailScreen() {
     : (episode as SavedEpisode).taddy_podcast_uuid;
 
   const { data: savedEpisodes } = useQuery({
-    queryKey: ["savedEpisodes"],
+    queryKey: ["savedEpisodes", "uuidsOnly"],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -116,6 +116,7 @@ export default function EpisodeDetailScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
       setTimeout(() => { isMutatingRef.current = false; }, 500);
@@ -138,6 +139,7 @@ export default function EpisodeDetailScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       showToast("Episode removed from your library", "info");
       setTimeout(() => { isMutatingRef.current = false; }, 500);
@@ -279,6 +281,7 @@ export default function EpisodeDetailScreen() {
           episode_published_at: new Date(taddyEpisode.datePublished * 1000).toISOString(),
         });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

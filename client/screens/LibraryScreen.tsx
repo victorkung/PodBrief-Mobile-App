@@ -205,6 +205,7 @@ export default function LibraryScreen() {
           .eq("id", episode.id);
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       } catch (error) {
         console.error("Error removing episode:", error);
         Alert.alert("Error", "Failed to remove episode from library");
