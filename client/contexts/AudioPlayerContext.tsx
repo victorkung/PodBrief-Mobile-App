@@ -33,6 +33,13 @@ interface SavedProgress {
   savedAt: number;
 }
 
+interface EngagementSession {
+  sessionId: string;
+  startLogged: boolean;
+  completionLogged: boolean;
+  accumulatedListeningMs: number;
+}
+
 interface AudioPlayerContextType {
   currentItem: AudioItem | null;
   playbackState: PlaybackState;
@@ -65,6 +72,13 @@ const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(
 const PROGRESS_KEY_PREFIX = "audio-progress-";
 const SPEED_KEY = "audio-playback-speed";
 const PROGRESS_EXPIRY_DAYS = 7;
+const START_EVENT_THRESHOLD_MS = 30000; // Log start event after 30 seconds of accumulated listening
+const COMPLETION_THRESHOLD = 0.75; // Log completion at 75% progress
+const DB_SYNC_INTERVAL_MS = 15000; // Sync progress to database every 15 seconds
+
+function generateSessionId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const player = useAudioPlayer("");
@@ -78,6 +92,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   const saveProgressInterval = useRef<NodeJS.Timeout | null>(null);
   const lastSavedPosition = useRef(0);
+  const engagementSession = useRef<EngagementSession | null>(null);
+  const lastPositionForAccumulation = useRef(0);
+  const dbSyncInterval = useRef<NodeJS.Timeout | null>(null);
+  const lastDbSyncPosition = useRef(0);
 
   const isPlaying = playbackState === "playing";
   const isLoading = playbackState === "loading";
@@ -122,6 +140,69 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [getProgressKey]);
 
+  const logEngagementEvent = useCallback(async (
+    item: AudioItem,
+    eventType: "start" | "completion",
+    progressSeconds: number,
+    durationSeconds: number,
+    sessionId: string
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const progressPercentage = durationSeconds > 0 
+        ? Math.round((progressSeconds / durationSeconds) * 100) 
+        : 0;
+
+      await supabase.from("audio_engagement_events").insert({
+        user_id: user.id,
+        master_brief_id: item.masterBriefId || null,
+        audio_type: item.type === "summary" ? "summary" : "full_episode",
+        event_type: eventType,
+        duration_seconds: Math.round(durationSeconds),
+        progress_seconds: Math.round(progressSeconds),
+        progress_percentage: progressPercentage,
+        session_id: sessionId,
+      });
+      console.log(`[AudioPlayer] Logged ${eventType} event for session ${sessionId}`);
+    } catch (error) {
+      console.error("[AudioPlayer] Error logging engagement event:", error);
+    }
+  }, []);
+
+  const syncProgressToDatabase = useCallback(async (item: AudioItem, progressMs: number, durationMs: number) => {
+    try {
+      const progressSeconds = Math.round(progressMs / 1000);
+      const durationSeconds = Math.round(durationMs / 1000);
+      const progressRatio = durationMs > 0 ? progressMs / durationMs : 0;
+      const isCompleted = progressRatio >= COMPLETION_THRESHOLD;
+
+      if (item.type === "summary" && item.userBriefId) {
+        await supabase
+          .from("user_briefs")
+          .update({ 
+            audio_progress_seconds: progressSeconds,
+            is_completed: isCompleted,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.userBriefId);
+      } else if (item.type === "episode" && item.savedEpisodeId) {
+        await supabase
+          .from("saved_episodes")
+          .update({ 
+            audio_progress_seconds: progressSeconds,
+            is_completed: isCompleted,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.savedEpisodeId);
+      }
+      lastDbSyncPosition.current = progressMs;
+    } catch (error) {
+      console.error("[AudioPlayer] Error syncing progress to database:", error);
+    }
+  }, []);
+
   useEffect(() => {
     const loadSavedSpeed = async () => {
       try {
@@ -139,11 +220,44 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isPlaying) {
       progressInterval.current = setInterval(() => {
-        if (player.currentTime !== undefined) {
-          setPosition(player.currentTime * 1000);
-        }
-        if (player.duration !== undefined) {
-          setDuration(player.duration * 1000);
+        if (player.currentTime !== undefined && player.duration !== undefined) {
+          const currentTimeMs = player.currentTime * 1000;
+          const durationMs = player.duration * 1000;
+          setPosition(currentTimeMs);
+          setDuration(durationMs);
+
+          if (currentItem && engagementSession.current) {
+            const timeDelta = currentTimeMs - lastPositionForAccumulation.current;
+            if (timeDelta > 0 && timeDelta < 1000) {
+              engagementSession.current.accumulatedListeningMs += timeDelta;
+            }
+            lastPositionForAccumulation.current = currentTimeMs;
+
+            if (!engagementSession.current.startLogged && 
+                engagementSession.current.accumulatedListeningMs >= START_EVENT_THRESHOLD_MS) {
+              engagementSession.current.startLogged = true;
+              logEngagementEvent(
+                currentItem,
+                "start",
+                currentTimeMs / 1000,
+                durationMs / 1000,
+                engagementSession.current.sessionId
+              );
+            }
+
+            const progressRatio = durationMs > 0 ? currentTimeMs / durationMs : 0;
+            if (!engagementSession.current.completionLogged && progressRatio >= COMPLETION_THRESHOLD) {
+              engagementSession.current.completionLogged = true;
+              logEngagementEvent(
+                currentItem,
+                "completion",
+                currentTimeMs / 1000,
+                durationMs / 1000,
+                engagementSession.current.sessionId
+              );
+              syncProgressToDatabase(currentItem, currentTimeMs, durationMs);
+            }
+          }
         }
       }, 500);
 
@@ -155,6 +269,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           }
         }
       }, 10000);
+
+      dbSyncInterval.current = setInterval(() => {
+        if (currentItem && player.currentTime !== undefined && player.duration !== undefined) {
+          const currentTimeMs = player.currentTime * 1000;
+          const durationMs = player.duration * 1000;
+          if (Math.abs(currentTimeMs - lastDbSyncPosition.current) > 5000) {
+            syncProgressToDatabase(currentItem, currentTimeMs, durationMs);
+          }
+        }
+      }, DB_SYNC_INTERVAL_MS);
     } else {
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
@@ -162,8 +286,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       if (saveProgressInterval.current) {
         clearInterval(saveProgressInterval.current);
       }
+      if (dbSyncInterval.current) {
+        clearInterval(dbSyncInterval.current);
+      }
       if (currentItem && position > 0) {
         saveProgress(currentItem, position, playbackSpeed);
+        syncProgressToDatabase(currentItem, position, duration);
       }
     }
 
@@ -174,8 +302,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       if (saveProgressInterval.current) {
         clearInterval(saveProgressInterval.current);
       }
+      if (dbSyncInterval.current) {
+        clearInterval(dbSyncInterval.current);
+      }
     };
-  }, [isPlaying, player, currentItem, playbackSpeed, position, saveProgress]);
+  }, [isPlaying, player, currentItem, playbackSpeed, position, duration, saveProgress, logEngagementEvent, syncProgressToDatabase]);
 
   const getSignedAudioUrl = async (masterBriefId: string): Promise<string> => {
     const { data, error } = await supabase.functions.invoke(
@@ -193,6 +324,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       try {
         setPlaybackState("loading");
         setCurrentItem(item);
+
+        engagementSession.current = {
+          sessionId: generateSessionId(),
+          startLogged: false,
+          completionLogged: false,
+          accumulatedListeningMs: 0,
+        };
+        lastPositionForAccumulation.current = item.progress || 0;
+        lastDbSyncPosition.current = 0;
 
         let audioUrl = item.audioUrl;
 
@@ -228,6 +368,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         if (startPosition > 0) {
           player.seekTo(startPosition / 1000);
           setPosition(startPosition);
+          lastPositionForAccumulation.current = startPosition;
         }
 
         player.setPlaybackRate(playbackSpeed);
