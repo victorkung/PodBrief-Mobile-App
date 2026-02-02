@@ -1,0 +1,92 @@
+Here's the summary for Replit:
+
+---
+
+## Fix: Episode Details Now Supports UUID Lookup
+
+### What Changed (Backend - Already Done)
+
+The `get-episode-details` Edge Function now accepts **either** `slug` OR `taddyEpisodeUuid`:
+
+```typescript
+// NEW: Both parameters are optional, but at least one is required
+interface GetEpisodeDetailsRequest {
+  slug?: string;              // Web flow (from episode_metadata)
+  taddyEpisodeUuid?: string;  // Mobile flow (from saved_episodes)
+}
+```
+
+### What Replit Needs to Do
+
+**Update the episode details call in `EpisodeDetailsScreen.tsx`:**
+
+```typescript
+// BEFORE (broken - passing UUID as slug)
+const { data } = await supabase.functions.invoke('get-episode-details', {
+  body: { slug: savedEpisode.taddy_episode_uuid }
+});
+
+// AFTER (correct - use taddyEpisodeUuid parameter)
+const { data } = await supabase.functions.invoke('get-episode-details', {
+  body: { taddyEpisodeUuid: savedEpisode.taddy_episode_uuid }
+});
+```
+
+### Handling 404 (Episode Not in episode_metadata Yet)
+
+If `get-episode-details` returns 404, call `ensure-episode-metadata` first:
+
+```typescript
+const { data, error } = await supabase.functions.invoke('get-episode-details', {
+  body: { taddyEpisodeUuid: savedEpisode.taddy_episode_uuid }
+});
+
+if (error?.message?.includes('not found') || !data?.episode) {
+  // Episode metadata doesn't exist yet - create it
+  await supabase.functions.invoke('ensure-episode-metadata', {
+    body: {
+      taddyEpisodeUuid: savedEpisode.taddy_episode_uuid,
+      taddyPodcastUuid: savedEpisode.taddy_podcast_uuid,
+      episodeName: savedEpisode.episode_name,
+      podcastName: savedEpisode.podcast_name,
+      // ... other fields from saved_episodes
+    }
+  });
+
+  // Retry the details fetch
+  const retryResult = await supabase.functions.invoke('get-episode-details', {
+    body: { taddyEpisodeUuid: savedEpisode.taddy_episode_uuid }
+  });
+}
+```
+
+### Response Format (camelCase)
+
+```typescript
+interface GetEpisodeDetailsResponse {
+  episode: {
+    id: string;
+    taddyEpisodeUuid: string;
+    taddyPodcastUuid: string;
+    slug: string;
+    name: string;
+    description: string | null;  // This is what was missing!
+    imageUrl: string | null;
+    audioUrl: string | null;
+    durationSeconds: number | null;
+    publishedAt: string | null;
+    podcastName: string;
+    podcastSlug: string | null;
+    podcastImageUrl: string | null;
+    briefSlug: string | null;
+    createdAt: string;
+  }
+}
+```
+
+---
+
+This should be everything they need!
+
+Test UUID lookup endpoint
+Document ensure-episode-metadata
