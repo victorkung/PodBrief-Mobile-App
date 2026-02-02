@@ -174,6 +174,6 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
     fontSize: 14,
     fontWeight: "600",
-    fontFamily: "GoogleSansFlex_500Medium",
+    fontFamily: "GoogleSansFlex_400Regular",
   },
 });
