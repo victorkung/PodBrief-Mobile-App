@@ -140,9 +140,36 @@ export default function PodcastDetailScreen() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["followedPodcasts"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      supabase.functions.invoke('ensure-podcast-metadata', {
+        body: {
+          taddyPodcastUuid: podcast.uuid,
+          name: podcast.name,
+          description: podcast.description,
+          imageUrl: podcast.imageUrl,
+          authorName: podcast.authorName,
+          totalEpisodesCount: podcast.totalEpisodesCount,
+        },
+      }).catch(err => console.error('[followMutation] ensure-podcast-metadata error:', err));
+      
+      if (user?.email) {
+        const { count } = await supabase
+          .from("followed_podcasts")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        
+        supabase.functions.invoke('sync-to-loops', {
+          body: {
+            action: 'engagement_update',
+            email: user.email,
+            userId: user.id,
+            showsFollowed: count || 0,
+          },
+        }).catch(err => console.error('[followMutation] sync-to-loops error:', err));
+      }
     },
   });
 
@@ -156,9 +183,25 @@ export default function PodcastDetailScreen() {
         .eq("taddy_podcast_uuid", podcast.uuid);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["followedPodcasts"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      
+      if (user?.email) {
+        const { count } = await supabase
+          .from("followed_podcasts")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        
+        supabase.functions.invoke('sync-to-loops', {
+          body: {
+            action: 'engagement_update',
+            email: user.email,
+            userId: user.id,
+            showsFollowed: count || 0,
+          },
+        }).catch(err => console.error('[unfollowMutation] sync-to-loops error:', err));
+      }
     },
   });
 
