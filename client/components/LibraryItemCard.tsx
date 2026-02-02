@@ -33,6 +33,7 @@ interface LibraryItemCardProps {
   onSummarize?: () => void;
   isComplete?: boolean;
   isDownloading?: boolean;
+  isRemoving?: boolean;
   hasSummary?: boolean;
 }
 
@@ -71,6 +72,7 @@ export function LibraryItemCard({
   onSummarize,
   isComplete = false,
   isDownloading = false,
+  isRemoving = false,
   hasSummary = false,
 }: LibraryItemCardProps) {
   const { theme } = useTheme();
@@ -144,6 +146,7 @@ export function LibraryItemCard({
   }, [onMarkComplete, getCompleted]);
 
   const handleRemove = useCallback(() => {
+    if (isRemoving) return;
     setMenuVisible(false);
     Alert.alert(
       "Remove from Library",
@@ -160,7 +163,7 @@ export function LibraryItemCard({
         },
       ]
     );
-  }, [onRemoveFromPlaylist, getTitle]);
+  }, [onRemoveFromPlaylist, getTitle, isRemoving]);
 
   const handleSummarize = useCallback(() => {
     setMenuVisible(false);

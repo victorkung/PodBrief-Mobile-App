@@ -48,6 +48,8 @@ export default function LibraryScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("unfinished");
   const [filterMenuVisible, setFilterMenuVisible] = useState(false);
+  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   const loadDownloads = useCallback(async () => {
     try {
@@ -198,6 +200,9 @@ export default function LibraryScreen() {
 
   const handleRemoveEpisode = useCallback(
     async (episode: SavedEpisode) => {
+      if (removingIds.has(episode.id)) return;
+      
+      setRemovingIds(prev => new Set(prev).add(episode.id));
       try {
         const { error } = await supabase
           .from("saved_episodes")
@@ -206,16 +211,26 @@ export default function LibraryScreen() {
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
         queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
+        showToast("Episode removed from library", "info");
       } catch (error) {
         console.error("Error removing episode:", error);
-        Alert.alert("Error", "Failed to remove episode from library");
+        showToast("Failed to remove episode", "error");
+      } finally {
+        setRemovingIds(prev => {
+          const next = new Set(prev);
+          next.delete(episode.id);
+          return next;
+        });
       }
     },
-    [queryClient]
+    [queryClient, removingIds, showToast]
   );
 
   const handleRemoveBrief = useCallback(
     async (brief: UserBrief) => {
+      if (removingIds.has(brief.id)) return;
+      
+      setRemovingIds(prev => new Set(prev).add(brief.id));
       try {
         const { error } = await supabase
           .from("user_briefs")
@@ -223,12 +238,19 @@ export default function LibraryScreen() {
           .eq("id", brief.id);
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+        showToast("Summary removed from library", "info");
       } catch (error) {
         console.error("Error removing brief:", error);
-        Alert.alert("Error", "Failed to remove summary from library");
+        showToast("Failed to remove summary", "error");
+      } finally {
+        setRemovingIds(prev => {
+          const next = new Set(prev);
+          next.delete(brief.id);
+          return next;
+        });
       }
     },
-    [queryClient]
+    [queryClient, removingIds, showToast]
   );
 
   const handleRemoveDownload = useCallback(
@@ -322,8 +344,6 @@ export default function LibraryScreen() {
     },
     [navigation]
   );
-
-  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   const handleDownloadEpisode = useCallback(
     async (episode: SavedEpisode) => {
@@ -631,6 +651,7 @@ export default function LibraryScreen() {
           episode={episode}
           isDownloaded={isEpisodeDownloaded(episode)}
           isDownloading={downloadingIds.has(episode.id)}
+          isRemoving={removingIds.has(episode.id)}
           hasSummary={hasSummaryForEpisode(episode)}
           onPlay={() => handlePlayEpisode(episode)}
           onNavigateToDetails={() => {
@@ -654,6 +675,7 @@ export default function LibraryScreen() {
           brief={brief}
           isDownloaded={isBriefDownloaded(brief)}
           isDownloading={downloadingIds.has(brief.id)}
+          isRemoving={removingIds.has(brief.id)}
           onPlay={() => handlePlayBrief(brief)}
           onNavigateToDetails={() => {
             (navigation as any).navigate("BriefDetail", {
