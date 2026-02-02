@@ -7,7 +7,7 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
-import { useAudioPlayer, AudioPlayer, setAudioModeAsync } from "expo-audio";
+import { useAudioPlayer, useAudioPlayerStatus, AudioPlayer, setAudioModeAsync } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase";
@@ -83,10 +83,12 @@ function generateSessionId(): string {
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const player = useAudioPlayer("");
+  const playerStatus = useAudioPlayerStatus(player);
   const [currentItem, setCurrentItem] = useState<AudioItem | null>(null);
   const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
+  
+  const position = (playerStatus.currentTime || 0) * 1000;
+  const duration = (playerStatus.duration || 0) * 1000;
   const [playbackSpeed, setPlaybackSpeedState] = useState(1);
   const [queue, setQueue] = useState<AudioItem[]>([]);
   const [isExpanded, setExpanded] = useState(false);
@@ -238,43 +240,39 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isPlaying) {
       progressInterval.current = setInterval(() => {
-        if (player.currentTime !== undefined && player.duration !== undefined) {
-          const currentTimeMs = player.currentTime * 1000;
-          const durationMs = player.duration * 1000;
-          setPosition(currentTimeMs);
-          setDuration(durationMs);
+        const currentTimeMs = position;
+        const durationMs = duration;
 
-          if (currentItem && engagementSession.current) {
-            const timeDelta = currentTimeMs - lastPositionForAccumulation.current;
-            if (timeDelta > 0 && timeDelta < 1000) {
-              engagementSession.current.accumulatedListeningMs += timeDelta;
-            }
-            lastPositionForAccumulation.current = currentTimeMs;
+        if (currentItem && engagementSession.current && currentTimeMs > 0) {
+          const timeDelta = currentTimeMs - lastPositionForAccumulation.current;
+          if (timeDelta > 0 && timeDelta < 1000) {
+            engagementSession.current.accumulatedListeningMs += timeDelta;
+          }
+          lastPositionForAccumulation.current = currentTimeMs;
 
-            if (!engagementSession.current.startLogged && 
-                engagementSession.current.accumulatedListeningMs >= START_EVENT_THRESHOLD_MS) {
-              engagementSession.current.startLogged = true;
-              logEngagementEvent(
-                currentItem,
-                "start",
-                currentTimeMs / 1000,
-                durationMs / 1000,
-                engagementSession.current.sessionId
-              );
-            }
+          if (!engagementSession.current.startLogged && 
+              engagementSession.current.accumulatedListeningMs >= START_EVENT_THRESHOLD_MS) {
+            engagementSession.current.startLogged = true;
+            logEngagementEvent(
+              currentItem,
+              "start",
+              currentTimeMs / 1000,
+              durationMs / 1000,
+              engagementSession.current.sessionId
+            );
+          }
 
-            const progressRatio = durationMs > 0 ? currentTimeMs / durationMs : 0;
-            if (!engagementSession.current.completionLogged && progressRatio >= COMPLETION_THRESHOLD) {
-              engagementSession.current.completionLogged = true;
-              logEngagementEvent(
-                currentItem,
-                "completion",
-                currentTimeMs / 1000,
-                durationMs / 1000,
-                engagementSession.current.sessionId
-              );
-              syncProgressToDatabase(currentItem, currentTimeMs, durationMs);
-            }
+          const progressRatio = durationMs > 0 ? currentTimeMs / durationMs : 0;
+          if (!engagementSession.current.completionLogged && progressRatio >= COMPLETION_THRESHOLD) {
+            engagementSession.current.completionLogged = true;
+            logEngagementEvent(
+              currentItem,
+              "completion",
+              currentTimeMs / 1000,
+              durationMs / 1000,
+              engagementSession.current.sessionId
+            );
+            syncProgressToDatabase(currentItem, currentTimeMs, durationMs);
           }
         }
       }, 500);
@@ -385,7 +383,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
         if (startPosition > 0) {
           player.seekTo(startPosition / 1000);
-          setPosition(startPosition);
           lastPositionForAccumulation.current = startPosition;
         }
 
@@ -444,14 +441,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
     setCurrentItem(null);
     setPlaybackState("idle");
-    setPosition(0);
-    setDuration(0);
   }, [player, currentItem, position, playbackSpeed, saveProgress]);
 
   const seekTo = useCallback(
     (positionMs: number) => {
       player.seekTo(positionMs / 1000);
-      setPosition(positionMs);
     },
     [player]
   );
