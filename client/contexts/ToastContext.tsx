@@ -124,12 +124,15 @@ function ToastItem({ toast, onHide }: { toast: Toast; onHide: () => void }) {
   );
 }
 
+let toastCounter = 0;
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const showToast = useCallback((message: string, type: ToastType = "success") => {
-    const id = Date.now().toString();
+    toastCounter += 1;
+    const id = `${Date.now()}-${toastCounter}`;
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);
 

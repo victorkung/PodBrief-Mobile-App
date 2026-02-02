@@ -159,6 +159,8 @@ export default function ShowsScreen() {
       if (error) throw error;
       return episode.uuid;
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
@@ -182,6 +184,8 @@ export default function ShowsScreen() {
       if (error) throw error;
       return episodeUuid;
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });

@@ -165,6 +165,8 @@ export default function EpisodeDetailScreen() {
       });
       if (error) throw error;
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
@@ -190,6 +192,7 @@ export default function EpisodeDetailScreen() {
     },
     onError: () => {
       setTimeout(() => { isMutatingRef.current = false; }, 500);
+      showToast("Failed to add episode", "error");
     },
   });
 
@@ -204,6 +207,8 @@ export default function EpisodeDetailScreen() {
         .eq("taddy_episode_uuid", taddyEpisode.uuid);
       if (error) throw error;
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
@@ -213,6 +218,7 @@ export default function EpisodeDetailScreen() {
     },
     onError: () => {
       setTimeout(() => { isMutatingRef.current = false; }, 500);
+      showToast("Failed to remove episode", "error");
     },
   });
 
