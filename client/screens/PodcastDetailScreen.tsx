@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import {
   FlatList,
   View,
@@ -205,8 +205,6 @@ export default function PodcastDetailScreen() {
     },
   });
 
-  const mutatingEpisodesRef = useRef<Set<string>>(new Set());
-
   const saveMutation = useMutation({
     mutationFn: async (episode: TaddyEpisode) => {
       if (!user) throw new Error("Not authenticated");
@@ -225,15 +223,15 @@ export default function PodcastDetailScreen() {
       if (error) throw error;
       return episode.uuid;
     },
-    onSuccess: (uuid) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
-      setTimeout(() => mutatingEpisodesRef.current.delete(uuid), 500);
     },
-    onError: (_, episode) => {
-      setTimeout(() => mutatingEpisodesRef.current.delete(episode.uuid), 500);
+    onError: (error) => {
+      console.error("[saveMutation] Error saving episode:", error);
+      showToast("Failed to add episode", "error");
     },
   });
 
@@ -248,21 +246,19 @@ export default function PodcastDetailScreen() {
       if (error) throw error;
       return episodeUuid;
     },
-    onSuccess: (uuid) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       showToast("Episode removed from your library", "info");
-      setTimeout(() => mutatingEpisodesRef.current.delete(uuid), 500);
     },
-    onError: (_, episodeUuid) => {
-      setTimeout(() => mutatingEpisodesRef.current.delete(episodeUuid), 500);
+    onError: (error) => {
+      console.error("[removeSavedMutation] Error removing episode:", error);
+      showToast("Failed to remove episode", "error");
     },
   });
 
   const handleSaveToggle = useCallback((episode: TaddyEpisode, isSaved: boolean) => {
-    if (mutatingEpisodesRef.current.has(episode.uuid)) return;
-    mutatingEpisodesRef.current.add(episode.uuid);
     if (isSaved) {
       removeSavedMutation.mutate(episode.uuid);
     } else {
