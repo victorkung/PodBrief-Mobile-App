@@ -90,6 +90,20 @@ Preferred communication style: Simple, everyday language.
 
 ### Recent Changes (Feb 2026)
 
+- **React Query Cache Key Fix**:
+  - Fixed critical bug where Library Episodes tab didn't display episode metadata (title, podcast name, date) on initial render
+  - Root cause: Multiple screens used the same queryKey `["savedEpisodes"]` but with different `select()` fields - screens needing only UUIDs corrupted the cache for screens needing full episode data
+  - Solution: Screens that only need `taddy_episode_uuid` now use queryKey `["savedEpisodes", "uuidsOnly"]` while LibraryScreen continues using `["savedEpisodes"]` for full data
+  - All mutations invalidate both query keys to keep caches in sync
+
+- **UI Polish**:
+  - Toast font: Removed fontWeight from toastText style to use GoogleSansFlex_400Regular properly
+  - Back button: Added headerBackTitleStyle with fontSize 14 for smaller back button text
+  - Episode description: Reduced lineHeight from 22 to 18 for tighter text
+  - Summary banner: Updated text to "Generate an AI-powered summary for this episode that you can read or listen to in ~5 min instead of spending X min on the full episode"
+  - Generate Brief button: Changed to "Summarize" with type="small" and fontWeight="500"
+  - Episode action buttons: Reduced icon size from 18 to 16, changed text type from "small" to "caption", reduced padding from md/lg to sm/md
+
 - **Global Toast Notification System**:
   - Added ToastContext and ToastProvider for app-wide toast messages
   - Toast types: success (gold), error (red), info (gray)
