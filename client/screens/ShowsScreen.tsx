@@ -162,13 +162,13 @@ export default function ShowsScreen() {
       return episode.uuid;
     },
     onSuccess: (uuid) => {
-      mutatingEpisodesRef.current.delete(uuid);
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
+      setTimeout(() => mutatingEpisodesRef.current.delete(uuid), 500);
     },
     onError: (_, episode) => {
-      mutatingEpisodesRef.current.delete(episode.uuid);
+      setTimeout(() => mutatingEpisodesRef.current.delete(episode.uuid), 500);
     },
   });
 
@@ -184,13 +184,13 @@ export default function ShowsScreen() {
       return episodeUuid;
     },
     onSuccess: (uuid) => {
-      mutatingEpisodesRef.current.delete(uuid);
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       showToast("Episode removed from your library", "info");
+      setTimeout(() => mutatingEpisodesRef.current.delete(uuid), 500);
     },
     onError: (_, episodeUuid) => {
-      mutatingEpisodesRef.current.delete(episodeUuid);
+      setTimeout(() => mutatingEpisodesRef.current.delete(episodeUuid), 500);
     },
   });
 

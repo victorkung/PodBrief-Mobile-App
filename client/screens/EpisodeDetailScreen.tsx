@@ -115,13 +115,13 @@ export default function EpisodeDetailScreen() {
       if (error) throw error;
     },
     onSuccess: () => {
-      isMutatingRef.current = false;
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Episode added to your library", "success");
+      setTimeout(() => { isMutatingRef.current = false; }, 500);
     },
     onError: () => {
-      isMutatingRef.current = false;
+      setTimeout(() => { isMutatingRef.current = false; }, 500);
     },
   });
 
@@ -137,13 +137,13 @@ export default function EpisodeDetailScreen() {
       if (error) throw error;
     },
     onSuccess: () => {
-      isMutatingRef.current = false;
       queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       showToast("Episode removed from your library", "info");
+      setTimeout(() => { isMutatingRef.current = false; }, 500);
     },
     onError: () => {
-      isMutatingRef.current = false;
+      setTimeout(() => { isMutatingRef.current = false; }, 500);
     },
   });
 
