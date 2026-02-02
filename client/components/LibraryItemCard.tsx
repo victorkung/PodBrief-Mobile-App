@@ -6,6 +6,7 @@ import {
   Modal,
   Share,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
@@ -13,6 +14,7 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { SavedEpisode, UserBrief, Download } from "@/lib/types";
 
@@ -80,7 +82,26 @@ export function LibraryItemCard({
   isPlaying = false,
 }: LibraryItemCardProps) {
   const { theme } = useTheme();
+  const { isLoading: audioLoading, currentItem } = useAudioPlayerContext();
   const [menuVisible, setMenuVisible] = useState(false);
+
+  // Check if this specific item is loading
+  const isThisItemLoading = (() => {
+    if (!audioLoading || !currentItem) return false;
+    if (episode) {
+      return currentItem.type === "episode" && currentItem.id === episode.taddy_episode_uuid;
+    }
+    if (brief) {
+      return currentItem.type === "summary" && currentItem.masterBriefId === brief.master_brief_id;
+    }
+    if (download) {
+      if (download.type === "episode") {
+        return currentItem.type === "episode" && currentItem.id === download.taddyEpisodeUuid;
+      }
+      return currentItem.type === "summary" && currentItem.masterBriefId === download.masterBriefId;
+    }
+    return false;
+  })();
 
   const getTitle = (): string => {
     if (episode) return episode.episode_name;
@@ -306,8 +327,13 @@ export function LibraryItemCard({
         <Pressable
           onPress={isPlaying ? onPause : onPlay}
           style={[styles.playButton, { backgroundColor: isPlaying ? theme.gold : theme.text }]}
+          disabled={isThisItemLoading}
         >
-          <Feather name={isPlaying ? "pause" : "play"} size={18} color={theme.backgroundRoot} />
+          {isThisItemLoading ? (
+            <ActivityIndicator size="small" color={theme.backgroundRoot} />
+          ) : (
+            <Feather name={isPlaying ? "pause" : "play"} size={18} color={theme.backgroundRoot} />
+          )}
         </Pressable>
       </View>
 

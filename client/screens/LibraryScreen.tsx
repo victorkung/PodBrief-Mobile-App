@@ -37,7 +37,7 @@ export default function LibraryScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
-  const { play, playWithQueue, pause, resume, currentItem, isPlaying } = useAudioPlayerContext();
+  const { play, playWithQueue, pause, resume, currentItem, isPlaying, isLoading } = useAudioPlayerContext();
   const { showToast } = useToast();
 
   const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
@@ -720,19 +720,24 @@ export default function LibraryScreen() {
   };
 
   const isEpisodePlaying = useCallback((episode: SavedEpisode) => {
-    return isPlaying && currentItem?.type === "episode" && currentItem?.id === episode.taddy_episode_uuid;
-  }, [isPlaying, currentItem]);
+    const isActive = currentItem?.type === "episode" && currentItem?.id === episode.taddy_episode_uuid;
+    return isActive && (isPlaying || isLoading);
+  }, [isPlaying, isLoading, currentItem]);
 
   const isBriefPlaying = useCallback((brief: UserBrief) => {
-    return isPlaying && currentItem?.type === "summary" && currentItem?.masterBriefId === brief.master_brief_id;
-  }, [isPlaying, currentItem]);
+    const isActive = currentItem?.type === "summary" && currentItem?.masterBriefId === brief.master_brief_id;
+    return isActive && (isPlaying || isLoading);
+  }, [isPlaying, isLoading, currentItem]);
 
   const isDownloadPlaying = useCallback((download: Download) => {
+    let isActive = false;
     if (download.type === "episode") {
-      return isPlaying && currentItem?.type === "episode" && currentItem?.id === download.taddyEpisodeUuid;
+      isActive = currentItem?.type === "episode" && currentItem?.id === download.taddyEpisodeUuid;
+    } else {
+      isActive = currentItem?.type === "summary" && currentItem?.masterBriefId === download.masterBriefId;
     }
-    return isPlaying && currentItem?.type === "summary" && currentItem?.masterBriefId === download.masterBriefId;
-  }, [isPlaying, currentItem]);
+    return isActive && (isPlaying || isLoading);
+  }, [isPlaying, isLoading, currentItem]);
 
   const renderItem = ({ item }: { item: SavedEpisode | UserBrief | Download }) => {
     if (selectedTab === "episodes") {
