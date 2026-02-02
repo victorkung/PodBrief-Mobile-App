@@ -395,7 +395,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         setPlaybackState("playing");
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        if (Platform.OS !== "web") {
+        if (Platform.OS !== "web" && typeof player.setActiveForLockScreen === "function") {
           setTimeout(() => {
             try {
               player.setActiveForLockScreen(true, {
@@ -405,7 +405,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
               });
               console.log("[AudioPlayer] Lock screen controls enabled");
             } catch (e) {
-              console.error("[AudioPlayer] Error setting lock screen controls:", e);
+              console.log("[AudioPlayer] Lock screen controls not available (Expo Go limitation)");
             }
           }, 500);
         }

@@ -196,7 +196,8 @@ Preferred communication style: Simple, everyday language.
   - Lock screen / Now Playing controls via `player.setActiveForLockScreen(true, metadata)`:
     - Called 500ms after playback starts to ensure stable metadata
     - Metadata: `title`, `artist`, `artworkUrl` (artwork property name in expo-audio)
-    - Cleared on stop via `player.setActiveForLockScreen(false)`
+    - **Note**: Lock screen controls only work in production builds, not Expo Go
+    - Code checks `typeof player.setActiveForLockScreen === "function"` before calling
   - UIBackgroundModes already configured in app.json: `["audio"]`
   - Play button state parity: LibraryItemCard accepts `isPlaying` and `onPause` props
     - Helper functions in LibraryScreen check `currentItem.id` against episode/brief/download
