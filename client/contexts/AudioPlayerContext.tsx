@@ -363,7 +363,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
               .from("user_briefs")
               .update({ 
                 is_completed: true,
-                audio_progress_seconds: Math.round(duration / 1000),
+                audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
                 updated_at: new Date().toISOString(),
               })
               .eq("id", currentItem.userBriefId);
@@ -373,7 +373,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
               .from("saved_episodes")
               .update({ 
                 is_completed: true,
-                audio_progress_seconds: Math.round(duration / 1000),
+                audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
                 updated_at: new Date().toISOString(),
               })
               .eq("id", currentItem.savedEpisodeId);
