@@ -60,7 +60,6 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [showSpeedPicker, setShowSpeedPicker] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const queryClient = useQueryClient();
@@ -149,33 +148,6 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     }
   };
 
-  const handleMarkComplete = async () => {
-    const newComplete = !isComplete;
-    setIsComplete(newComplete);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
-      if (currentItem.type === "summary" && currentItem.userBriefId) {
-        await supabase
-          .from("user_briefs")
-          .update({ is_completed: newComplete })
-          .eq("id", currentItem.userBriefId);
-        queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
-      } else if (currentItem.type === "episode" && currentItem.savedEpisodeId) {
-        await supabase
-          .from("saved_episodes")
-          .update({ is_completed: newComplete })
-          .eq("id", currentItem.savedEpisodeId);
-        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
-        queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
-      }
-      showToast(newComplete ? "Marked as complete" : "Marked as unfinished", "success");
-    } catch (error) {
-      console.error("Error marking complete:", error);
-      setIsComplete(!newComplete);
-      showToast("Failed to update", "error");
-    }
-  };
 
   const handleDownload = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -329,17 +301,6 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
           </View>
 
           <View style={[styles.actionsRow, { borderTopColor: theme.border }]}>
-            <Pressable onPress={handleMarkComplete} style={styles.actionButton}>
-              <Feather 
-                name={isComplete ? "check-circle" : "circle"} 
-                size={22} 
-                color={isComplete ? theme.gold : theme.textSecondary} 
-              />
-              <ThemedText type="caption" style={{ color: isComplete ? theme.gold : theme.textSecondary, marginTop: 4 }}>
-                {isComplete ? "Completed" : "Complete"}
-              </ThemedText>
-            </Pressable>
-
             <Pressable onPress={handleDownload} style={styles.actionButton}>
               <Feather name="download" size={22} color={theme.textSecondary} />
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>

@@ -448,8 +448,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const timeRemaining = metadataDuration - position;
     const isNearEnd = timeRemaining <= 2000 && position > 0;
     
-    // Also check if playback has stopped (not playing and not loading)
-    const playbackStopped = !isPlaying && playbackState !== "loading";
+    // Use expo-audio's ACTUAL playing status (not our internal state)
+    // This correctly detects when audio stops at track end
+    const actuallyPlaying = playerStatus.playing;
+    const playbackStopped = !actuallyPlaying && playbackState !== "loading";
     
     // Trigger completion when: near end AND (playback stopped OR position stalled)
     if (isNearEnd && !completionTriggered.current) {
@@ -470,6 +472,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
             metadataDuration: Math.round(metadataDuration / 1000),
             timeRemaining: Math.round(timeRemaining / 1000),
             playbackStopped,
+            actuallyPlaying,
             stallCount: stallCount.current,
           });
           
@@ -479,7 +482,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [position, isPlaying, playbackState, currentItem, handleTrackEnded]);
+  }, [position, playerStatus.playing, playbackState, currentItem, handleTrackEnded]);
 
   // Stall detection as backup - catches streams that stop before reaching metadata duration
   // Uses metadata duration for accurate progress calculation
