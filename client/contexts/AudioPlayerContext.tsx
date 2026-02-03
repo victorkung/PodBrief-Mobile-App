@@ -13,7 +13,7 @@ import * as Haptics from "expo-haptics";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { AudioItem } from "@/lib/types";
-import { Platform } from "react-native";
+import { Platform, AppState, AppStateStatus } from "react-native";
 
 export type PlaybackState = "idle" | "loading" | "playing" | "paused" | "error";
 
@@ -40,6 +40,11 @@ interface EngagementSession {
   startLogged: boolean;
   completionLogged: boolean;
   accumulatedListeningMs: number;
+}
+
+interface PendingAutoAdvance {
+  track: AudioItem;
+  timestamp: number;
 }
 
 interface AudioPlayerContextType {
@@ -105,6 +110,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const autoplayTriggeredForItem = useRef<string | null>(null);
   const isAutoplayProcessing = useRef(false);
   const playRef = useRef<((item: AudioItem) => Promise<void>) | null>(null);
+  const pendingAutoAdvanceRef = useRef<PendingAutoAdvance | null>(null);
+  const didJustFinishHandled = useRef(false);
 
   const isPlaying = playbackState === "playing";
   const isLoading = playbackState === "loading";
@@ -335,92 +342,135 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [isPlaying, player, currentItem, playbackSpeed, position, duration, saveProgress, logEngagementEvent, syncProgressToDatabase]);
 
-  // Autoplay next item when current playback finishes
-  useEffect(() => {
-    // Need valid duration and position, and must be playing
-    if (!currentItem || !isPlaying || duration <= 0) return;
+  // Handle autoplay when track finishes using didJustFinish (more reliable than position-based)
+  const handleTrackEnded = useCallback(async () => {
+    if (!currentItem) return;
     
-    // Guard against re-entry while processing
+    // Guard against multiple triggers
     if (isAutoplayProcessing.current) return;
+    isAutoplayProcessing.current = true;
     
-    // Check if we've already triggered autoplay for this item
+    const itemKey = `${currentItem.type}-${currentItem.id}`;
+    console.log("[AudioPlayer] Track ended, marking complete. Queue length:", queue.length);
+    
+    // IMMEDIATELY capture next track BEFORE any async operations (key fix from Lovable audit)
+    const nextItem = queue.length > 0 ? queue[0] : null;
+    const remainingQueue = queue.slice(1);
+    
+    // Set playback state to loading during transition
+    setPlaybackState("loading");
+    
+    try {
+      // Mark current item as complete in database
+      if (currentItem.type === "summary" && currentItem.userBriefId) {
+        await supabase
+          .from("user_briefs")
+          .update({ 
+            is_completed: true,
+            audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", currentItem.userBriefId);
+        queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+      } else if (currentItem.type === "episode" && currentItem.savedEpisodeId) {
+        await supabase
+          .from("saved_episodes")
+          .update({ 
+            is_completed: true,
+            audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", currentItem.savedEpisodeId);
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+        queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
+      }
+      
+      // Play next item using captured reference
+      if (nextItem) {
+        console.log("[AudioPlayer] Playing next item:", nextItem.title);
+        // Update queue state
+        setQueue(remainingQueue);
+        
+        // Store pending autoplay in case app is backgrounded
+        pendingAutoAdvanceRef.current = {
+          track: nextItem,
+          timestamp: Date.now(),
+        };
+        
+        // Small delay to ensure state is settled
+        setTimeout(() => {
+          isAutoplayProcessing.current = false;
+          pendingAutoAdvanceRef.current = null;
+          if (playRef.current) {
+            playRef.current(nextItem);
+          }
+        }, 300);
+      } else {
+        // No more items in queue - stop playback
+        console.log("[AudioPlayer] No more items in queue, stopping");
+        isAutoplayProcessing.current = false;
+        setPlaybackState("idle");
+        setCurrentItem(null);
+      }
+    } catch (error) {
+      console.error("[AudioPlayer] Error in autoplay completion:", error);
+      isAutoplayProcessing.current = false;
+      setPlaybackState("idle");
+    }
+  }, [currentItem, queue, queryClient]);
+
+  // Autoplay detection using didJustFinish from expo-audio status
+  // This is more reliable than position-based checking (fires exactly once when track ends)
+  useEffect(() => {
+    // Check if audio just finished playing (expo-audio fires this exactly once)
+    const didFinish = playerStatus.didJustFinish;
+    
+    if (!currentItem || !didFinish) return;
+    
+    // Guard against re-handling the same finish event
+    if (didJustFinishHandled.current) return;
+    didJustFinishHandled.current = true;
+    
+    // Guard against re-entry
     const itemKey = `${currentItem.type}-${currentItem.id}`;
     if (autoplayTriggeredForItem.current === itemKey) return;
+    autoplayTriggeredForItem.current = itemKey;
     
-    // Check if playback is near the end (within 1 second of duration)
-    const isNearEnd = position >= duration - 1000 && position > 0;
-    
-    if (isNearEnd) {
-      console.log("[AudioPlayer] Playback finished, marking complete and playing next. Queue length:", queue.length);
-      
-      // Set both guards immediately to prevent re-entry
-      autoplayTriggeredForItem.current = itemKey;
-      isAutoplayProcessing.current = true;
-      
-      // IMPORTANT: Pause audio immediately to stop position updates and prevent re-triggers
-      player.pause();
-      setPlaybackState("loading"); // Set to loading to indicate transition
-      
-      // Capture queue at this moment to avoid stale closures
-      const currentQueue = [...queue];
-      
-      // Mark current item as complete in database
-      const markCompleteAndPlayNext = async () => {
-        try {
-          if (currentItem.type === "summary" && currentItem.userBriefId) {
-            await supabase
-              .from("user_briefs")
-              .update({ 
-                is_completed: true,
-                audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", currentItem.userBriefId);
-            queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
-          } else if (currentItem.type === "episode" && currentItem.savedEpisodeId) {
-            await supabase
-              .from("saved_episodes")
-              .update({ 
-                is_completed: true,
-                audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", currentItem.savedEpisodeId);
-            queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
-            queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
+    handleTrackEnded();
+  }, [playerStatus.didJustFinish, currentItem, handleTrackEnded]);
+  
+  // Reset didJustFinish handler when currentItem changes
+  useEffect(() => {
+    didJustFinishHandled.current = false;
+  }, [currentItem?.id]);
+
+  // AppState listener for background recovery
+  // When app comes back from background, check if we had a pending autoplay
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === 'active' && pendingAutoAdvanceRef.current) {
+        const pending = pendingAutoAdvanceRef.current;
+        const ageMinutes = (Date.now() - pending.timestamp) / 60000;
+        
+        // Only resume if less than 10 minutes old
+        if (ageMinutes < 10) {
+          console.log("[AudioPlayer] Resuming pending autoplay after app became active");
+          pendingAutoAdvanceRef.current = null;
+          isAutoplayProcessing.current = false;
+          if (playRef.current) {
+            playRef.current(pending.track);
           }
-          
-          // Play next item in queue if available
-          if (currentQueue.length > 0) {
-            const nextItem = currentQueue[0];
-            console.log("[AudioPlayer] Playing next item:", nextItem.title);
-            // Update queue state - remove first item only
-            setQueue(currentQueue.slice(1));
-            // Delay to ensure state is settled before playing next
-            setTimeout(() => {
-              isAutoplayProcessing.current = false;
-              if (playRef.current) {
-                playRef.current(nextItem);
-              }
-            }, 300);
-          } else {
-            // No more items in queue - stop playback completely
-            console.log("[AudioPlayer] No more items in queue, stopping");
-            isAutoplayProcessing.current = false;
-            setPlaybackState("idle");
-            setCurrentItem(null);
-          }
-        } catch (error) {
-          console.error("[AudioPlayer] Error in autoplay completion:", error);
+        } else {
+          console.log("[AudioPlayer] Pending autoplay expired (>10 minutes)");
+          pendingAutoAdvanceRef.current = null;
           isAutoplayProcessing.current = false;
         }
-      };
-      
-      markCompleteAndPlayNext();
-    }
-  // Note: play is intentionally not in deps to avoid recreation loop
-  // The ref-based guard prevents multiple triggers
-  }, [position, duration, isPlaying, currentItem, queue, queryClient]);
+      }
+    };
+    
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, []);
 
   const getSignedAudioUrl = async (masterBriefId: string): Promise<string> => {
     const { data, error } = await supabase.functions.invoke(
@@ -438,8 +488,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       try {
         setPlaybackState("loading");
         setCurrentItem(item);
-        // Reset autoplay trigger for new item
+        // Reset autoplay guards for new item
         autoplayTriggeredForItem.current = null;
+        didJustFinishHandled.current = false;
 
         // Set audio mode before each play to ensure silent mode works on iOS
         await setAudioModeAsync({

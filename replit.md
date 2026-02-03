@@ -68,8 +68,11 @@ Preferred communication style: Simple, everyday language.
 - **Mark Complete Fix**: 
   - EpisodeDetailScreen now passes `savedEpisodeId` when playing saved episodes, enabling Mark Complete functionality
   - BriefDetailScreen already correctly passes `masterBriefId` and `userBriefId`
-- **Autoplay Next Item**:
-  - When audio finishes (position >= duration - 1 second), the current item is marked as complete in the database
-  - React Query cache is invalidated to refresh Library UI with completion status
-  - Next item in queue automatically starts playing
-  - Uses ref-based guard to prevent multiple autoplay triggers for the same item
+- **Autoplay Next Item** (improved from Lovable audit):
+  - Uses expo-audio's `didJustFinish` status for reliable end detection (fires exactly once when track ends, more reliable than position-based checking)
+  - Next track is captured BEFORE any async operations to prevent stale queue references
+  - Current item is marked as complete in database, React Query cache invalidated
+  - Uses `pendingAutoAdvanceRef` to store pending autoplay for AppState recovery
+  - AppState listener resumes pending autoplay when app becomes active (if <10 minutes old)
+  - Uses multiple ref-based guards (`didJustFinishHandled`, `autoplayTriggeredForItem`, `isAutoplayProcessing`) to prevent duplicate triggers
+  - `setAudioModeAsync` called on mount AND before each play for redundancy
