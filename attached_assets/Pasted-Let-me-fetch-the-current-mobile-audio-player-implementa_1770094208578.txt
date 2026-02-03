@@ -1,0 +1,116 @@
+Let me fetch the current mobile audio player implementation to analyze this issue.
+
+Now I can see the issue clearly. Let me provide a detailed analysis for Replit.
+
+---
+
+## Analysis: Premature End Detection in Mobile Audio Player
+
+### The Problem
+
+The mobile app uses **position polling** at line 354:
+```javascript
+const isNearEnd = position >= duration - 1000 && position > 0;
+```
+
+This approach has a critical flaw: **the `duration` value from expo-audio's metadata can differ from the actual playable audio length**. 
+
+For example:
+- Metadata reports: `duration = 56:58` (3,418,000 ms)
+- Actual playable audio ends at: `56:39` (3,399,000 ms)
+- Difference: ~19 seconds
+
+So when position reaches `56:39` and audio naturally stops (because there's no more data), the check `position >= duration - 1000` is FALSE (because 3,399,000 < 3,417,000), but the audio has stopped playing. This leaves the player in a broken state.
+
+**However**, if `didJustFinish` is firing at 56:39, that's actually correct behavior - expo-audio is telling you the audio stream genuinely ended. The problem is the app isn't trusting that signal.
+
+---
+
+## Recommended Solution for Replit
+
+### Option 1: Trust `didJustFinish` (Preferred)
+
+Use expo-audio's native event listener instead of position polling:
+
+```typescript
+// In useEffect, listen to player events
+useEffect(() => {
+  if (!player) return;
+
+  const subscription = player.addListener('playbackStatusUpdate', (status) => {
+    // didJustFinish is the authoritative signal that audio stream ended
+    if (status.didJustFinish && !isAutoplayProcessing.current) {
+      console.log('[AudioPlayer] didJustFinish fired - audio stream ended');
+      handleTrackEnded();
+    }
+  });
+
+  return () => subscription.remove();
+}, [player]);
+```
+
+### Option 2: Stall Detection (Most Robust)
+
+If you must use position polling, detect when audio **stalls** near the end:
+
+```typescript
+const lastPositionRef = useRef(0);
+const stallCountRef = useRef(0);
+
+useEffect(() => {
+  if (!isPlaying || !currentItem || duration <= 0) return;
+
+  const progressRatio = position / duration;
+
+  // If we're past 93% and position stopped advancing
+  if (progressRatio >= 0.93 && position === lastPositionRef.current && position > 0) {
+    stallCountRef.current += 1;
+
+    // If stalled for 3 consecutive checks (~1.5 seconds), consider it ended
+    if (stallCountRef.current >= 3) {
+      console.log('[AudioPlayer] Stall detected near end - treating as finished');
+      handleTrackEnded();
+    }
+  } else {
+    stallCountRef.current = 0;
+  }
+
+  lastPositionRef.current = position;
+}, [position, duration, isPlaying, currentItem]);
+```
+
+### Option 3: Percentage-Based Threshold
+
+Replace the fixed millisecond check with a percentage:
+
+```typescript
+// Instead of: position >= duration - 1000
+// Use: 
+const isNearEnd = duration > 0 && (position / duration) >= 0.97 && position > 0;
+```
+
+This handles varying track lengths better, but still won't catch the "audio stream ended early" case.
+
+---
+
+## Why Web App Doesn't Have This Problem
+
+The web app uses the HTML5 `` element's native `ended` event:
+
+```typescript
+// From useAudioPlayer.ts
+audio.addEventListener('ended', handleEnded);
+```
+
+This event fires when the **actual audio stream** finishes, regardless of what the metadata duration says. It's the authoritative source.
+
+---
+
+## Summary for Replit
+
+**Root Cause**: The metadata `duration` doesn't match the actual playable audio length. The audio genuinely ends at 56:39, and `didJustFinish` is correctly reporting this.
+
+**Fix**: Trust `didJustFinish` as the authoritative "track ended" signal, OR implement stall detection for when position stops advancing near the end. Don't rely solely on `position >= duration - threshold` because metadata duration can be inaccurate.
+
+Document audio architecture
+Review web ended event handling
