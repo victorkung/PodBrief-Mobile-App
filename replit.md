@@ -58,6 +58,11 @@ Preferred communication style: Simple, everyday language.
   - Added "Next" button (skip-forward icon) to play next item in queue
   - Progress bar seeking uses local state during drag for immediate visual feedback, with 500ms delay before resetting isSeeking to prevent visual jump-back
   - Removed "Remove" button from actions row
+  - Unified swipe gesture: Removed ScrollView so entire player area responds to pan gesture for closing (no separate swipe zones)
+- **EpisodeDetailScreen (Mobile-only UX)**:
+  - Info-only view: Shows cover art, title, podcast name, date, duration, and description
+  - No Play/Share/Mark Complete/Download buttons (different from web app)
+  - CTA for generating brief if episode not yet summarized
 - **Playlist Queue System**: 
   - `playWithQueue(item, queue)` function in AudioPlayerContext for playing with a queue
   - Library tabs (Episodes, Summaries, Downloads) auto-populate queue with remaining items when starting playback
