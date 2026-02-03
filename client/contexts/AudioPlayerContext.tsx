@@ -357,6 +357,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       autoplayTriggeredForItem.current = itemKey;
       isAutoplayProcessing.current = true;
       
+      // IMPORTANT: Pause audio immediately to stop position updates and prevent re-triggers
+      player.pause();
+      setPlaybackState("loading"); // Set to loading to indicate transition
+      
       // Capture queue at this moment to avoid stale closures
       const currentQueue = [...queue];
       
@@ -399,9 +403,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
               }
             }, 300);
           } else {
-            // No more items in queue - pause playback
+            // No more items in queue - stop playback completely
             isAutoplayProcessing.current = false;
-            setPlaybackState("paused");
+            setPlaybackState("idle");
+            setCurrentItem(null);
           }
         } catch (error) {
           console.error("[AudioPlayer] Error in autoplay completion:", error);
