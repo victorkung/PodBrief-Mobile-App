@@ -75,6 +75,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     duration,
     playbackSpeed,
     queue,
+    history,
     pause,
     resume,
     seekTo,
@@ -82,6 +83,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
     skipBackward,
     setSpeed,
     playNext,
+    playPrevious,
   } = useAudioPlayerContext();
 
   const panGesture = Gesture.Pan()
@@ -135,6 +137,11 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
       playNext();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+  };
+
+  const handlePlayPrevious = () => {
+    playPrevious();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleShare = async () => {
@@ -254,11 +261,15 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
           </View>
 
           <View style={styles.mainControls}>
-            <Pressable onPress={() => setShowSpeedPicker(true)} style={styles.speedButton}>
-              <ThemedText type="small" style={{ color: theme.text }}>
-                {playbackSpeed}x
-              </ThemedText>
-              <Feather name="chevron-down" size={14} color={theme.text} />
+            <Pressable 
+              onPress={handlePlayPrevious} 
+              style={styles.prevButton}
+            >
+              <Feather 
+                name="skip-back" 
+                size={24} 
+                color={history.length > 0 || position > 3000 ? theme.text : theme.textTertiary} 
+              />
             </Pressable>
 
             <Pressable onPress={skipBackward} style={styles.skipButton}>
@@ -301,6 +312,17 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
           </View>
 
           <View style={[styles.actionsRow, { borderTopColor: theme.border }]}>
+            <Pressable onPress={() => setShowSpeedPicker(true)} style={styles.actionButton}>
+              <View style={[styles.speedBadge, { backgroundColor: theme.backgroundTertiary }]}>
+                <ThemedText type="small" style={{ color: theme.text, fontWeight: "600" }}>
+                  {playbackSpeed}x
+                </ThemedText>
+              </View>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
+                Speed
+              </ThemedText>
+            </Pressable>
+
             <Pressable onPress={handleDownload} style={styles.actionButton}>
               <Feather name="download" size={22} color={theme.textSecondary} />
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
@@ -466,6 +488,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: Spacing.sm,
+  },
+  prevButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.sm,
     width: 50,
   },
   playButton: {
@@ -486,6 +513,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.xs,
+  },
+  speedBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
   },
   speedPicker: {
     position: "absolute",

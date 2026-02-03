@@ -81,3 +81,13 @@ Preferred communication style: Simple, everyday language.
   - AppState listener resumes pending autoplay when app becomes active (if <10 minutes old)
   - Uses multiple ref-based guards (`didJustFinishHandled`, `autoplayTriggeredForItem`, `isAutoplayProcessing`) to prevent duplicate triggers
   - `setAudioModeAsync` called on mount AND before each play for redundancy
+- **Previous Track / History Tracking**:
+  - `playPrevious()` function: Restarts current track if >3 seconds played, otherwise jumps to previous track in history
+  - `history` state maintains last 50 played items for navigation
+  - History is updated when advancing to next track (manually or via autoplay)
+  - ExpandedPlayer has skip-back button (grays out when no history and <3s into track)
+- **Remote Command Listeners** (Headphone/Lock Screen Controls):
+  - Registered for play, pause, toggle, next track, and previous track commands
+  - Uses expo-audio player.addListener with 'as any' type assertion (API not fully typed yet)
+  - Will function in production builds (TestFlight/App Store), may not work in Expo Go
+  - Gracefully falls back if events not supported on current platform
