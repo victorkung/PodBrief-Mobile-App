@@ -446,15 +446,6 @@ export default function EpisodeDetailScreen() {
             </View>
           </View>
 
-          <View style={styles.actionsSection}>
-            <View style={styles.actionsGrid}>
-              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
-              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
-              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
-              <SkeletonBox width="48.5%" height={40} style={{ borderRadius: BorderRadius.md }} />
-            </View>
-          </View>
-
           <SkeletonBox width="100%" height={120} style={{ borderRadius: BorderRadius.md, marginBottom: Spacing.xl }} />
 
           <View style={styles.descriptionSection}>
@@ -507,62 +498,6 @@ export default function EpisodeDetailScreen() {
                 {formatDuration(duration)}
               </ThemedText>
             </View>
-          </View>
-        </View>
-
-        <View style={styles.actionsSection}>
-          <View style={styles.actionsGrid}>
-            <Pressable
-              onPress={handlePlay}
-              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-            >
-              <Feather name="play" size={16} color={theme.text} />
-              <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
-                Play ({formatDuration(duration)})
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={handleShare}
-              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-            >
-              <Feather name="share-2" size={16} color={theme.text} />
-              <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
-                Share
-              </ThemedText>
-            </Pressable>
-            {source === "library" ? (
-              <Pressable
-                onPress={() => markCompleteMutation.mutate()}
-                disabled={markCompleteMutation.isPending}
-                style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-              >
-                <Feather name="check" size={16} color={theme.text} />
-                <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
-                  Mark Complete
-                </ThemedText>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={handleAddToLibrary}
-                disabled={saveMutation.isPending || removeSavedMutation.isPending}
-                style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-              >
-                <Feather name={isSaved ? "check" : "plus"} size={16} color={isSaved ? Colors.dark.success : theme.text} />
-                <ThemedText type="caption" style={{ color: isSaved ? Colors.dark.success : theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
-                  {saveMutation.isPending ? "Adding..." : removeSavedMutation.isPending ? "Removing..." : isSaved ? "Added" : "Add Episode"}
-                </ThemedText>
-              </Pressable>
-            )}
-            <Pressable
-              onPress={handleDownload}
-              disabled={isDownloading}
-              style={[styles.gridButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, opacity: isDownloading ? 0.6 : 1 }]}
-            >
-              <Feather name={isDownloading ? "loader" : "download"} size={16} color={theme.text} />
-              <ThemedText type="caption" style={{ color: theme.text, marginLeft: Spacing.xs, fontWeight: "500" }}>
-                {isDownloading ? "Downloading..." : "Download"}
-              </ThemedText>
-            </Pressable>
           </View>
         </View>
 
@@ -644,24 +579,6 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
     marginHorizontal: 6,
-  },
-  actionsSection: {
-    marginBottom: Spacing.lg,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-  },
-  gridButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    width: "48.5%",
   },
   ctaBanner: {
     padding: Spacing.lg,

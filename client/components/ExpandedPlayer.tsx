@@ -9,6 +9,7 @@ import {
   Share,
   Alert,
 } from "react-native";
+// Note: ScrollView kept in imports for speedPicker ScrollView
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
@@ -222,10 +223,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
             </ThemedText>
           </Pressable>
 
-        <ScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.content}>
           <View style={styles.artworkContainer}>
             <Image
               source={
@@ -353,7 +351,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
               </ThemedText>
             </Pressable>
           </View>
-        </ScrollView>
+        </View>
 
           {showSpeedPicker ? (
             <View style={[styles.speedPicker, { backgroundColor: theme.backgroundSecondary }]}>
