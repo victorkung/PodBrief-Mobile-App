@@ -68,3 +68,8 @@ Preferred communication style: Simple, everyday language.
 - **Mark Complete Fix**: 
   - EpisodeDetailScreen now passes `savedEpisodeId` when playing saved episodes, enabling Mark Complete functionality
   - BriefDetailScreen already correctly passes `masterBriefId` and `userBriefId`
+- **Autoplay Next Item**:
+  - When audio finishes (position >= duration - 1 second), the current item is marked as complete in the database
+  - React Query cache is invalidated to refresh Library UI with completion status
+  - Next item in queue automatically starts playing
+  - Uses ref-based guard to prevent multiple autoplay triggers for the same item
