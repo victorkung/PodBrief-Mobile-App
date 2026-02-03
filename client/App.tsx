@@ -16,6 +16,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import { Colors } from "@/constants/theme";
 import { createErrorHandler } from "@/lib/errorLogger";
 
@@ -57,6 +58,7 @@ export default function App() {
         <SafeAreaProvider>
           <GestureHandlerRootView style={styles.root} onLayout={onLayoutRootView}>
             <KeyboardProvider>
+              <NetworkProvider>
               <AuthProvider>
                 <AudioPlayerProvider>
                   <ToastProvider>
@@ -97,6 +99,7 @@ export default function App() {
                   <StatusBar style="light" />
                 </AudioPlayerProvider>
               </AuthProvider>
+              </NetworkProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </SafeAreaProvider>
