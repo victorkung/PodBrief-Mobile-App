@@ -351,7 +351,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const isNearEnd = position >= duration - 1000 && position > 0;
     
     if (isNearEnd) {
-      console.log("[AudioPlayer] Playback finished, marking complete and playing next");
+      console.log("[AudioPlayer] Playback finished, marking complete and playing next. Queue length:", queue.length);
       
       // Set both guards immediately to prevent re-entry
       autoplayTriggeredForItem.current = itemKey;
@@ -393,6 +393,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           // Play next item in queue if available
           if (currentQueue.length > 0) {
             const nextItem = currentQueue[0];
+            console.log("[AudioPlayer] Playing next item:", nextItem.title);
             // Update queue state - remove first item only
             setQueue(currentQueue.slice(1));
             // Delay to ensure state is settled before playing next
@@ -404,6 +405,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
             }, 300);
           } else {
             // No more items in queue - stop playback completely
+            console.log("[AudioPlayer] No more items in queue, stopping");
             isAutoplayProcessing.current = false;
             setPlaybackState("idle");
             setCurrentItem(null);
