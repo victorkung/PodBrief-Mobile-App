@@ -131,8 +131,13 @@ export default function LibraryScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchEpisodes(), refetchBriefs(), loadDownloads()]);
-    setRefreshing(false);
+    try {
+      await Promise.all([refetchEpisodes(), refetchBriefs(), loadDownloads()]);
+    } catch (error) {
+      console.error("[LibraryScreen] Error refreshing:", error);
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetchEpisodes, refetchBriefs, loadDownloads]);
 
   useFocusEffect(

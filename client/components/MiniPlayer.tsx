@@ -42,7 +42,7 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
 
   if (!currentItem) return null;
 
-  const typeLabel = currentItem.type === "summary" ? "Summary" : "Full Episode";
+  const typeLabel = currentItem.type === "summary" ? "Summary" : "Episode";
 
   return (
     <Animated.View

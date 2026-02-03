@@ -103,6 +103,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const dbSyncInterval = useRef<NodeJS.Timeout | null>(null);
   const lastDbSyncPosition = useRef(0);
   const autoplayTriggeredForItem = useRef<string | null>(null);
+  const isAutoplayProcessing = useRef(false);
   const playRef = useRef<((item: AudioItem) => Promise<void>) | null>(null);
 
   const isPlaying = playbackState === "playing";
@@ -334,6 +335,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     // Need valid duration and position, and must be playing
     if (!currentItem || !isPlaying || duration <= 0) return;
     
+    // Guard against re-entry while processing
+    if (isAutoplayProcessing.current) return;
+    
     // Check if we've already triggered autoplay for this item
     const itemKey = `${currentItem.type}-${currentItem.id}`;
     if (autoplayTriggeredForItem.current === itemKey) return;
@@ -343,7 +347,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     
     if (isNearEnd) {
       console.log("[AudioPlayer] Playback finished, marking complete and playing next");
+      
+      // Set both guards immediately to prevent re-entry
       autoplayTriggeredForItem.current = itemKey;
+      isAutoplayProcessing.current = true;
+      
+      // Capture queue at this moment to avoid stale closures
+      const currentQueue = [...queue];
       
       // Mark current item as complete in database
       const markCompleteAndPlayNext = async () => {
@@ -372,23 +382,25 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           }
           
           // Play next item in queue if available
-          if (queue.length > 0) {
-            const nextItem = queue[0];
-            setQueue((prev) => prev.slice(1));
-            // Reset autoplay trigger for new item
-            autoplayTriggeredForItem.current = null;
-            // Small delay to ensure state updates properly
+          if (currentQueue.length > 0) {
+            const nextItem = currentQueue[0];
+            // Update queue state - remove first item only
+            setQueue(currentQueue.slice(1));
+            // Delay to ensure state is settled before playing next
             setTimeout(() => {
+              isAutoplayProcessing.current = false;
               if (playRef.current) {
                 playRef.current(nextItem);
               }
-            }, 100);
+            }, 300);
           } else {
             // No more items in queue - pause playback
+            isAutoplayProcessing.current = false;
             setPlaybackState("paused");
           }
         } catch (error) {
           console.error("[AudioPlayer] Error in autoplay completion:", error);
+          isAutoplayProcessing.current = false;
         }
       };
       
