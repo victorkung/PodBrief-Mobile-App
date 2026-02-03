@@ -105,9 +105,12 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
   if (!currentItem) return null;
 
   const typeLabel = currentItem.type === "summary" ? "Summary" : "Full Episode";
-  const progress = duration > 0 ? position / duration : 0;
+  // Use metadata duration for display (consistent), expo-audio duration for progress calculations
+  const metadataDuration = currentItem.duration > 0 ? currentItem.duration : duration;
+  const effectiveDuration = duration > 0 ? duration : metadataDuration;
+  const progress = effectiveDuration > 0 ? position / effectiveDuration : 0;
   const displayProgress = isSeeking ? seekValue : progress;
-  const displayPosition = isSeeking ? seekValue * duration : position;
+  const displayPosition = isSeeking ? seekValue * effectiveDuration : position;
 
   const handleSliderStart = () => {
     setIsSeeking(true);
@@ -119,7 +122,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
   };
 
   const handleSliderComplete = (value: number) => {
-    const newPosition = value * duration;
+    const newPosition = value * effectiveDuration;
     seekTo(newPosition);
     Haptics.selectionAsync();
     // Keep seeking state active briefly until player catches up
@@ -273,7 +276,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
                 {formatTime(displayPosition)}
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-                {formatTime(duration)}
+                {formatTime(metadataDuration)}
               </ThemedText>
             </View>
           </View>

@@ -34,7 +34,11 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
 
   const scale = useSharedValue(1);
 
-  const progress = duration > 0 ? (position / duration) * 100 : 0;
+  // Use metadata duration for consistent progress display, fallback to expo-audio duration
+  const effectiveDuration = currentItem?.duration && currentItem.duration > 0 
+    ? currentItem.duration 
+    : duration;
+  const progress = effectiveDuration > 0 ? (position / effectiveDuration) * 100 : 0;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
