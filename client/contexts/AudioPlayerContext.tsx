@@ -363,6 +363,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setPlaybackState("loading");
     
     try {
+      // Clear AsyncStorage progress so replay starts from beginning
+      const progressKey = getProgressKey(currentItem);
+      await AsyncStorage.removeItem(progressKey);
+      console.log("[AudioPlayer] Cleared AsyncStorage progress for:", progressKey);
+      
       // Mark current item as complete in database
       if (currentItem.type === "summary" && currentItem.userBriefId) {
         await supabase
@@ -399,13 +404,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           timestamp: Date.now(),
         };
         
-        // Small delay to ensure state is settled
-        setTimeout(() => {
-          isAutoplayProcessing.current = false;
+        // Small delay to ensure state is settled, then play next
+        // IMPORTANT: Keep isAutoplayProcessing = true until AFTER play completes
+        setTimeout(async () => {
           pendingAutoAdvanceRef.current = null;
           if (playRef.current) {
-            playRef.current(nextItem);
+            await playRef.current(nextItem);
           }
+          // Only reset after play has started (play resets guards in its own logic)
+          isAutoplayProcessing.current = false;
         }, 300);
       } else {
         // No more items in queue - mark as paused but keep currentItem so user can replay
@@ -419,10 +426,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       isAutoplayProcessing.current = false;
       setPlaybackState("idle");
     }
-  }, [currentItem, queue, queryClient]);
+  }, [currentItem, queue, queryClient, getProgressKey]);
 
   // Autoplay detection using didJustFinish from expo-audio status
   // This is more reliable than position-based checking (fires exactly once when track ends)
+  // CRITICAL: Only depend on didJustFinish and currentItem - NOT position/duration which change frequently
   useEffect(() => {
     // Check if audio just finished playing (expo-audio fires this exactly once)
     const didFinish = playerStatus.didJustFinish;
@@ -433,24 +441,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (didJustFinishHandled.current) return;
     didJustFinishHandled.current = true;
     
-    // Detailed logging to diagnose premature end detection
-    const progressRatio = duration > 0 ? position / duration : 0;
-    console.log("[AudioPlayer] didJustFinish fired!", {
-      position: Math.round(position / 1000),
-      duration: Math.round(duration / 1000),
-      progressRatio: (progressRatio * 100).toFixed(1) + "%",
-      isPlaying: playerStatus.playing,
-      currentTime: playerStatus.currentTime,
-      statusDuration: playerStatus.duration,
-    });
-    
-    // Guard against re-entry
+    // Guard against re-entry with item key
     const itemKey = `${currentItem.type}-${currentItem.id}`;
     if (autoplayTriggeredForItem.current === itemKey) return;
     autoplayTriggeredForItem.current = itemKey;
     
+    console.log("[AudioPlayer] didJustFinish fired for:", itemKey);
+    
     handleTrackEnded();
-  }, [playerStatus.didJustFinish, currentItem, handleTrackEnded, position, duration, playerStatus.playing, playerStatus.currentTime, playerStatus.duration]);
+  }, [playerStatus.didJustFinish, currentItem, handleTrackEnded]);
   
   // Reset didJustFinish handler when currentItem changes
   useEffect(() => {
