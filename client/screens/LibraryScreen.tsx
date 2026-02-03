@@ -22,7 +22,7 @@ import { useToast } from "@/contexts/ToastContext";
 
 const DOWNLOADS_KEY = "@podbrief_downloads";
 
-type FilterType = "unfinished" | "completed" | "all";
+type FilterType = "unfinished" | "completed";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -632,7 +632,7 @@ export default function LibraryScreen() {
       data = downloads;
     }
 
-    if (filter !== "all" && selectedTab !== "downloads") {
+    if (selectedTab !== "downloads") {
       data = data.filter((item) => {
         const isCompleted = selectedTab === "episodes"
           ? (item as SavedEpisode).is_completed
@@ -671,7 +671,6 @@ export default function LibraryScreen() {
   const filterLabels: Record<FilterType, string> = {
     unfinished: "Unfinished",
     completed: "Completed",
-    all: "All",
   };
 
   const renderEmptyState = () => {
@@ -984,7 +983,7 @@ export default function LibraryScreen() {
                 Filter Library By:
               </ThemedText>
             </View>
-            {(["unfinished", "completed", "all"] as FilterType[]).map((option) => (
+            {(["unfinished", "completed"] as FilterType[]).map((option) => (
               <Pressable
                 key={option}
                 style={[
