@@ -112,6 +112,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const playRef = useRef<((item: AudioItem) => Promise<void>) | null>(null);
   const pendingAutoAdvanceRef = useRef<PendingAutoAdvance | null>(null);
   const didJustFinishHandled = useRef(false);
+  const lastPositionForStallDetection = useRef(0);
+  const stallCount = useRef(0);
 
   const isPlaying = playbackState === "playing";
   const isLoading = playbackState === "loading";
@@ -406,11 +408,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           }
         }, 300);
       } else {
-        // No more items in queue - stop playback
-        console.log("[AudioPlayer] No more items in queue, stopping");
+        // No more items in queue - mark as paused but keep currentItem so user can replay
+        console.log("[AudioPlayer] No more items in queue, episode finished - keeping item for replay");
         isAutoplayProcessing.current = false;
-        setPlaybackState("idle");
-        setCurrentItem(null);
+        setPlaybackState("paused");
+        // Don't clear currentItem - user can still tap play to replay the episode
       }
     } catch (error) {
       console.error("[AudioPlayer] Error in autoplay completion:", error);
@@ -431,18 +433,76 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (didJustFinishHandled.current) return;
     didJustFinishHandled.current = true;
     
+    // Detailed logging to diagnose premature end detection
+    const progressRatio = duration > 0 ? position / duration : 0;
+    console.log("[AudioPlayer] didJustFinish fired!", {
+      position: Math.round(position / 1000),
+      duration: Math.round(duration / 1000),
+      progressRatio: (progressRatio * 100).toFixed(1) + "%",
+      isPlaying: playerStatus.playing,
+      currentTime: playerStatus.currentTime,
+      statusDuration: playerStatus.duration,
+    });
+    
     // Guard against re-entry
     const itemKey = `${currentItem.type}-${currentItem.id}`;
     if (autoplayTriggeredForItem.current === itemKey) return;
     autoplayTriggeredForItem.current = itemKey;
     
     handleTrackEnded();
-  }, [playerStatus.didJustFinish, currentItem, handleTrackEnded]);
+  }, [playerStatus.didJustFinish, currentItem, handleTrackEnded, position, duration, playerStatus.playing, playerStatus.currentTime, playerStatus.duration]);
   
   // Reset didJustFinish handler when currentItem changes
   useEffect(() => {
     didJustFinishHandled.current = false;
+    stallCount.current = 0;
+    lastPositionForStallDetection.current = 0;
   }, [currentItem?.id]);
+
+  // Stall detection - if audio stops advancing for 2+ seconds while "playing", something went wrong
+  // This catches cases where the stream interrupts but didJustFinish doesn't fire
+  useEffect(() => {
+    if (!isPlaying || !currentItem || duration <= 0) {
+      stallCount.current = 0;
+      return;
+    }
+
+    const progressRatio = position / duration;
+
+    // Only check for stalls when we're past 90% of the episode (near the end)
+    if (progressRatio < 0.90) {
+      stallCount.current = 0;
+      lastPositionForStallDetection.current = position;
+      return;
+    }
+
+    // If position hasn't changed, increment stall counter
+    if (position > 0 && position === lastPositionForStallDetection.current) {
+      stallCount.current += 1;
+      
+      // If stalled for 4+ consecutive status updates (~2 seconds), treat as stream ended
+      if (stallCount.current >= 4 && !didJustFinishHandled.current) {
+        console.log("[AudioPlayer] Stall detected near end of episode - stream may have ended", {
+          position: Math.round(position / 1000),
+          duration: Math.round(duration / 1000),
+          progressRatio: (progressRatio * 100).toFixed(1) + "%",
+          stallCount: stallCount.current,
+        });
+        
+        // Mark as handled so we don't double-trigger
+        didJustFinishHandled.current = true;
+        const itemKey = `${currentItem.type}-${currentItem.id}`;
+        if (autoplayTriggeredForItem.current !== itemKey) {
+          autoplayTriggeredForItem.current = itemKey;
+          handleTrackEnded();
+        }
+      }
+    } else {
+      stallCount.current = 0;
+    }
+
+    lastPositionForStallDetection.current = position;
+  }, [position, duration, isPlaying, currentItem, handleTrackEnded]);
 
   // AppState listener for background recovery
   // When app comes back from background, check if we had a pending autoplay
