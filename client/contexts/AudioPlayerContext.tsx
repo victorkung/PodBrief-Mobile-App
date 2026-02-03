@@ -558,6 +558,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const play = useCallback(
     async (item: AudioItem) => {
       try {
+        // IMPORTANT: Save current item's progress BEFORE switching to new item
+        // This ensures backward seeks (like seeking to beginning) are preserved
+        if (currentItem && currentItem.id !== item.id) {
+          await saveProgress(currentItem, position, playbackSpeed);
+          console.log("[AudioPlayer] Saved previous item progress before switching:", Math.round(position / 1000), "seconds");
+        }
+        
         setPlaybackState("loading");
         setCurrentItem(item);
         // Reset autoplay guards for new item
@@ -654,7 +661,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         setPlaybackState("error");
       }
     },
-    [player, loadSavedProgress, playbackSpeed]
+    [player, loadSavedProgress, playbackSpeed, currentItem, position, saveProgress]
   );
 
   // Keep playRef updated for autoplay effect
