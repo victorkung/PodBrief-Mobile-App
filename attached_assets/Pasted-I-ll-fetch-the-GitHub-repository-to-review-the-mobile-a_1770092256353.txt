@@ -1,0 +1,196 @@
+I'll fetch the GitHub repository to review the mobile app's audio player implementation.
+
+Let me fetch the raw code files directly from the repository:
+
+Let me check the actual structure of the repository:
+
+Found the audio files. Let me fetch the main AudioPlayerContext and any audio player components:
+
+Now let me review our web app's AudioPlayerContext for comparison:
+
+I've reviewed both implementations. Here's a detailed analysis for Replit:
+
+---
+
+## Mobile App Audio Player Review
+
+### Key Issues Found in Mobile Implementation
+
+#### 1. **Autoplay Detection Uses Position-Based Check (Brittle)**
+
+**Mobile (lines 342-426):**
+```typescript
+// Check if playback is near the end (within 1 second of duration)
+const isNearEnd = position >= duration - 1000 && position > 0;
+
+if (isNearEnd) {
+  // trigger autoplay...
+}
+```
+
+**Problem:** This runs inside a `useEffect` that fires on every `position` update. Position updates can be inconsistent - if the last update happens at `duration - 1500ms`, the autoplay might never trigger. 
+
+**Web approach (better):** We listen for the `ended` event directly on the audio element, which fires exactly once when playback finishes naturally.
+
+#### 2. **Missing Guard Against Stale Queue Reference**
+
+**Mobile (lines 367-368):**
+```typescript
+const currentQueue = [...queue]; // Capture at trigger moment
+// ... later uses currentQueue
+```
+
+While the queue is captured, the `play(nextItem)` call happens after `setState(queue.slice(1))` which can cause race conditions.
+
+**Web approach:** We capture `nextTrack = queueContext?.getNextTrack()` **BEFORE** any async operations, ensuring we have the reference regardless of queue refreshes.
+
+#### 3. **No Handling of Background App State Recovery**
+
+The mobile app doesn't handle the case where the user backgrounds the app during track end. On iOS, `expo-audio` may pause/suspend differently.
+
+**Web approach:** We store pending auto-advance with a timestamp and recover on visibility change:
+```typescript
+pendingAutoAdvanceRef.current = {
+  type: 'summary',
+  track: nextTrack,
+  timestamp: Date.now(),
+};
+// Later, on visibility change, check if < 10 minutes old and play
+```
+
+#### 4. **Audio Mode Configuration Timing**
+
+**Mobile (lines 447-453):**
+```typescript
+// Set audio mode before each play
+await setAudioModeAsync({
+  playsInSilentMode: true,
+  shouldPlayInBackground: true,
+  // ...
+});
+```
+
+This is correct, but it's called **inside** the `play` function. If there's an error before this runs, background audio may not work.
+
+**Recommendation:** Call `setAudioModeAsync` once on provider mount AND before each play for redundancy.
+
+#### 5. **Position/Duration as Milliseconds Inconsistency**
+
+**Mobile (lines 96-97):**
+```typescript
+const position = (playerStatus.currentTime || 0) * 1000;
+const duration = (playerStatus.duration || 0) * 1000;
+```
+
+The expo-audio returns seconds, which is converted to milliseconds. But `player.seekTo()` expects seconds (line 574):
+```typescript
+player.seekTo(positionMs / 1000);
+```
+
+This conversion back and forth can introduce floating-point precision issues.
+
+---
+
+## Recommended Fixes for Replit
+
+### Fix 1: Use `onPlaybackStatusUpdate` or audio events instead of useEffect position checking
+
+```typescript
+// Instead of useEffect watching position, use expo-audio's callback
+player.addListener('onPlaybackStatusUpdate', (status) => {
+  if (status.didJustFinish) {
+    // This is the proper "ended" event
+    handleTrackEnded();
+  }
+});
+```
+
+### Fix 2: Capture next track BEFORE any async operations
+
+```typescript
+const handleTrackEnded = async () => {
+  // IMMEDIATELY capture next track before any state changes
+  const nextItem = queue[0];
+  const remainingQueue = queue.slice(1);
+
+  // Set guards
+  isAutoplayProcessing.current = true;
+
+  // NOW do async database updates
+  await markAsCompleted();
+
+  // Update queue state
+  setQueue(remainingQueue);
+
+  // Play next (use captured reference)
+  if (nextItem) {
+    await play(nextItem);
+  }
+
+  isAutoplayProcessing.current = false;
+};
+```
+
+### Fix 3: Add AppState listener for background recovery
+
+```typescript
+import { AppState } from 'react-native';
+
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', (nextState) => {
+    if (nextState === 'active' && pendingAutoAdvanceRef.current) {
+      const pending = pendingAutoAdvanceRef.current;
+      const ageMinutes = (Date.now() - pending.timestamp) / 60000;
+
+      if (ageMinutes < 10) {
+        playRef.current?.(pending.track);
+      }
+      pendingAutoAdvanceRef.current = null;
+    }
+  });
+
+  return () => subscription.remove();
+}, []);
+```
+
+### Fix 4: Robust ended detection
+
+```typescript
+// Add this ref to track if we've handled the end
+const endedHandledRef = useRef(false);
+
+// In the status update listener or useEffect:
+useEffect(() => {
+  if (duration <= 0 || !currentItem) return;
+
+  // Check for completion (with buffer for timing variance)
+  const completionThreshold = duration - 500; // 500ms before end
+
+  if (position >= completionThreshold && !endedHandledRef.current) {
+    endedHandledRef.current = true;
+    handleTrackEnded();
+  }
+}, [position, duration]);
+
+// Reset the flag when currentItem changes
+useEffect(() => {
+  endedHandledRef.current = false;
+}, [currentItem?.id]);
+```
+
+---
+
+## Summary of Web vs Mobile Patterns
+
+| Pattern | Web App | Mobile App |
+|---------|---------|------------|
+| End detection | `audio.addEventListener('ended')` | `useEffect` watching position |
+| Next track capture | Before ANY async ops | After pause, before async |
+| Background handling | `pendingAutoAdvanceRef` + visibility listener | None |
+| Guard flags | `isAutoAdvancingRef` | `autoplayTriggeredForItem` + `isAutoplayProcessing` |
+| Queue state | External QueueContext | Internal state |
+
+The web app's `ended` event approach is more reliable because the browser guarantees this event fires exactly once when audio completes naturally.
+
+Share analysis with Replit
+Document audio player patterns
