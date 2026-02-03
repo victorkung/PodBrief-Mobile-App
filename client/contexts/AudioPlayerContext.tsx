@@ -589,21 +589,32 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         
         await player.replace({ uri: audioUrl });
 
+        // AsyncStorage is source of truth for local device - use it if available
+        // Database progress is fallback for cross-device sync
         const savedProgress = await loadSavedProgress(item);
-        let startPosition = item.progress || 0;
+        let startPosition = 0;
         
-        if (savedProgress && savedProgress.currentTime > startPosition) {
+        if (savedProgress && savedProgress.currentTime > 0) {
+          // Use AsyncStorage progress directly (local source of truth)
           startPosition = savedProgress.currentTime;
+          console.log("[AudioPlayer] Using AsyncStorage progress:", Math.round(startPosition / 1000), "seconds");
           if (savedProgress.speed !== playbackSpeed) {
             setPlaybackSpeedState(savedProgress.speed);
             player.setPlaybackRate(savedProgress.speed);
           }
+        } else if (item.progress && item.progress > 0) {
+          // Fallback to database progress for cross-device sync
+          startPosition = item.progress;
+          console.log("[AudioPlayer] Using database progress:", Math.round(startPosition / 1000), "seconds");
         }
 
         if (startPosition > 0) {
           player.seekTo(startPosition / 1000);
           lastPositionForAccumulation.current = startPosition;
         }
+        
+        // Initialize lastSavedPosition to current start position
+        lastSavedPosition.current = startPosition;
 
         player.setPlaybackRate(playbackSpeed);
         
@@ -679,8 +690,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const seekTo = useCallback(
     (positionMs: number) => {
       player.seekTo(positionMs / 1000);
+      // Save progress immediately on seek so backward seeks are captured
+      if (currentItem) {
+        saveProgress(currentItem, positionMs, playbackSpeed);
+        lastSavedPosition.current = positionMs;
+      }
     },
-    [player]
+    [player, currentItem, playbackSpeed, saveProgress]
   );
 
   const skipForward = useCallback(() => {
