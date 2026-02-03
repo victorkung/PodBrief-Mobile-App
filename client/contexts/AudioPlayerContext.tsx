@@ -286,7 +286,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       saveProgressInterval.current = setInterval(() => {
         if (currentItem && player.currentTime !== undefined) {
           const currentTimeMs = player.currentTime * 1000;
-          if (Math.abs(currentTimeMs - lastSavedPosition.current) > 5000) {
+          // Only save if we've moved forward by at least 5 seconds and current position is at least 5 seconds
+          if (currentTimeMs >= 5000 && Math.abs(currentTimeMs - lastSavedPosition.current) > 5000) {
             saveProgress(currentItem, currentTimeMs, playbackSpeed);
           }
         }
@@ -296,8 +297,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         if (currentItem && player.currentTime !== undefined && player.duration !== undefined) {
           const currentTimeMs = player.currentTime * 1000;
           const durationMs = player.duration * 1000;
-          if (Math.abs(currentTimeMs - lastDbSyncPosition.current) > 5000) {
+          // Only sync if we've moved forward by at least 5 seconds from last sync
+          // and current position is at least 5 seconds (to avoid early saves during load)
+          if (currentTimeMs >= 5000 && Math.abs(currentTimeMs - lastDbSyncPosition.current) > 5000) {
             syncProgressToDatabase(currentItem, currentTimeMs, durationMs);
+            lastDbSyncPosition.current = currentTimeMs;
           }
         }
       }, DB_SYNC_INTERVAL_MS);
@@ -311,7 +315,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       if (dbSyncInterval.current) {
         clearInterval(dbSyncInterval.current);
       }
-      if (currentItem && position > 0) {
+      // Only save on pause if we've made meaningful progress (at least 5 seconds)
+      if (currentItem && position >= 5000) {
         saveProgress(currentItem, position, playbackSpeed);
         syncProgressToDatabase(currentItem, position, duration);
       }
@@ -444,7 +449,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           accumulatedListeningMs: 0,
         };
         lastPositionForAccumulation.current = item.progress || 0;
-        lastDbSyncPosition.current = 0;
+        lastDbSyncPosition.current = item.progress || 0;
+        lastSavedPosition.current = item.progress || 0;
 
         let audioUrl = item.audioUrl;
 
@@ -518,7 +524,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const pause = useCallback(() => {
     player.pause();
     setPlaybackState("paused");
-    if (currentItem) {
+    // Only save progress if we've made meaningful progress (at least 5 seconds)
+    if (currentItem && position >= 5000) {
       saveProgress(currentItem, position, playbackSpeed);
     }
   }, [player, currentItem, position, playbackSpeed, saveProgress]);
@@ -536,7 +543,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [player]);
 
   const stop = useCallback(() => {
-    if (currentItem) {
+    // Only save progress if we've made meaningful progress (at least 5 seconds)
+    if (currentItem && position >= 5000) {
       saveProgress(currentItem, position, playbackSpeed);
     }
     player.pause();
