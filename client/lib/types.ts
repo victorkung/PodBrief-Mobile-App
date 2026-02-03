@@ -120,7 +120,7 @@ export interface AudioItem {
   savedEpisodeId?: string;
 }
 
-export type TabType = "episodes" | "summaries" | "downloads";
+export type TabType = "episodes" | "summaries";
 export type ShowsTabType = "shows" | "newEpisodes";
 
 export interface Download {

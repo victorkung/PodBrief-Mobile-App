@@ -589,7 +589,6 @@ export default function LibraryScreen() {
   const segments = [
     { key: "episodes" as TabType, label: "Episodes" },
     { key: "summaries" as TabType, label: "Summaries" },
-    { key: "downloads" as TabType, label: "Downloads" },
   ];
 
   const isEpisodeDownloaded = (episode: SavedEpisode): boolean => {
@@ -626,20 +625,16 @@ export default function LibraryScreen() {
     
     if (selectedTab === "episodes") {
       data = savedEpisodes || [];
-    } else if (selectedTab === "summaries") {
-      data = userBriefs || [];
     } else {
-      data = downloads;
+      data = userBriefs || [];
     }
 
-    if (selectedTab !== "downloads") {
-      data = data.filter((item) => {
-        const isCompleted = selectedTab === "episodes"
-          ? (item as SavedEpisode).is_completed
-          : (item as UserBrief).is_completed;
-        return filter === "completed" ? isCompleted : !isCompleted;
-      });
-    }
+    data = data.filter((item) => {
+      const isCompleted = selectedTab === "episodes"
+        ? (item as SavedEpisode).is_completed
+        : (item as UserBrief).is_completed;
+      return filter === "completed" ? isCompleted : !isCompleted;
+    });
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
@@ -696,18 +691,17 @@ export default function LibraryScreen() {
       icon = "zap";
       title = "No Summaries Yet";
       subtitle = "Generate AI summaries from any podcast episode";
-    } else if (selectedTab === "downloads") {
-      icon = "download";
-      title = "No Downloads";
-      subtitle = "Download summaries and episodes to listen offline";
     }
 
-    if (filter === "completed" && selectedTab !== "downloads") {
+    if (filter === "completed") {
       title = `No Completed ${selectedTab === "episodes" ? "Episodes" : "Summaries"}`;
       subtitle = "Items you mark as complete will appear here";
-    } else if (filter === "unfinished" && selectedTab !== "downloads") {
+    } else if (filter === "unfinished") {
       title = `No Unfinished ${selectedTab === "episodes" ? "Episodes" : "Summaries"}`;
       subtitle = "Great job! You've finished everything";
+    } else if (filter === "downloaded") {
+      title = `No Downloaded ${selectedTab === "episodes" ? "Episodes" : "Summaries"}`;
+      subtitle = "Download items for offline listening";
     }
 
     return (
@@ -925,33 +919,22 @@ export default function LibraryScreen() {
                 ) : null}
               </View>
 
-              {selectedTab !== "downloads" ? (
-                <Pressable
-                  onPress={() => setFilterMenuVisible(true)}
-                  style={[
-                    styles.filterButton,
-                    {
-                      backgroundColor: theme.backgroundSecondary,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                >
-                  <ThemedText type="caption" style={{ color: theme.text }}>
-                    {filterLabels[filter]}
-                  </ThemedText>
-                  <Feather name="chevron-down" size={14} color={theme.textSecondary} />
-                </Pressable>
-              ) : null}
-            </View>
-
-            {selectedTab === "downloads" && downloads.length > 0 ? (
-              <View style={[styles.storageBar, { backgroundColor: theme.backgroundDefault }]}>
-                <Feather name="download-cloud" size={18} color={theme.gold} />
-                <ThemedText type="small" style={styles.storageText}>
-                  {formatFileSize(totalDownloadSize)} used
+              <Pressable
+                onPress={() => setFilterMenuVisible(true)}
+                style={[
+                  styles.filterButton,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <ThemedText type="caption" style={{ color: theme.text }}>
+                  {filterLabels[filter]}
                 </ThemedText>
-              </View>
-            ) : null}
+                <Feather name="chevron-down" size={14} color={theme.textSecondary} />
+              </Pressable>
+            </View>
           </View>
         }
         ListEmptyComponent={renderEmptyState}
