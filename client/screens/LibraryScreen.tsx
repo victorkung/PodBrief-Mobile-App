@@ -22,7 +22,7 @@ import { useToast } from "@/contexts/ToastContext";
 
 const DOWNLOADS_KEY = "@podbrief_downloads";
 
-type FilterType = "unfinished" | "completed";
+type FilterType = "unfinished" | "completed" | "downloaded";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -629,12 +629,22 @@ export default function LibraryScreen() {
       data = userBriefs || [];
     }
 
-    data = data.filter((item) => {
-      const isCompleted = selectedTab === "episodes"
-        ? (item as SavedEpisode).is_completed
-        : (item as UserBrief).is_completed;
-      return filter === "completed" ? isCompleted : !isCompleted;
-    });
+    if (filter === "downloaded") {
+      data = data.filter((item) => {
+        if (selectedTab === "episodes") {
+          return isEpisodeDownloaded(item as SavedEpisode);
+        } else {
+          return isBriefDownloaded(item as UserBrief);
+        }
+      });
+    } else {
+      data = data.filter((item) => {
+        const isCompleted = selectedTab === "episodes"
+          ? (item as SavedEpisode).is_completed
+          : (item as UserBrief).is_completed;
+        return filter === "completed" ? isCompleted : !isCompleted;
+      });
+    }
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
@@ -646,14 +656,10 @@ export default function LibraryScreen() {
           const ep = item as SavedEpisode;
           title = ep.episode_name || "";
           podcast = ep.podcast_name || "";
-        } else if (selectedTab === "summaries") {
+        } else {
           const br = item as UserBrief;
           title = br.master_brief?.episode_name || "";
           podcast = br.master_brief?.podcast_name || "";
-        } else {
-          const dl = item as Download;
-          title = dl.title || "";
-          podcast = dl.podcast || "";
         }
         
         return title.toLowerCase().includes(query) || podcast.toLowerCase().includes(query);
@@ -666,6 +672,7 @@ export default function LibraryScreen() {
   const filterLabels: Record<FilterType, string> = {
     unfinished: "Unfinished",
     completed: "Completed",
+    downloaded: "Downloaded",
   };
 
   const renderEmptyState = () => {
@@ -966,7 +973,7 @@ export default function LibraryScreen() {
                 Filter Library By:
               </ThemedText>
             </View>
-            {(["unfinished", "completed"] as FilterType[]).map((option) => (
+            {(["unfinished", "completed", "downloaded"] as FilterType[]).map((option) => (
               <Pressable
                 key={option}
                 style={[
