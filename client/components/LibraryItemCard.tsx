@@ -26,6 +26,7 @@ interface LibraryItemCardProps {
   brief?: UserBrief;
   download?: Download;
   isDownloaded?: boolean;
+  isOffline?: boolean;
   onPlay: () => void;
   onPause?: () => void;
   onNavigateToDetails?: () => void;
@@ -67,6 +68,7 @@ export function LibraryItemCard({
   brief,
   download,
   isDownloaded = false,
+  isOffline = false,
   onPlay,
   onPause,
   onNavigateToDetails,
@@ -83,6 +85,8 @@ export function LibraryItemCard({
 }: LibraryItemCardProps) {
   const { theme } = useTheme();
   const { isLoading: audioLoading, currentItem } = useAudioPlayerContext();
+  
+  const isDisabledOffline = isOffline && !isDownloaded;
   const [menuVisible, setMenuVisible] = useState(false);
 
   // Check if this specific item is loading
@@ -228,8 +232,12 @@ export function LibraryItemCard({
     (type === "download" && download?.type === "episode" && hasSummary);
 
   return (
-    <View style={[styles.card, { borderBottomColor: theme.border }]}>
-      <Pressable onPress={onNavigateToDetails || onPlay} style={styles.contentRow}>
+    <View style={[styles.card, { borderBottomColor: theme.border, opacity: isDisabledOffline ? 0.5 : 1 }]}>
+      <Pressable 
+        onPress={isDisabledOffline ? undefined : (onNavigateToDetails || onPlay)} 
+        style={styles.contentRow}
+        disabled={isDisabledOffline}
+      >
         <View style={[styles.artwork, { backgroundColor: theme.backgroundTertiary }]}>
           {artwork ? (
             <Image source={{ uri: artwork }} style={styles.artworkImage} contentFit="cover" />
@@ -321,11 +329,16 @@ export function LibraryItemCard({
 
         <Pressable
           onPress={isPlaying ? onPause : onPlay}
-          style={[styles.playButton, { backgroundColor: isPlaying ? theme.gold : theme.text }]}
-          disabled={isThisItemLoading}
+          style={[
+            styles.playButton, 
+            { backgroundColor: isDisabledOffline ? theme.textTertiary : (isPlaying ? theme.gold : theme.text) }
+          ]}
+          disabled={isThisItemLoading || isDisabledOffline}
         >
           {isThisItemLoading ? (
             <ActivityIndicator size="small" color={theme.backgroundRoot} />
+          ) : isDisabledOffline ? (
+            <Feather name="wifi-off" size={16} color={theme.backgroundRoot} />
           ) : (
             <Feather name={isPlaying ? "pause" : "play"} size={18} color={theme.backgroundRoot} />
           )}

@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { SavedEpisode, UserBrief, TabType, AudioItem, Download } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useToast } from "@/contexts/ToastContext";
+import { useNetwork } from "@/contexts/NetworkContext";
 
 const DOWNLOADS_KEY = "@podbrief_downloads";
 
@@ -39,6 +40,7 @@ export default function LibraryScreen() {
   const { user, profile } = useAuth();
   const { play, playWithQueue, pause, resume, currentItem, isPlaying, isLoading } = useAudioPlayerContext();
   const { showToast } = useToast();
+  const { isOnline } = useNetwork();
 
   const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
   const [refreshing, setRefreshing] = useState(false);
@@ -753,6 +755,7 @@ export default function LibraryScreen() {
           type="episode"
           episode={episode}
           isDownloaded={isEpisodeDownloaded(episode)}
+          isOffline={!isOnline}
           isDownloading={downloadingIds.has(episode.id)}
           isRemoving={removingIds.has(episode.id)}
           hasSummary={hasSummaryForEpisode(episode)}
@@ -780,6 +783,7 @@ export default function LibraryScreen() {
           type="summary"
           brief={brief}
           isDownloaded={isBriefDownloaded(brief)}
+          isOffline={!isOnline}
           isDownloading={downloadingIds.has(brief.id)}
           isRemoving={removingIds.has(brief.id)}
           isPlaying={isBriefPlaying(brief)}
