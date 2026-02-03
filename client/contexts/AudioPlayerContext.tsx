@@ -574,9 +574,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       try {
         // IMPORTANT: Save current item's progress BEFORE switching to new item
         // This ensures backward seeks (like seeking to beginning) are preserved
+        // BUT: Don't re-save if the item just finished (position at/near end) - we already cleared it
         if (currentItem && currentItem.id !== item.id) {
-          await saveProgress(currentItem, position, playbackSpeed);
-          console.log("[AudioPlayer] Saved previous item progress before switching:", Math.round(position / 1000), "seconds");
+          const itemDuration = currentItem.duration || 0;
+          const isNearEnd = itemDuration > 0 && (itemDuration - position) <= 5000;
+          if (isNearEnd) {
+            console.log("[AudioPlayer] Skipping progress save - item just finished");
+          } else {
+            await saveProgress(currentItem, position, playbackSpeed);
+            console.log("[AudioPlayer] Saved previous item progress before switching:", Math.round(position / 1000), "seconds");
+          }
         }
         
         setPlaybackState("loading");
@@ -631,11 +638,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         
         if (savedProgress && savedProgress.currentTime > 0) {
           // Use AsyncStorage progress directly (local source of truth)
-          startPosition = savedProgress.currentTime;
-          console.log("[AudioPlayer] Using AsyncStorage progress:", Math.round(startPosition / 1000), "seconds");
-          if (savedProgress.speed !== playbackSpeed) {
-            setPlaybackSpeedState(savedProgress.speed);
-            player.setPlaybackRate(savedProgress.speed);
+          // BUT: If progress is very near the end (within 5 seconds), treat as finished and start from 0
+          const episodeDuration = item.duration || 0;
+          const isNearEnd = episodeDuration > 0 && (episodeDuration - savedProgress.currentTime) <= 5000;
+          if (isNearEnd) {
+            console.log("[AudioPlayer] AsyncStorage progress near end, starting from beginning");
+            startPosition = 0;
+          } else {
+            startPosition = savedProgress.currentTime;
+            console.log("[AudioPlayer] Using AsyncStorage progress:", Math.round(startPosition / 1000), "seconds");
+            if (savedProgress.speed !== playbackSpeed) {
+              setPlaybackSpeedState(savedProgress.speed);
+              player.setPlaybackRate(savedProgress.speed);
+            }
           }
         } else if (item.progress && item.progress > 0) {
           // Fallback to database progress for cross-device sync
