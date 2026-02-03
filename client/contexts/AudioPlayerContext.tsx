@@ -114,6 +114,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const completionTriggered = useRef(false);
   const lastPositionForStallDetection = useRef(0);
   const stallCount = useRef(0);
+  const trackLoadedAt = useRef<number>(0); // Timestamp when track started loading
 
   const isPlaying = playbackState === "playing";
   const isLoading = playbackState === "loading";
@@ -428,6 +429,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    // Guard: Don't trigger completion within first 3 seconds of loading a new track
+    // This prevents immediate re-triggering when replaying a finished episode
+    const timeSinceLoad = Date.now() - trackLoadedAt.current;
+    if (timeSinceLoad < 3000) {
+      return;
+    }
+    
     // Check if we've reached within 2 seconds of the end
     const timeRemaining = metadataDuration - position;
     const isNearEnd = timeRemaining <= 2000 && position > 0;
@@ -481,6 +489,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     // Guard: If position exceeds duration by more than 5 seconds, it's stale data from previous track
     if (position > metadataDuration + 5000) {
+      return;
+    }
+    
+    // Guard: Don't trigger completion within first 3 seconds of loading a new track
+    const timeSinceLoad = Date.now() - trackLoadedAt.current;
+    if (timeSinceLoad < 3000) {
       return;
     }
 
@@ -570,6 +584,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         // Reset autoplay guards for new item
         autoplayTriggeredForItem.current = null;
         completionTriggered.current = false;
+        trackLoadedAt.current = Date.now(); // Track when this item started loading
 
         // Set audio mode before each play to ensure silent mode works on iOS
         await setAudioModeAsync({
@@ -624,8 +639,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           }
         } else if (item.progress && item.progress > 0) {
           // Fallback to database progress for cross-device sync
-          startPosition = item.progress;
-          console.log("[AudioPlayer] Using database progress:", Math.round(startPosition / 1000), "seconds");
+          // BUT: If progress is very near the end (within 5 seconds), treat as finished and start from 0
+          const episodeDuration = item.duration || 0;
+          const isNearEnd = episodeDuration > 0 && (episodeDuration - item.progress) <= 5000;
+          if (isNearEnd) {
+            console.log("[AudioPlayer] Database progress near end, starting from beginning");
+            startPosition = 0;
+          } else {
+            startPosition = item.progress;
+            console.log("[AudioPlayer] Using database progress:", Math.round(startPosition / 1000), "seconds");
+          }
         }
 
         if (startPosition > 0) {
