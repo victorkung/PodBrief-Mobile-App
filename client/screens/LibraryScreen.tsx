@@ -171,7 +171,12 @@ export default function LibraryScreen() {
       };
       
       const currentIndex = allEpisodes.findIndex(e => e.id === episode.id);
-      const remainingEpisodes = allEpisodes.slice(currentIndex + 1);
+      let remainingEpisodes = allEpisodes.slice(currentIndex + 1);
+      
+      if (!isOnline) {
+        remainingEpisodes = remainingEpisodes.filter(ep => isEpisodeDownloaded(ep));
+      }
+      
       const queueItems: AudioItem[] = remainingEpisodes.map(ep => ({
         id: ep.taddy_episode_uuid,
         type: "episode" as const,
@@ -186,7 +191,7 @@ export default function LibraryScreen() {
       
       playWithQueue(audioItem, queueItems);
     },
-    [playWithQueue, resume, currentItem]
+    [playWithQueue, resume, currentItem, isOnline, isEpisodeDownloaded]
   );
 
   const handlePlayBrief = useCallback(
@@ -212,9 +217,14 @@ export default function LibraryScreen() {
       };
       
       const currentIndex = allBriefs.findIndex(b => b.id === brief.id);
-      const remainingBriefs = allBriefs.slice(currentIndex + 1).filter(
+      let remainingBriefs = allBriefs.slice(currentIndex + 1).filter(
         b => b.master_brief?.pipeline_status === "completed"
       );
+      
+      if (!isOnline) {
+        remainingBriefs = remainingBriefs.filter(b => isBriefDownloaded(b));
+      }
+      
       const queueItems: AudioItem[] = remainingBriefs.map(b => ({
         id: b.id,
         type: "summary" as const,
@@ -230,7 +240,7 @@ export default function LibraryScreen() {
       
       playWithQueue(audioItem, queueItems);
     },
-    [playWithQueue, resume, currentItem]
+    [playWithQueue, resume, currentItem, isOnline, isBriefDownloaded]
   );
 
   const handlePlayDownload = useCallback(
