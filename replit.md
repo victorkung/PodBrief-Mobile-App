@@ -13,7 +13,7 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 
 - **Framework**: Expo SDK 54 with React Native 0.81 (new architecture).
-- **Navigation**: React Navigation v7, featuring a root stack for auth/modals, a bottom tab navigator (Search, Shows, Library, Profile), and nested stack navigators. The Library screen includes inner tabs for Episodes, Summaries, and Downloads.
+- **Navigation**: React Navigation v7, featuring a root stack for auth/modals, a bottom tab navigator (Search, Shows, Library, Profile), and nested stack navigators. The Library screen includes inner tabs for Episodes and Summaries (Downloads removed - downloads are now an attribute, not a playlist).
 - **State Management**: React Query for server state and caching; React Context for authentication and audio player state.
 - **Styling**: Custom theme system with a premium editorial aesthetic, dark mode by default, and gold accent colors.
 - **Animation**: React Native Reanimated for performant UI animations.
@@ -91,3 +91,14 @@ Preferred communication style: Simple, everyday language.
   - Uses expo-audio player.addListener with 'as any' type assertion (API not fully typed yet)
   - Will function in production builds (TestFlight/App Store), may not work in Expo Go
   - Gracefully falls back if events not supported on current platform
+
+## Offline Mode
+
+- **Network Detection**: Uses `@react-native-community/netinfo` via `NetworkContext` to track connectivity status
+- **Library Filters**: Three filter options - Unfinished (default), Completed, and Downloaded
+- **Offline Behavior**:
+  - Non-downloaded items appear muted/disabled (50% opacity) when offline
+  - Play button shows wifi-off icon for unavailable items
+  - Playback queue only includes downloaded items when offline
+  - Downloaded items remain fully functional regardless of network status
+- **Downloads as Attributes**: Downloads are now treated as an attribute of episodes/summaries (Spotify model) rather than a separate playlist tab
