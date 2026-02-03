@@ -245,11 +245,6 @@ export function LibraryItemCard({
               <Feather name="zap" size={8} color={theme.buttonText} />
             </View>
           ) : null}
-          {completed ? (
-            <View style={[styles.completedBadge, { backgroundColor: theme.gold }]}>
-              <Feather name="check" size={8} color={theme.buttonText} />
-            </View>
-          ) : null}
         </View>
 
         <View style={styles.info}>
@@ -410,16 +405,6 @@ const styles = StyleSheet.create({
   summaryBadge: {
     position: "absolute",
     bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  completedBadge: {
-    position: "absolute",
-    top: 2,
     right: 2,
     width: 14,
     height: 14,
