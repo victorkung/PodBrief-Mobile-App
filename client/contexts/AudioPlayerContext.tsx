@@ -193,16 +193,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const syncProgressToDatabase = useCallback(async (item: AudioItem, progressMs: number, durationMs: number) => {
     try {
       const progressSeconds = Math.round(progressMs / 1000);
-      const durationSeconds = Math.round(durationMs / 1000);
-      const progressRatio = durationMs > 0 ? progressMs / durationMs : 0;
-      const isCompleted = progressRatio >= COMPLETION_THRESHOLD;
+      // Note: We no longer auto-set is_completed here
+      // Users must manually mark episodes/summaries as complete
 
       if (item.type === "summary" && item.userBriefId) {
         await supabase
           .from("user_briefs")
           .update({ 
             audio_progress_seconds: progressSeconds,
-            is_completed: isCompleted,
             updated_at: new Date().toISOString(),
           })
           .eq("id", item.userBriefId);
@@ -211,7 +209,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           .from("saved_episodes")
           .update({ 
             audio_progress_seconds: progressSeconds,
-            is_completed: isCompleted,
             updated_at: new Date().toISOString(),
           })
           .eq("id", item.savedEpisodeId);
