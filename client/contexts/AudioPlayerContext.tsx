@@ -352,8 +352,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (isAutoplayProcessing.current) return;
     isAutoplayProcessing.current = true;
     
-    const itemKey = `${currentItem.type}-${currentItem.id}`;
-    console.log("[AudioPlayer] Track ended, marking complete. Queue length:", queue.length);
+    console.log("[AudioPlayer] Track ended. Queue length:", queue.length);
     
     // IMMEDIATELY capture next track BEFORE any async operations (key fix from Lovable audit)
     const nextItem = queue.length > 0 ? queue[0] : null;
@@ -368,29 +367,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.removeItem(progressKey);
       console.log("[AudioPlayer] Cleared AsyncStorage progress for:", progressKey);
       
-      // Mark current item as complete in database
-      if (currentItem.type === "summary" && currentItem.userBriefId) {
-        await supabase
-          .from("user_briefs")
-          .update({ 
-            is_completed: true,
-            audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", currentItem.userBriefId);
-        queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
-      } else if (currentItem.type === "episode" && currentItem.savedEpisodeId) {
-        await supabase
-          .from("saved_episodes")
-          .update({ 
-            is_completed: true,
-            audio_progress_seconds: 0, // Reset to 0 so replay starts from beginning
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", currentItem.savedEpisodeId);
-        queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
-        queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
-      }
+      // Note: We no longer auto-mark items as complete here
+      // User must manually mark episodes/summaries as complete
       
       // Play next item using captured reference
       if (nextItem) {
@@ -426,7 +404,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       isAutoplayProcessing.current = false;
       setPlaybackState("idle");
     }
-  }, [currentItem, queue, queryClient, getProgressKey]);
+  }, [currentItem, queue, getProgressKey]);
 
   // Reset completion tracking when currentItem changes
   useEffect(() => {
