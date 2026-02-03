@@ -70,6 +70,8 @@ interface AudioPlayerContextType {
   removeFromQueue: (id: string) => void;
   clearQueue: () => void;
   playNext: () => void;
+  playPrevious: () => void;
+  history: AudioItem[];
   setExpanded: (expanded: boolean) => void;
 }
 
@@ -99,6 +101,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const duration = (playerStatus.duration || 0) * 1000;
   const [playbackSpeed, setPlaybackSpeedState] = useState(1);
   const [queue, setQueue] = useState<AudioItem[]>([]);
+  const [history, setHistory] = useState<AudioItem[]>([]);
   const [isExpanded, setExpanded] = useState(false);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   const saveProgressInterval = useRef<NodeJS.Timeout | null>(null);
@@ -250,6 +253,119 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     configureAudioMode();
   }, []);
 
+  // Remote command listeners for headphone/lock screen controls
+  // Note: These will work in production builds but may not function in Expo Go
+  // The event names may change as expo-audio evolves - using type assertion for future compatibility
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    
+    const subscriptions: Array<{ remove: () => void }> = [];
+    
+    // Store refs to current values for use in callbacks
+    const currentState = {
+      playbackState,
+      queue,
+      history,
+      currentItem,
+      position,
+    };
+    
+    try {
+      // Check if addListener exists and try to register remote commands
+      // Using 'as any' because these events may not be typed yet in current expo-audio version
+      const playerAny = player as any;
+      
+      if (typeof playerAny.addListener === "function") {
+        // Play command (single tap on AirPods when paused)
+        try {
+          const playSubscription = playerAny.addListener("remotePlay", () => {
+            console.log("[AudioPlayer] Remote play command received");
+            player.play();
+            setPlaybackState("playing");
+          });
+          if (playSubscription) subscriptions.push(playSubscription);
+        } catch (e) { /* Event not supported */ }
+        
+        // Pause command (single tap on AirPods when playing)
+        try {
+          const pauseSubscription = playerAny.addListener("remotePause", () => {
+            console.log("[AudioPlayer] Remote pause command received");
+            player.pause();
+            setPlaybackState("paused");
+          });
+          if (pauseSubscription) subscriptions.push(pauseSubscription);
+        } catch (e) { /* Event not supported */ }
+        
+        // Toggle play/pause (most common single tap behavior)
+        try {
+          const toggleSubscription = playerAny.addListener("remoteTogglePlayPause", () => {
+            console.log("[AudioPlayer] Remote toggle play/pause command received");
+            if (currentState.playbackState === "playing") {
+              player.pause();
+              setPlaybackState("paused");
+            } else {
+              player.play();
+              setPlaybackState("playing");
+            }
+          });
+          if (toggleSubscription) subscriptions.push(toggleSubscription);
+        } catch (e) { /* Event not supported */ }
+        
+        // Next track (double tap on AirPods)
+        try {
+          const nextSubscription = playerAny.addListener("remoteNextTrack", () => {
+            console.log("[AudioPlayer] Remote next track command received");
+            if (currentState.queue.length > 0 && playRef.current && currentState.currentItem) {
+              setHistory((prev) => [currentState.currentItem!, ...prev].slice(0, 50));
+              const nextItem = currentState.queue[0];
+              setQueue((prev) => prev.slice(1));
+              playRef.current(nextItem);
+            }
+          });
+          if (nextSubscription) subscriptions.push(nextSubscription);
+        } catch (e) { /* Event not supported */ }
+        
+        // Previous track (triple tap on AirPods)
+        try {
+          const prevSubscription = playerAny.addListener("remotePreviousTrack", () => {
+            console.log("[AudioPlayer] Remote previous track command received");
+            if (currentState.position > 3000) {
+              player.seekTo(0);
+            } else if (currentState.history.length > 0 && playRef.current) {
+              const previousItem = currentState.history[0];
+              if (currentState.currentItem) {
+                setQueue((prev) => [currentState.currentItem!, ...prev]);
+              }
+              setHistory((prev) => prev.slice(1));
+              playRef.current(previousItem);
+            } else {
+              player.seekTo(0);
+            }
+          });
+          if (prevSubscription) subscriptions.push(prevSubscription);
+        } catch (e) { /* Event not supported */ }
+        
+        if (subscriptions.length > 0) {
+          console.log("[AudioPlayer] Remote command listeners registered:", subscriptions.length);
+        }
+      } else {
+        console.log("[AudioPlayer] Remote command listeners not available (player.addListener not found)");
+      }
+    } catch (error) {
+      console.log("[AudioPlayer] Remote command listeners not available:", error);
+    }
+    
+    return () => {
+      subscriptions.forEach((sub) => {
+        try {
+          sub.remove();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      });
+    };
+  }, [player, playbackState, queue, history, currentItem, position]);
+
   useEffect(() => {
     if (isPlaying) {
       progressInterval.current = setInterval(() => {
@@ -371,6 +487,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       // Play next item using captured reference
       if (nextItem) {
         console.log("[AudioPlayer] Playing next item:", nextItem.title);
+        // Add current item to history before advancing
+        setHistory((prev) => [currentItem, ...prev].slice(0, 50));
         // Update queue state
         setQueue(remainingQueue);
         
@@ -794,11 +912,37 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const playNext = useCallback(() => {
     if (queue.length > 0) {
+      // Add current item to history before advancing
+      if (currentItem) {
+        setHistory((prev) => [currentItem, ...prev].slice(0, 50)); // Keep max 50 items in history
+      }
       const nextItem = queue[0];
       setQueue((prev) => prev.slice(1));
       play(nextItem);
     }
-  }, [queue, play]);
+  }, [queue, play, currentItem]);
+
+  const playPrevious = useCallback(() => {
+    // If we're past 3 seconds, just restart the current track
+    if (position > 3000) {
+      player.seekTo(0);
+      return;
+    }
+    
+    // If we have history, go back to previous track
+    if (history.length > 0) {
+      const previousItem = history[0];
+      // Add current item to front of queue so we can go forward again
+      if (currentItem) {
+        setQueue((prev) => [currentItem, ...prev]);
+      }
+      setHistory((prev) => prev.slice(1));
+      play(previousItem);
+    } else {
+      // No history, just restart current track
+      player.seekTo(0);
+    }
+  }, [position, history, currentItem, player, play]);
 
   const playWithQueue = useCallback(
     async (item: AudioItem, newQueue: AudioItem[]) => {
@@ -833,6 +977,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         removeFromQueue,
         clearQueue,
         playNext,
+        playPrevious,
+        history,
         setExpanded,
       }}
     >
