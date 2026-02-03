@@ -10,6 +10,7 @@ import React, {
 import { useAudioPlayer, useAudioPlayerStatus, AudioPlayer, setAudioModeAsync } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { AudioItem } from "@/lib/types";
 import { Platform } from "react-native";
@@ -85,6 +86,7 @@ function generateSessionId(): string {
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const player = useAudioPlayer("");
   const playerStatus = useAudioPlayerStatus(player);
+  const queryClient = useQueryClient();
   const [currentItem, setCurrentItem] = useState<AudioItem | null>(null);
   const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
   
@@ -100,6 +102,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const lastPositionForAccumulation = useRef(0);
   const dbSyncInterval = useRef<NodeJS.Timeout | null>(null);
   const lastDbSyncPosition = useRef(0);
+  const autoplayTriggeredForItem = useRef<string | null>(null);
+  const playRef = useRef<((item: AudioItem) => Promise<void>) | null>(null);
 
   const isPlaying = playbackState === "playing";
   const isLoading = playbackState === "loading";
@@ -325,6 +329,75 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [isPlaying, player, currentItem, playbackSpeed, position, duration, saveProgress, logEngagementEvent, syncProgressToDatabase]);
 
+  // Autoplay next item when current playback finishes
+  useEffect(() => {
+    // Need valid duration and position, and must be playing
+    if (!currentItem || !isPlaying || duration <= 0) return;
+    
+    // Check if we've already triggered autoplay for this item
+    const itemKey = `${currentItem.type}-${currentItem.id}`;
+    if (autoplayTriggeredForItem.current === itemKey) return;
+    
+    // Check if playback is near the end (within 1 second of duration)
+    const isNearEnd = position >= duration - 1000 && position > 0;
+    
+    if (isNearEnd) {
+      console.log("[AudioPlayer] Playback finished, marking complete and playing next");
+      autoplayTriggeredForItem.current = itemKey;
+      
+      // Mark current item as complete in database
+      const markCompleteAndPlayNext = async () => {
+        try {
+          if (currentItem.type === "summary" && currentItem.userBriefId) {
+            await supabase
+              .from("user_briefs")
+              .update({ 
+                is_completed: true,
+                audio_progress_seconds: Math.round(duration / 1000),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", currentItem.userBriefId);
+            queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+          } else if (currentItem.type === "episode" && currentItem.savedEpisodeId) {
+            await supabase
+              .from("saved_episodes")
+              .update({ 
+                is_completed: true,
+                audio_progress_seconds: Math.round(duration / 1000),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", currentItem.savedEpisodeId);
+            queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
+            queryClient.invalidateQueries({ queryKey: ["savedEpisodes", "uuidsOnly"] });
+          }
+          
+          // Play next item in queue if available
+          if (queue.length > 0) {
+            const nextItem = queue[0];
+            setQueue((prev) => prev.slice(1));
+            // Reset autoplay trigger for new item
+            autoplayTriggeredForItem.current = null;
+            // Small delay to ensure state updates properly
+            setTimeout(() => {
+              if (playRef.current) {
+                playRef.current(nextItem);
+              }
+            }, 100);
+          } else {
+            // No more items in queue - pause playback
+            setPlaybackState("paused");
+          }
+        } catch (error) {
+          console.error("[AudioPlayer] Error in autoplay completion:", error);
+        }
+      };
+      
+      markCompleteAndPlayNext();
+    }
+  // Note: play is intentionally not in deps to avoid recreation loop
+  // The ref-based guard prevents multiple triggers
+  }, [position, duration, isPlaying, currentItem, queue, queryClient]);
+
   const getSignedAudioUrl = async (masterBriefId: string): Promise<string> => {
     const { data, error } = await supabase.functions.invoke(
       "get-signed-audio-url",
@@ -341,6 +414,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       try {
         setPlaybackState("loading");
         setCurrentItem(item);
+        // Reset autoplay trigger for new item
+        autoplayTriggeredForItem.current = null;
 
         // Set audio mode before each play to ensure silent mode works on iOS
         await setAudioModeAsync({
@@ -422,6 +497,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     },
     [player, loadSavedProgress, playbackSpeed]
   );
+
+  // Keep playRef updated for autoplay effect
+  useEffect(() => {
+    playRef.current = play;
+  }, [play]);
 
   const pause = useCallback(() => {
     player.pause();
