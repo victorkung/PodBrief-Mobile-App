@@ -422,6 +422,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const metadataDuration = currentItem.duration;
     if (!metadataDuration || metadataDuration <= 0) return;
     
+    // Guard: If position exceeds duration by more than 5 seconds, it's stale data from previous track
+    // This prevents false triggering when auto-advancing between tracks of different lengths
+    if (position > metadataDuration + 5000) {
+      return;
+    }
+    
     // Check if we've reached within 2 seconds of the end
     const timeRemaining = metadataDuration - position;
     const isNearEnd = timeRemaining <= 2000 && position > 0;
@@ -472,6 +478,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     // Use metadata duration for progress calculation
     const metadataDuration = currentItem.duration;
     if (!metadataDuration || metadataDuration <= 0) return;
+
+    // Guard: If position exceeds duration by more than 5 seconds, it's stale data from previous track
+    if (position > metadataDuration + 5000) {
+      return;
+    }
 
     const progressRatio = position / metadataDuration;
 
