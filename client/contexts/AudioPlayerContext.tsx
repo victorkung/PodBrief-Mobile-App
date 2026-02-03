@@ -111,7 +111,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const isAutoplayProcessing = useRef(false);
   const playRef = useRef<((item: AudioItem) => Promise<void>) | null>(null);
   const pendingAutoAdvanceRef = useRef<PendingAutoAdvance | null>(null);
-  const didJustFinishHandled = useRef(false);
+  const completionTriggered = useRef(false);
   const lastPositionForStallDetection = useRef(0);
   const stallCount = useRef(0);
 
@@ -428,68 +428,90 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [currentItem, queue, queryClient, getProgressKey]);
 
-  // Autoplay detection using didJustFinish from expo-audio status
-  // This is more reliable than position-based checking (fires exactly once when track ends)
-  // CRITICAL: Only depend on didJustFinish and currentItem - NOT position/duration which change frequently
+  // Reset completion tracking when currentItem changes
   useEffect(() => {
-    // Check if audio just finished playing (expo-audio fires this exactly once)
-    const didFinish = playerStatus.didJustFinish;
-    
-    if (!currentItem || !didFinish) return;
-    
-    // Guard against re-handling the same finish event
-    if (didJustFinishHandled.current) return;
-    didJustFinishHandled.current = true;
-    
-    // Guard against re-entry with item key
-    const itemKey = `${currentItem.type}-${currentItem.id}`;
-    if (autoplayTriggeredForItem.current === itemKey) return;
-    autoplayTriggeredForItem.current = itemKey;
-    
-    console.log("[AudioPlayer] didJustFinish fired for:", itemKey);
-    
-    handleTrackEnded();
-  }, [playerStatus.didJustFinish, currentItem, handleTrackEnded]);
-  
-  // Reset didJustFinish handler when currentItem changes
-  useEffect(() => {
-    didJustFinishHandled.current = false;
+    completionTriggered.current = false;
     stallCount.current = 0;
     lastPositionForStallDetection.current = 0;
   }, [currentItem?.id]);
 
-  // Stall detection - if audio stops advancing for 2+ seconds while "playing", something went wrong
-  // This catches cases where the stream interrupts but didJustFinish doesn't fire
+  // Position-based completion detection using METADATA duration (100% reliable)
+  // This replaces didJustFinish which fires unreliably with streaming audio
   useEffect(() => {
-    if (!isPlaying || !currentItem || duration <= 0) {
-      stallCount.current = 0;
-      return;
-    }
-
-    const progressRatio = position / duration;
-
-    // Only check for stalls when we're past 90% of the episode (near the end)
-    if (progressRatio < 0.90) {
-      stallCount.current = 0;
+    if (!currentItem) return;
+    
+    // Use metadata duration (from episode_duration_seconds) as source of truth
+    const metadataDuration = currentItem.duration;
+    if (!metadataDuration || metadataDuration <= 0) return;
+    
+    // Check if we've reached within 2 seconds of the end
+    const timeRemaining = metadataDuration - position;
+    const isNearEnd = timeRemaining <= 2000 && position > 0;
+    
+    // Also check if playback has stopped (not playing and not loading)
+    const playbackStopped = !isPlaying && playbackState !== "loading";
+    
+    // Trigger completion when: near end AND (playback stopped OR position stalled)
+    if (isNearEnd && !completionTriggered.current) {
+      // Check for stall (position not advancing)
+      if (position === lastPositionForStallDetection.current) {
+        stallCount.current += 1;
+      } else {
+        stallCount.current = 0;
+      }
       lastPositionForStallDetection.current = position;
+      
+      // Complete if playback stopped OR stalled for 3+ updates (~1.5 seconds)
+      if (playbackStopped || stallCount.current >= 3) {
+        const itemKey = `${currentItem.type}-${currentItem.id}`;
+        if (autoplayTriggeredForItem.current !== itemKey) {
+          console.log("[AudioPlayer] Track completed (position-based detection)", {
+            position: Math.round(position / 1000),
+            metadataDuration: Math.round(metadataDuration / 1000),
+            timeRemaining: Math.round(timeRemaining / 1000),
+            playbackStopped,
+            stallCount: stallCount.current,
+          });
+          
+          completionTriggered.current = true;
+          autoplayTriggeredForItem.current = itemKey;
+          handleTrackEnded();
+        }
+      }
+    }
+  }, [position, isPlaying, playbackState, currentItem, handleTrackEnded]);
+
+  // Stall detection as backup - catches streams that stop before reaching metadata duration
+  // Uses metadata duration for accurate progress calculation
+  useEffect(() => {
+    if (!isPlaying || !currentItem) {
       return;
     }
 
-    // If position hasn't changed, increment stall counter
+    // Use metadata duration for progress calculation
+    const metadataDuration = currentItem.duration;
+    if (!metadataDuration || metadataDuration <= 0) return;
+
+    const progressRatio = position / metadataDuration;
+
+    // Only check for stalls when we're past 85% of the episode
+    if (progressRatio < 0.85) {
+      return;
+    }
+
+    // If position hasn't changed for 4+ consecutive checks (~2 seconds), treat as stream ended
     if (position > 0 && position === lastPositionForStallDetection.current) {
       stallCount.current += 1;
       
-      // If stalled for 4+ consecutive status updates (~2 seconds), treat as stream ended
-      if (stallCount.current >= 4 && !didJustFinishHandled.current) {
-        console.log("[AudioPlayer] Stall detected near end of episode - stream may have ended", {
+      if (stallCount.current >= 4 && !completionTriggered.current) {
+        console.log("[AudioPlayer] Stall detected near end - treating as completed", {
           position: Math.round(position / 1000),
-          duration: Math.round(duration / 1000),
+          metadataDuration: Math.round(metadataDuration / 1000),
           progressRatio: (progressRatio * 100).toFixed(1) + "%",
           stallCount: stallCount.current,
         });
         
-        // Mark as handled so we don't double-trigger
-        didJustFinishHandled.current = true;
+        completionTriggered.current = true;
         const itemKey = `${currentItem.type}-${currentItem.id}`;
         if (autoplayTriggeredForItem.current !== itemKey) {
           autoplayTriggeredForItem.current = itemKey;
@@ -498,10 +520,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
     } else {
       stallCount.current = 0;
+      lastPositionForStallDetection.current = position;
     }
-
-    lastPositionForStallDetection.current = position;
-  }, [position, duration, isPlaying, currentItem, handleTrackEnded]);
+  }, [position, isPlaying, currentItem, handleTrackEnded]);
 
   // AppState listener for background recovery
   // When app comes back from background, check if we had a pending autoplay
@@ -549,7 +570,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         setCurrentItem(item);
         // Reset autoplay guards for new item
         autoplayTriggeredForItem.current = null;
-        didJustFinishHandled.current = false;
+        completionTriggered.current = false;
 
         // Set audio mode before each play to ensure silent mode works on iOS
         await setAudioModeAsync({
