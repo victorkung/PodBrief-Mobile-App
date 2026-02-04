@@ -38,7 +38,9 @@ export function MiniPlayer({ onPress }: MiniPlayerProps) {
   const effectiveDuration = currentItem?.duration && currentItem.duration > 0 
     ? currentItem.duration 
     : duration;
-  const progress = effectiveDuration > 0 ? (position / effectiveDuration) * 100 : 0;
+  // Use item's saved progress as fallback when position is 0 but item has progress
+  const effectivePosition = position > 0 ? position : (currentItem?.progress || 0);
+  const progress = effectiveDuration > 0 ? (effectivePosition / effectiveDuration) * 100 : 0;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
