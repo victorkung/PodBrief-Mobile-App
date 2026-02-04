@@ -78,7 +78,9 @@ export default function ProfileScreen() {
 
   const handleManageSubscription = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
+      const { data, error } = await supabase.functions.invoke("customer-portal", {
+        body: { source: 'mobile' }
+      });
       if (error) throw error;
       await WebBrowser.openBrowserAsync(data.url);
       await refreshProfile();
