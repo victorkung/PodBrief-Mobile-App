@@ -6,7 +6,8 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { File, Directory, Paths } from "expo-file-system";
+import * as FileSystem from "expo-file-system";
+import { Paths, Directory, File } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -52,6 +53,7 @@ export default function LibraryScreen() {
   const [filterMenuVisible, setFilterMenuVisible] = useState(false);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+  const [downloadProgress, setDownloadProgress] = useState<Map<string, number>>(new Map());
 
   const loadDownloads = useCallback(async () => {
     try {
@@ -68,6 +70,14 @@ export default function LibraryScreen() {
       console.error("Error loading downloads:", error);
     }
   }, []);
+
+  const isEpisodeDownloaded = useCallback((episode: SavedEpisode): boolean => {
+    return downloadedIds.has(episode.id) || downloadedIds.has(episode.taddy_episode_uuid);
+  }, [downloadedIds]);
+
+  const isBriefDownloaded = useCallback((brief: UserBrief): boolean => {
+    return downloadedIds.has(brief.id) || downloadedIds.has(brief.master_brief_id);
+  }, [downloadedIds]);
 
   useEffect(() => {
     loadDownloads();
@@ -439,27 +449,38 @@ export default function LibraryScreen() {
       }
 
       setDownloadingIds((prev) => new Set(prev).add(episode.id));
+      setDownloadProgress((prev) => new Map(prev).set(episode.id, 0));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       try {
         const docDir = Paths.document;
-        const fileName = `episode_${episode.taddy_episode_uuid}.mp3`;
         const downloadDir = new Directory(docDir, "downloads");
-
         if (!downloadDir.exists) {
           downloadDir.create();
         }
 
+        const fileName = `episode_${episode.taddy_episode_uuid}.mp3`;
+        const fileUri = `${downloadDir.uri}/${fileName}`;
+
+        const downloadResumable = FileSystem.createDownloadResumable(
+          episode.episode_audio_url,
+          fileUri,
+          {},
+          (downloadProgress) => {
+            const progress = downloadProgress.totalBytesExpectedToWrite > 0
+              ? downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite
+              : 0;
+            setDownloadProgress((prev) => new Map(prev).set(episode.id, progress));
+          }
+        );
+
+        const result = await downloadResumable.downloadAsync();
+        if (!result || result.status !== 200) {
+          throw new Error("Download failed");
+        }
+
         const downloadedFile = new File(downloadDir, fileName);
-
-        const response = await fetch(episode.episode_audio_url);
-        if (!response.ok) throw new Error("Download failed");
-
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        downloadedFile.write(new Uint8Array(arrayBuffer));
-
-        const fileSize = blob.size || 0;
+        const fileSize = downloadedFile.size || 0;
 
         const downloadData: Download = {
           id: `episode-${episode.taddy_episode_uuid}`,
@@ -467,7 +488,7 @@ export default function LibraryScreen() {
           title: episode.episode_name,
           podcast: episode.podcast_name,
           artwork: episode.episode_thumbnail,
-          filePath: downloadedFile.uri,
+          filePath: fileUri,
           fileSize: fileSize,
           downloadedAt: new Date().toISOString(),
           sourceId: episode.id,
@@ -485,19 +506,24 @@ export default function LibraryScreen() {
         setTotalDownloadSize(updated.reduce((acc, d) => acc + d.fileSize, 0));
 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Downloaded", `"${episode.episode_name}" saved for offline listening.`);
+        showToast("Downloaded for offline listening", "success");
       } catch (error) {
         console.error("Download error:", error);
-        Alert.alert("Download Failed", "Unable to download this episode.");
+        Alert.alert("Download Failed", "Unable to download this episode. Please try again.");
       } finally {
         setDownloadingIds((prev) => {
           const next = new Set(prev);
           next.delete(episode.id);
           return next;
         });
+        setDownloadProgress((prev) => {
+          const next = new Map(prev);
+          next.delete(episode.id);
+          return next;
+        });
       }
     },
-    [downloads]
+    [downloads, showToast]
   );
 
   const handleDownloadBrief = useCallback(
@@ -508,6 +534,7 @@ export default function LibraryScreen() {
       }
 
       setDownloadingIds((prev) => new Set(prev).add(brief.id));
+      setDownloadProgress((prev) => new Map(prev).set(brief.id, 0));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       try {
@@ -520,23 +547,33 @@ export default function LibraryScreen() {
         }
 
         const docDir = Paths.document;
-        const fileName = `summary_${brief.master_brief_id}.mp3`;
         const downloadDir = new Directory(docDir, "downloads");
-
         if (!downloadDir.exists) {
           downloadDir.create();
         }
 
+        const fileName = `summary_${brief.master_brief_id}.mp3`;
+        const fileUri = `${downloadDir.uri}/${fileName}`;
+
+        const downloadResumable = FileSystem.createDownloadResumable(
+          signedData.signedUrl,
+          fileUri,
+          {},
+          (downloadProgress) => {
+            const progress = downloadProgress.totalBytesExpectedToWrite > 0
+              ? downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite
+              : 0;
+            setDownloadProgress((prev) => new Map(prev).set(brief.id, progress));
+          }
+        );
+
+        const result = await downloadResumable.downloadAsync();
+        if (!result || result.status !== 200) {
+          throw new Error("Download failed");
+        }
+
         const downloadedFile = new File(downloadDir, fileName);
-
-        const response = await fetch(signedData.signedUrl);
-        if (!response.ok) throw new Error("Download failed");
-
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        downloadedFile.write(new Uint8Array(arrayBuffer));
-
-        const fileSize = blob.size || 0;
+        const fileSize = downloadedFile.size || 0;
 
         const downloadData: Download = {
           id: `summary-${brief.master_brief_id}`,
@@ -544,12 +581,12 @@ export default function LibraryScreen() {
           title: brief.master_brief?.episode_name || "Summary",
           podcast: brief.master_brief?.podcast_name || "",
           artwork: brief.master_brief?.episode_thumbnail || null,
-          filePath: downloadedFile.uri,
+          filePath: fileUri,
           fileSize: fileSize,
           downloadedAt: new Date().toISOString(),
           sourceId: brief.id,
           episodeDurationSeconds: brief.master_brief?.audio_duration_seconds || undefined,
-          audioUrl: downloadedFile.uri,
+          audioUrl: fileUri,
           masterBriefId: brief.master_brief_id,
           slug: brief.slug,
         };
@@ -561,19 +598,24 @@ export default function LibraryScreen() {
         setTotalDownloadSize(updated.reduce((acc, d) => acc + d.fileSize, 0));
 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Downloaded", "Summary saved for offline listening.");
+        showToast("Summary downloaded for offline listening", "success");
       } catch (error) {
         console.error("Download error:", error);
-        Alert.alert("Download Failed", "Unable to download this summary.");
+        Alert.alert("Download Failed", "Unable to download this summary. Please try again.");
       } finally {
         setDownloadingIds((prev) => {
           const next = new Set(prev);
           next.delete(brief.id);
           return next;
         });
+        setDownloadProgress((prev) => {
+          const next = new Map(prev);
+          next.delete(brief.id);
+          return next;
+        });
       }
     },
-    [downloads]
+    [downloads, showToast]
   );
 
   const handleRemoveEpisodeDownload = useCallback(
@@ -602,14 +644,6 @@ export default function LibraryScreen() {
     { key: "episodes" as TabType, label: "Episodes" },
     { key: "summaries" as TabType, label: "Summaries" },
   ];
-
-  const isEpisodeDownloaded = (episode: SavedEpisode): boolean => {
-    return downloadedIds.has(episode.id) || downloadedIds.has(episode.taddy_episode_uuid);
-  };
-
-  const isBriefDownloaded = (brief: UserBrief): boolean => {
-    return downloadedIds.has(brief.id) || downloadedIds.has(brief.master_brief_id);
-  };
 
   const summarizedEpisodeIds = useMemo(() => {
     const ids = new Set<string>();
