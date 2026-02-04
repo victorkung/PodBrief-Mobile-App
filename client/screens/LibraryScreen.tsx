@@ -801,6 +801,7 @@ export default function LibraryScreen() {
           isDownloaded={isEpisodeDownloaded(episode)}
           isOffline={!isOnline}
           isDownloading={downloadingIds.has(episode.id)}
+          downloadProgress={downloadProgress.get(episode.id) || 0}
           isRemoving={removingIds.has(episode.id)}
           hasSummary={hasSummaryForEpisode(episode)}
           isPlaying={isEpisodePlaying(episode)}
@@ -829,6 +830,7 @@ export default function LibraryScreen() {
           isDownloaded={isBriefDownloaded(brief)}
           isOffline={!isOnline}
           isDownloading={downloadingIds.has(brief.id)}
+          downloadProgress={downloadProgress.get(brief.id) || 0}
           isRemoving={removingIds.has(brief.id)}
           isPlaying={isBriefPlaying(brief)}
           onPlay={() => handlePlayBrief(brief, briefsList)}

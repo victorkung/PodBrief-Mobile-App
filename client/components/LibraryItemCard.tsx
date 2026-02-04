@@ -13,6 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "./ThemedText";
+import { CircularProgress } from "./CircularProgress";
 import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -37,6 +38,7 @@ interface LibraryItemCardProps {
   onSummarize?: () => void;
   isComplete?: boolean;
   isDownloading?: boolean;
+  downloadProgress?: number;
   isRemoving?: boolean;
   hasSummary?: boolean;
   isPlaying?: boolean;
@@ -79,6 +81,7 @@ export function LibraryItemCard({
   onSummarize,
   isComplete = false,
   isDownloading = false,
+  downloadProgress = 0,
   isRemoving = false,
   hasSummary = false,
   isPlaying = false,
@@ -307,11 +310,23 @@ export function LibraryItemCard({
               style={styles.actionButton}
               disabled={isDownloading}
             >
-              <Feather
-                name={isDownloaded ? "check-circle" : "download"}
-                size={20}
-                color={isDownloaded ? theme.gold : theme.textSecondary}
-              />
+              {isDownloading ? (
+                <CircularProgress
+                  size={24}
+                  strokeWidth={2}
+                  progress={downloadProgress}
+                  trackColor={theme.border}
+                  progressColor={theme.gold}
+                >
+                  <Feather name="download" size={12} color={theme.gold} />
+                </CircularProgress>
+              ) : (
+                <Feather
+                  name={isDownloaded ? "check-circle" : "download"}
+                  size={20}
+                  color={isDownloaded ? theme.gold : theme.textSecondary}
+                />
+              )}
             </Pressable>
           ) : null}
 
