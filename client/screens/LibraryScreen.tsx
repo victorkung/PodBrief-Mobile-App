@@ -6,8 +6,8 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
 import { Paths, Directory, File } from "expo-file-system";
+import { createDownloadResumable } from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -467,7 +467,7 @@ export default function LibraryScreen() {
         const fileName = `episode_${episode.taddy_episode_uuid}.mp3`;
         const fileUri = `${downloadDir.uri}/${fileName}`;
 
-        const downloadResumable = FileSystem.createDownloadResumable(
+        const downloadResumable = createDownloadResumable(
           episode.episode_audio_url,
           fileUri,
           {},
@@ -565,7 +565,7 @@ export default function LibraryScreen() {
         const fileName = `summary_${brief.master_brief_id}.mp3`;
         const fileUri = `${downloadDir.uri}/${fileName}`;
 
-        const downloadResumable = FileSystem.createDownloadResumable(
+        const downloadResumable = createDownloadResumable(
           signedData.signedUrl,
           fileUri,
           {},

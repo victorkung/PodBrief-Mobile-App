@@ -8,6 +8,7 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Paths, File, Directory } from "expo-file-system";
+import { createDownloadResumable } from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 
@@ -309,18 +310,22 @@ export default function EpisodeDetailScreen() {
         downloadDir.create();
       }
 
-      const downloadedFile = new File(downloadDir, fileName);
-      
-      const response = await fetch(audioUrl);
-      if (!response.ok) {
+      const fileUri = `${downloadDir.uri}/${fileName}`;
+
+      const downloadResumable = createDownloadResumable(
+        audioUrl,
+        fileUri,
+        {},
+        undefined
+      );
+
+      const result = await downloadResumable.downloadAsync();
+      if (!result || result.status !== 200) {
         throw new Error("Download failed");
       }
-      
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      downloadedFile.write(new Uint8Array(arrayBuffer));
 
-      const fileSize = blob.size || 0;
+      const downloadedFile = new File(downloadDir, fileName);
+      const fileSize = downloadedFile.size || 0;
 
       const downloadData = {
         id: `episode-${uuid}`,
