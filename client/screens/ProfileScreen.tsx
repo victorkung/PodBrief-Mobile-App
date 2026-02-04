@@ -64,7 +64,9 @@ export default function ProfileScreen() {
 
   const handleUpgrade = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout");
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { source: 'mobile' }
+      });
       if (error) throw error;
       await WebBrowser.openBrowserAsync(data.url);
       await refreshProfile();
@@ -95,7 +97,9 @@ export default function ProfileScreen() {
       return;
     }
     try {
-      const { data, error } = await supabase.functions.invoke("create-credit-refill");
+      const { data, error } = await supabase.functions.invoke("create-credit-refill", {
+        body: { source: 'mobile' }
+      });
       if (error) throw error;
       await WebBrowser.openBrowserAsync(data.url);
       await refreshProfile();
