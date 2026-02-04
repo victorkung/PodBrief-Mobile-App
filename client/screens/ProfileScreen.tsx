@@ -1,11 +1,12 @@
-import React, { useCallback } from "react";
-import { View, StyleSheet, Pressable, Alert, Linking, Platform } from "react-native";
+import React, { useCallback, useState } from "react";
+import { View, StyleSheet, Pressable, Alert, Linking, Platform, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
+import Constants from "expo-constants";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -16,6 +17,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
+const LANGUAGES = [
+  { code: "en", name: "English" },
+  { code: "es", name: "Spanish" },
+  { code: "fr", name: "French" },
+  { code: "de", name: "German" },
+  { code: "pt", name: "Portuguese" },
+  { code: "it", name: "Italian" },
+  { code: "zh", name: "Chinese" },
+  { code: "ja", name: "Japanese" },
+  { code: "ko", name: "Korean" },
+];
+
 export default function ProfileScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -23,8 +36,31 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, profile, signOut, refreshProfile } = useAuth();
 
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+
   const isPro = profile?.plan === "pro";
   const credits = profile?.credits || 0;
+  const appVersion = Constants.expoConfig?.version || "1.0.0";
+
+  const currentLanguage = LANGUAGES.find(
+    (lang) => lang.code === profile?.preferred_language
+  ) || LANGUAGES[0];
+
+  const handleSelectLanguage = useCallback(async (langCode: string) => {
+    setLanguageModalVisible(false);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ preferred_language: langCode })
+        .eq("id", user?.id);
+      if (error) throw error;
+      await refreshProfile();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error("Error updating language:", error);
+      Alert.alert("Error", "Unable to update language. Please try again.");
+    }
+  }, [user?.id, refreshProfile]);
 
   const handleUpgrade = useCallback(async () => {
     try {
@@ -83,29 +119,6 @@ export default function ProfileScreen() {
     ]);
   }, [signOut]);
 
-  const handleDeleteAccount = useCallback(() => {
-    Alert.alert(
-      "Delete Account",
-      "This action is permanent and cannot be undone. All your data will be deleted.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const { error } = await supabase.functions.invoke("delete-user");
-              if (error) throw error;
-              await signOut();
-            } catch (error) {
-              console.error("Error deleting account:", error);
-              Alert.alert("Error", "Unable to delete account. Please try again.");
-            }
-          },
-        },
-      ]
-    );
-  }, [signOut]);
 
   const SettingsRow = ({
     icon,
@@ -230,22 +243,17 @@ export default function ProfileScreen() {
         <SettingsRow
           icon="globe"
           label="Language"
-          value={profile?.preferred_language?.toUpperCase() || "EN"}
+          value={currentLanguage.name}
+          onPress={() => setLanguageModalVisible(true)}
         />
         <SettingsRow icon="log-out" label="Sign Out" onPress={handleSignOut} />
-        <SettingsRow
-          icon="trash-2"
-          label="Delete Account"
-          onPress={handleDeleteAccount}
-          danger
-        />
       </Card>
 
       <Card style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
         <ThemedText type="h4" style={styles.sectionTitle}>
           About
         </ThemedText>
-        <SettingsRow icon="info" label="Version" value="1.0.0" />
+        <SettingsRow icon="info" label="Version" value={appVersion} />
         <SettingsRow
           icon="file-text"
           label="Terms of Service"
@@ -257,6 +265,49 @@ export default function ProfileScreen() {
           onPress={() => Linking.openURL("https://podbrief.io/privacy")}
         />
       </Card>
+
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <View style={[styles.modalContainer, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Select Language
+            </ThemedText>
+            {LANGUAGES.map((lang) => (
+              <Pressable
+                key={lang.code}
+                style={[
+                  styles.languageOption,
+                  currentLanguage.code === lang.code && { backgroundColor: theme.backgroundTertiary }
+                ]}
+                onPress={() => handleSelectLanguage(lang.code)}
+              >
+                <ThemedText type="body" style={{ color: theme.text }}>
+                  {lang.name}
+                </ThemedText>
+                {currentLanguage.code === lang.code ? (
+                  <Feather name="check" size={20} color={theme.gold} />
+                ) : null}
+              </Pressable>
+            ))}
+            <Pressable
+              style={[styles.cancelButton, { borderTopColor: theme.border }]}
+              onPress={() => setLanguageModalVisible(false)}
+            >
+              <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                Cancel
+              </ThemedText>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAwareScrollViewCompat>
   );
 }
@@ -321,5 +372,36 @@ const styles = StyleSheet.create({
   },
   upgradeContainer: {
     marginTop: Spacing.md,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContainer: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+  },
+  modalTitle: {
+    marginBottom: Spacing.lg,
+    textAlign: "center",
+  },
+  languageOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  cancelButton: {
+    alignItems: "center",
+    paddingTop: Spacing.lg,
+    marginTop: Spacing.md,
+    borderTopWidth: 1,
   },
 });
