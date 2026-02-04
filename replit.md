@@ -102,3 +102,10 @@ Preferred communication style: Simple, everyday language.
   - Playback queue only includes downloaded items when offline
   - Downloaded items remain fully functional regardless of network status
 - **Downloads as Attributes**: Downloads are now treated as an attribute of episodes/summaries (Spotify model) rather than a separate playlist tab
+- **Download Progress UI**:
+  - Uses `CircularProgress` component (react-native-svg) to show download progress ring during download
+  - Download icon shows Spotify-style circular progress ring with gold/yellow color during download
+  - Completed downloads show yellow/gold check-circle icon
+  - Uses `FileSystem.createDownloadResumable` with progress callback for real-time progress tracking
+  - Progress state stored per item ID in Map for independent tracking
+  - Web platform shows alert that downloads are only available in mobile app (expo-file-system native-only feature)
