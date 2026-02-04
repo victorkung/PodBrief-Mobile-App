@@ -728,7 +728,26 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
         let audioUrl = item.audioUrl;
 
-        if (item.type === "summary" && item.masterBriefId) {
+        // Check if content is downloaded and use local file path for offline playback
+        try {
+          const existingDownloads = await AsyncStorage.getItem("@podbrief_downloads");
+          if (existingDownloads) {
+            const downloads = JSON.parse(existingDownloads);
+            const downloadId = item.type === "episode" 
+              ? `episode-${item.id}` 
+              : `summary-${item.masterBriefId}`;
+            const download = downloads.find((d: any) => d.id === downloadId);
+            if (download && download.filePath) {
+              console.log("[AudioPlayer] Found downloaded content, using local file:", download.filePath);
+              audioUrl = download.filePath;
+            }
+          }
+        } catch (e) {
+          console.error("[AudioPlayer] Error checking downloads:", e);
+        }
+
+        // Only fetch signed URL for summaries if not using local file
+        if (item.type === "summary" && item.masterBriefId && !audioUrl.startsWith("file://")) {
           try {
             audioUrl = await getSignedAudioUrl(item.masterBriefId);
           } catch (e) {

@@ -320,12 +320,12 @@ export function LibraryItemCard({
                 >
                   <Feather name="download" size={12} color={theme.gold} />
                 </CircularProgress>
+              ) : isDownloaded ? (
+                <View style={[styles.completedCircle, { backgroundColor: theme.gold }]}>
+                  <Feather name="download" size={14} color={theme.buttonText} />
+                </View>
               ) : (
-                <Feather
-                  name={isDownloaded ? "check-circle" : "download"}
-                  size={20}
-                  color={isDownloaded ? theme.gold : theme.textSecondary}
-                />
+                <Feather name="download" size={20} color={theme.textSecondary} />
               )}
             </Pressable>
           ) : null}
