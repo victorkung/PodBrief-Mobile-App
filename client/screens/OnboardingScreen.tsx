@@ -54,8 +54,8 @@ const SLIDES: SlideData[] = [
   {
     id: "welcome",
     icon: "headphones",
-    title: "Listen to Podcasts.",
-    titleHighlight: "Or Their Summaries.",
+    title: "Listen to Podcasts",
+    titleHighlight: "or AI-Narrated Summaries",
     subtitle:
       "PodBrief is an intuitive podcast player that allows you to listen to full episodes or AI-narrated summaries of any podcast.",
     features: [
