@@ -443,6 +443,11 @@ export default function LibraryScreen() {
 
   const handleDownloadEpisode = useCallback(
     async (episode: SavedEpisode) => {
+      if (Platform.OS === "web") {
+        Alert.alert("Downloads Unavailable", "Downloads are only available in the mobile app. Open PodBrief in Expo Go to download episodes for offline listening.");
+        return;
+      }
+
       if (!episode.episode_audio_url) {
         Alert.alert("Error", "No audio available to download");
         return;
@@ -528,6 +533,11 @@ export default function LibraryScreen() {
 
   const handleDownloadBrief = useCallback(
     async (brief: UserBrief) => {
+      if (Platform.OS === "web") {
+        Alert.alert("Downloads Unavailable", "Downloads are only available in the mobile app. Open PodBrief in Expo Go to download summaries for offline listening.");
+        return;
+      }
+
       if (!brief.master_brief_id) {
         Alert.alert("Error", "No audio available to download");
         return;

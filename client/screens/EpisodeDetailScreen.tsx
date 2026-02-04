@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useRef, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Share, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Share, Alert, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -287,6 +287,11 @@ export default function EpisodeDetailScreen() {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = useCallback(async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Downloads Unavailable", "Downloads are only available in the mobile app. Open PodBrief in Expo Go to download episodes for offline listening.");
+      return;
+    }
+
     if (!audioUrl) {
       Alert.alert("Error", "No audio available to download");
       return;
