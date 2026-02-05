@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -7,6 +7,7 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -16,26 +17,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { TaddyEpisode, TaddyPodcast } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { formatDuration, formatDateLong } from "@/lib/utils";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
-}
-
-function formatDate(timestamp: number): string {
-  const d = new Date(timestamp);
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+const SKIP_GENERATE_CONFIRMATION_KEY = "@podbrief_skip_generate_confirmation";
 
 export default function GenerateBriefScreen() {
   const { theme } = useTheme();
@@ -55,6 +41,8 @@ export default function GenerateBriefScreen() {
 
   const credits = profile?.credits || 0;
   const isPro = profile?.plan === "pro";
+
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -105,14 +93,14 @@ export default function GenerateBriefScreen() {
       // Show appropriate message based on status
       const statusMessages: Record<string, string> = {
         processing: "Your AI summary is being generated. It will be ready in about 1-2 minutes.",
-        exists: "You already have this brief in your library!",
-        restored: "Brief restored to your library!",
-        linked: "Brief added to your library!",
+        exists: "You already have this summary in your library!",
+        restored: "Summary restored to your library!",
+        linked: "Summary added to your library!",
       };
       
       Alert.alert(
-        isNewGeneration ? "Brief Generation Started" : "Brief Found",
-        statusMessages[data.status] || "Brief is ready!",
+        isNewGeneration ? "Summary Generation Started" : "Summary Found",
+        statusMessages[data.status] || "Summary is ready!",
         [
           {
             text: "Go to Library",
@@ -143,12 +131,12 @@ export default function GenerateBriefScreen() {
       
       Alert.alert(
         "Generation Failed",
-        error.message || "Unable to generate brief. Please try again."
+        error.message || "Unable to generate summary. Please try again."
       );
     },
   });
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     if (!isPro && credits <= 0) {
       Alert.alert(
         "No Credits",
@@ -174,29 +162,28 @@ export default function GenerateBriefScreen() {
       return;
     }
 
-    Alert.alert(
-      "Generate Brief",
-      `This will use 1 credit to create an AI summary of "${episode.name}". You have ${credits} credits remaining.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Generate",
-          onPress: () => generateMutation.mutate(),
-        },
-      ]
-    );
-  }, [credits, isPro, episode, generateMutation, navigation]);
+    // Save preference if checked
+    if (dontShowAgain) {
+      await AsyncStorage.setItem(SKIP_GENERATE_CONFIRMATION_KEY, "true");
+    }
+
+    // Generate directly - no additional confirmation since this page IS the confirmation
+    generateMutation.mutate();
+  }, [credits, isPro, episode, generateMutation, navigation, dontShowAgain, podcast]);
+
+  const estimatedSummaryMinutes = Math.min(Math.max(Math.round(episode.duration / 60 / 10), 3), 7);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
+          paddingTop: headerHeight + Spacing.lg,
           paddingBottom: insets.bottom + Spacing.xl,
           paddingHorizontal: Spacing.lg,
         }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header - Episode Details Layout */}
         <View style={styles.header}>
           <Image
             source={episodeImage ? { uri: episodeImage } : placeholderImage}
@@ -204,48 +191,48 @@ export default function GenerateBriefScreen() {
             contentFit="cover"
             transition={200}
           />
-          <ThemedText type="h2" style={styles.title}>
-            {episode.name}
-          </ThemedText>
-          <ThemedText type="small" style={styles.podcast}>
-            {podcastName}
-          </ThemedText>
-          <View style={styles.metaRow}>
-            <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-              {formatDate(episode.datePublished)}
+          <View style={styles.headerInfo}>
+            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.textSecondary }}>
+              {podcastName}
             </ThemedText>
-            <View style={styles.dot} />
-            <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-              {formatDuration(episode.duration)}
+            <ThemedText type="h3" numberOfLines={3} style={styles.title}>
+              {episode.name}
             </ThemedText>
-          </View>
-        </View>
-
-        <Card style={[styles.infoCard, { backgroundColor: theme.backgroundDefault }]}>
-          <View style={styles.infoRow}>
-            <View style={[styles.iconCircle, { backgroundColor: theme.gold }]}>
-              <Feather name="zap" size={20} color={theme.buttonText} />
-            </View>
-            <View style={styles.infoContent}>
-              <ThemedText type="h4">AI Summary</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Turn this {formatDuration(episode.duration)} episode into a 5-minute brief
+            <View style={styles.metaRow}>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                {formatDateLong(episode.datePublished)}
+              </ThemedText>
+              <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                {formatDuration(episode.duration)}
               </ThemedText>
             </View>
           </View>
+        </View>
+
+        {/* Conversion Info */}
+        <Card style={styles.infoCard}>
+          <View style={styles.conversionRow}>
+            <View style={[styles.iconCircle, { backgroundColor: theme.gold }]}>
+              <Feather name="zap" size={20} color={theme.buttonText} />
+            </View>
+            <ThemedText type="body" style={styles.conversionText}>
+              Turn this {formatDuration(episode.duration)} episode into a ~{estimatedSummaryMinutes} min summary.
+            </ThemedText>
+          </View>
         </Card>
 
-        <Card style={[styles.infoCard, { backgroundColor: theme.backgroundDefault }]}>
+        {/* Benefits List */}
+        <Card style={styles.infoCard}>
           <ThemedText type="h4" style={styles.infoTitle}>
-            What you'll get:
+            What you'll get in exchange for 1 Credit:
           </ThemedText>
           <View style={styles.featureList}>
             {[
-              "Executive summary (~1000 words)",
-              "AI-condensed transcript",
               "Full timestamped transcript",
+              "AI-condensed transcript",
+              "AI-generated summary in your preferred language",
               "Premium AI-narrated audio",
-              "Multi-language support",
               "Shareable with friends",
             ].map((feature, i) => (
               <View key={i} style={styles.featureRow}>
@@ -258,6 +245,7 @@ export default function GenerateBriefScreen() {
           </View>
         </Card>
 
+        {/* Credit Section */}
         <View style={styles.creditSection}>
           <View style={styles.creditRow}>
             <ThemedText type="body">Cost:</ThemedText>
@@ -273,17 +261,37 @@ export default function GenerateBriefScreen() {
           </View>
         </View>
 
+        {/* Generate Button */}
         <Button
           onPress={handleGenerate}
           disabled={generateMutation.isPending}
           style={styles.generateButton}
         >
-          {generateMutation.isPending ? "Generating..." : "Generate Brief"}
+          {generateMutation.isPending ? "Generating..." : "Generate Summary"}
         </Button>
+
+        {/* Don't Show Again Checkbox */}
+        <Pressable 
+          onPress={() => setDontShowAgain(!dontShowAgain)}
+          style={styles.checkboxRow}
+        >
+          <View style={[
+            styles.checkbox, 
+            { borderColor: theme.textSecondary },
+            dontShowAgain && { backgroundColor: theme.gold, borderColor: theme.gold }
+          ]}>
+            {dontShowAgain ? (
+              <Feather name="check" size={12} color={theme.buttonText} />
+            ) : null}
+          </View>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Don't show this again
+          </ThemedText>
+        </Pressable>
 
         {!isPro && credits <= 0 ? (
           <ThemedText type="caption" style={styles.noCreditsText}>
-            You need credits to generate briefs. Upgrade to Pro for 30 credits/month.
+            You need credits to generate summaries. Upgrade to Pro for 30 credits/month.
           </ThemedText>
         ) : null}
       </ScrollView>
@@ -291,27 +299,28 @@ export default function GenerateBriefScreen() {
   );
 }
 
+// Export the key for use in other components
+export { SKIP_GENERATE_CONFIRMATION_KEY };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   header: {
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
-  artwork: {
-    width: Spacing.artworkLg,
-    height: Spacing.artworkLg,
-    borderRadius: BorderRadius.lg,
+    flexDirection: "row",
     marginBottom: Spacing.lg,
   },
-  title: {
-    textAlign: "center",
-    marginBottom: Spacing.xs,
+  artwork: {
+    width: 100,
+    height: 100,
+    borderRadius: BorderRadius.md,
   },
-  podcast: {
-    marginBottom: Spacing.sm,
-    opacity: 0.7,
+  headerInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  title: {
+    marginVertical: Spacing.xs,
   },
   metaRow: {
     flexDirection: "row",
@@ -321,25 +330,24 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#6B7280",
-    marginHorizontal: 8,
+    marginHorizontal: 6,
   },
   infoCard: {
     padding: Spacing.lg,
     marginBottom: Spacing.md,
   },
-  infoRow: {
+  conversionRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  infoContent: {
+  conversionText: {
     flex: 1,
     marginLeft: Spacing.md,
   },
@@ -358,7 +366,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   creditSection: {
-    marginVertical: Spacing.xl,
+    marginVertical: Spacing.lg,
     gap: Spacing.sm,
   },
   creditRow: {
@@ -368,6 +376,21 @@ const styles = StyleSheet.create({
   },
   generateButton: {
     marginBottom: Spacing.md,
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   noCreditsText: {
     textAlign: "center",

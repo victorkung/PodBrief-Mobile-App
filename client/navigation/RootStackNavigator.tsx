@@ -142,7 +142,7 @@ export function RootStackNavigator() {
             name="GenerateBrief"
             component={GenerateBriefScreen}
             options={{
-              headerTitle: "Generate Brief",
+              headerTitle: "Generate Summary",
               headerBackTitle: "Back",
             }}
           />
