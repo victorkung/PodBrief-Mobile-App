@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { FlatList, View, StyleSheet, RefreshControl, Alert, TextInput, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -37,13 +37,15 @@ export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
+  const route = useRoute();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
   const { play, playWithQueue, pause, resume, currentItem, isPlaying, isLoading } = useAudioPlayerContext();
   const { showToast } = useToast();
   const { isOnline } = useNetwork();
 
-  const [selectedTab, setSelectedTab] = useState<TabType>("episodes");
+  const initialTab = (route.params as any)?.initialTab as TabType | undefined;
+  const [selectedTab, setSelectedTab] = useState<TabType>(initialTab || "episodes");
   const [refreshing, setRefreshing] = useState(false);
   const [downloads, setDownloads] = useState<Download[]>([]);
   const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set());
@@ -82,6 +84,15 @@ export default function LibraryScreen() {
   useEffect(() => {
     loadDownloads();
   }, [loadDownloads]);
+
+  // Handle navigation with initialTab param
+  useFocusEffect(
+    useCallback(() => {
+      if (initialTab && initialTab !== selectedTab) {
+        setSelectedTab(initialTab);
+      }
+    }, [initialTab])
+  );
 
   const {
     data: savedEpisodes,
@@ -834,6 +845,11 @@ export default function LibraryScreen() {
           onPlay={() => handlePlayBrief(brief, briefsList)}
           onPause={pause}
           onNavigateToDetails={() => {
+            // Block navigation if summary is still processing
+            if (brief.master_brief?.pipeline_status && brief.master_brief.pipeline_status !== "completed") {
+              showToast("Summary is still being generated. You'll be notified when it's ready.", "info");
+              return;
+            }
             (navigation as any).navigate("BriefDetail", {
               brief,
               source: "library",

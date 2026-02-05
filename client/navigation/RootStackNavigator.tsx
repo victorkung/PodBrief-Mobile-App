@@ -134,7 +134,7 @@ export function RootStackNavigator() {
             name="BriefDetail"
             component={BriefDetailScreen}
             options={{
-              headerTitle: "Brief",
+              headerTitle: "Summary",
               headerBackTitle: "Back",
             }}
           />

@@ -91,7 +91,7 @@ export default function GenerateBriefScreen() {
       
       // Show appropriate message based on status
       const statusMessages: Record<string, string> = {
-        processing: "Your AI summary is being generated. It will be ready in about 1-2 minutes.",
+        processing: "Your AI summary is being generated. This usually takes 2-3 minutes. You'll receive a push notification and email when it's ready.",
         exists: "You already have this summary in your library!",
         restored: "Summary restored to your library!",
         linked: "Summary added to your library!",
@@ -103,7 +103,10 @@ export default function GenerateBriefScreen() {
         [
           {
             text: "Go to Library",
-            onPress: () => (navigation as any).navigate("Main", { screen: "LibraryTab" }),
+            onPress: () => (navigation as any).navigate("Main", { 
+              screen: "LibraryTab",
+              params: { initialTab: "summaries" }
+            }),
           },
         ]
       );
