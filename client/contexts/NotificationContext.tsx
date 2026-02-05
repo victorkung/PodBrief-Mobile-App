@@ -181,9 +181,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkInitialNotification = async () => {
-      const response = await Notifications.getLastNotificationResponseAsync();
-      if (response) {
-        handleNotificationResponse(response);
+      if (!Device.isDevice) {
+        return;
+      }
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response) {
+          handleNotificationResponse(response);
+        }
+      } catch (error) {
+        console.log("[Notifications] getLastNotificationResponseAsync not available");
       }
     };
 
