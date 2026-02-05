@@ -17,6 +17,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Markdown from "react-native-markdown-display";
 
+import { Card } from "@/components/Card";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -424,12 +425,16 @@ export default function BriefDetailScreen() {
           const timeSavedMinutes = masterBrief.total_duration_minutes - summaryDurationMinutes;
           if (timeSavedMinutes <= 0) return null;
           return (
-            <View style={[styles.timeSavedBanner, { backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name="zap" size={16} color={theme.gold} />
-              <ThemedText type="body" style={[styles.timeSavedText, { color: theme.textSecondary }]}>
-                This summary helped save you ~{timeSavedMinutes} minutes
-              </ThemedText>
-            </View>
+            <Card style={styles.timeSavedBanner}>
+              <View style={styles.timeSavedRow}>
+                <View style={[styles.iconCircle, { backgroundColor: theme.gold }]}>
+                  <Feather name="zap" size={20} color={theme.buttonText} />
+                </View>
+                <ThemedText type="body" style={styles.timeSavedText}>
+                  This summary helped save you ~{timeSavedMinutes} minutes
+                </ThemedText>
+              </View>
+            </Card>
           );
         })()}
 
@@ -539,15 +544,23 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
   },
   timeSavedBanner: {
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  timeSavedRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-    gap: Spacing.sm,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   timeSavedText: {
     flex: 1,
+    marginLeft: Spacing.md,
   },
   sectionHeader: {
     marginTop: Spacing.md,
