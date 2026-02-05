@@ -425,14 +425,20 @@ export default function BriefDetailScreen() {
           </View>
         </View>
 
-        {!isProcessing && masterBrief?.episode_duration_seconds && audioDuration > 0 ? (
-          <View style={[styles.timeSavedBanner, { backgroundColor: theme.backgroundSecondary }]}>
-            <Feather name="zap" size={16} color={theme.gold} />
-            <ThemedText type="body" style={[styles.timeSavedText, { color: theme.textSecondary }]}>
-              This summary helped save you ~{Math.max(0, Math.round((masterBrief.episode_duration_seconds - audioDuration) / 60))} minutes
-            </ThemedText>
-          </View>
-        ) : null}
+        {(() => {
+          if (isProcessing || !masterBrief?.total_duration_minutes || !audioDuration) return null;
+          const summaryDurationMinutes = Math.round(audioDuration / 60);
+          const timeSavedMinutes = masterBrief.total_duration_minutes - summaryDurationMinutes;
+          if (timeSavedMinutes <= 0) return null;
+          return (
+            <View style={[styles.timeSavedBanner, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="zap" size={16} color={theme.gold} />
+              <ThemedText type="body" style={[styles.timeSavedText, { color: theme.textSecondary }]}>
+                This summary helped save you ~{timeSavedMinutes} minutes
+              </ThemedText>
+            </View>
+          );
+        })()}
 
         {isProcessing ? (
           <ProcessingSkeleton 

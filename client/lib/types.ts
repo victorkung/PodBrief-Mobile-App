@@ -30,6 +30,7 @@ export interface MasterBrief {
   audio_url: string | null;
   audio_status: string | null;
   audio_duration_seconds: number | null;
+  total_duration_minutes: number | null;
   pipeline_status: string | null;
   pipeline_error: string | null;
   created_at: string;
