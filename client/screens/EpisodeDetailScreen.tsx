@@ -551,7 +551,7 @@ export default function EpisodeDetailScreen() {
             </ThemedText>
             <ThemedText
               type="small"
-              style={[styles.description, { color: theme.textSecondary }]}
+              style={[styles.description, { color: theme.text }]}
             >
               {description}
             </ThemedText>
