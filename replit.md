@@ -109,3 +109,17 @@ Preferred communication style: Simple, everyday language.
   - Uses `FileSystem.createDownloadResumable` with progress callback for real-time progress tracking
   - Progress state stored per item ID in Map for independent tracking
   - Web platform shows alert that downloads are only available in mobile app (expo-file-system native-only feature)
+
+## Push Notifications
+
+- **Infrastructure**: Uses `expo-notifications` and `expo-device` for push notification handling
+- **Token Registration**: NotificationContext automatically registers for push tokens when authenticated user is present
+- **Token Storage**: Push tokens stored in Supabase `profiles.expo_push_token` column
+- **Notification Handler**: Configured to show alerts, play sounds, and show in notification center
+- **Deep Linking**: Notification taps navigate to specific summary via `masterBriefId` in notification data
+- **Server Endpoints**:
+  - `POST /api/send-notification`: Send single push notification (expoPushToken, title, body, data)
+  - `POST /api/send-notifications-batch`: Send batch notifications to multiple users
+- **Supabase Integration**: Edge Function should call the send-notification endpoint when pipeline completes/fails
+- **Web Compatibility**: Gracefully handles web platform where push notifications are not available
+- **Generation Time**: Summary generation takes 2-3 minutes; users receive push notification and email when complete
