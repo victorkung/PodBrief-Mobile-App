@@ -568,7 +568,8 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    marginBottom: Spacing.lg,
+    marginTop: 10,
+    marginBottom: Spacing.lg + 5,
   },
   artwork: {
     width: 100,
