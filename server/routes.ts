@@ -11,11 +11,33 @@ interface SendNotificationRequest {
   data?: Record<string, unknown>;
 }
 
+// Validate API key for push notification endpoints
+function validateApiKey(req: Request, res: Response): boolean {
+  const apiKey = req.headers["x-api-key"];
+  const expectedKey = process.env.REPLIT_PUSH_API_KEY;
+
+  if (!expectedKey) {
+    console.error("REPLIT_PUSH_API_KEY not configured");
+    res.status(500).json({ success: false, error: "Server configuration error" });
+    return false;
+  }
+
+  if (apiKey !== expectedKey) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return false;
+  }
+
+  return true;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint to send push notifications
   // Called by Supabase Edge Function when pipeline completes
   app.post("/api/send-notification", async (req: Request, res: Response) => {
     try {
+      // Validate API key
+      if (!validateApiKey(req, res)) return;
+
       const { expoPushToken, title, body, data } = req.body as SendNotificationRequest;
 
       if (!expoPushToken || !title || !body) {
@@ -73,6 +95,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch notification endpoint for multiple users
   app.post("/api/send-notifications-batch", async (req: Request, res: Response) => {
     try {
+      // Validate API key
+      if (!validateApiKey(req, res)) return;
+
       const { notifications } = req.body as {
         notifications: SendNotificationRequest[];
       };
