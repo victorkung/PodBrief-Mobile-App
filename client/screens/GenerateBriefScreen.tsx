@@ -68,9 +68,8 @@ export default function GenerateBriefScreen() {
             podcastUuid: podcast?.uuid || episode.podcastSeries?.uuid,
             episodeThumbnail: episodeImage,
             episodeAudioUrl: episode.audioUrl,
-            episodeDurationSeconds: episode.duration,
-            episodePublishedAt: new Date(episode.datePublished).toISOString(),
-            language: profile?.preferred_language || "en",
+            episodeDuration: episode.duration,
+            episodePublishedAt: new Date(episode.datePublished * 1000).toISOString(),
           },
         }
       );
