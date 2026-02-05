@@ -234,6 +234,22 @@ export function LibraryItemCard({
     (type === "episode" && hasSummary) || 
     (type === "download" && download?.type === "episode" && hasSummary);
 
+  // Check if this summary is still being processed
+  const isBriefProcessing = type === "summary" && brief?.master_brief?.pipeline_status && 
+    brief.master_brief.pipeline_status !== "completed" && 
+    brief.master_brief.pipeline_status !== "failed";
+
+  const getPipelineStatusText = (): string => {
+    if (!brief?.master_brief?.pipeline_status) return "Processing...";
+    switch (brief.master_brief.pipeline_status) {
+      case "pending": return "Queued...";
+      case "transcribing": return "Transcribing...";
+      case "summarizing": return "Summarizing...";
+      case "generating_audio": return "Creating audio...";
+      default: return "Processing...";
+    }
+  };
+
   return (
     <View style={[styles.card, { borderBottomColor: theme.border, opacity: isDisabledOffline ? 0.5 : 1 }]}>
       <Pressable 
@@ -256,6 +272,11 @@ export function LibraryItemCard({
               <Feather name="zap" size={8} color={theme.buttonText} />
             </View>
           ) : null}
+          {isBriefProcessing ? (
+            <View style={[styles.processingBadge, { backgroundColor: theme.gold }]}>
+              <ActivityIndicator size={10} color={theme.buttonText} />
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.info}>
@@ -266,17 +287,25 @@ export function LibraryItemCard({
             {getPodcastName()}
           </ThemedText>
           <View style={styles.metaRow}>
-            <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-              {getDate()}
-            </ThemedText>
-            {getDuration() ? (
+            {isBriefProcessing ? (
+              <ThemedText type="caption" style={{ color: theme.gold }}>
+                {getPipelineStatusText()}
+              </ThemedText>
+            ) : (
               <>
-                <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
                 <ThemedText type="caption" style={{ color: theme.textTertiary }}>
-                  {getDuration()}
+                  {getDate()}
                 </ThemedText>
+                {getDuration() ? (
+                  <>
+                    <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+                    <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+                      {getDuration()}
+                    </ThemedText>
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
             {type === "download" && download ? (
               <>
                 <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
@@ -437,6 +466,16 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  processingBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
   },
