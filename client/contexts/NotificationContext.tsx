@@ -10,6 +10,7 @@ import React, {
 import { Platform, AppState, AppStateStatus } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 
 import { useAuth } from "./AuthContext";
@@ -71,14 +72,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       setHasPermission(true);
 
+      // Get projectId from Constants - required for Expo Go and standalone builds
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      
+      if (!projectId) {
+        console.log("[Notifications] No projectId found - push notifications unavailable in this build");
+        // Push notifications won't work without a valid projectId, but we shouldn't error
+        return null;
+      }
+
       const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: "d9c6f795-b6d5-41ea-9bff-20912167f5e7",
+        projectId,
       });
 
       console.log("[Notifications] Push token:", tokenData.data);
       return tokenData.data;
-    } catch (error) {
-      console.error("[Notifications] Error getting push token:", error);
+    } catch (error: any) {
+      // Log the error but don't show it to the user - push notifications are optional
+      console.log("[Notifications] Push token unavailable:", error?.message || error);
       return null;
     }
   }, []);

@@ -239,14 +239,14 @@ export function LibraryItemCard({
     brief.master_brief.pipeline_status !== "failed";
 
   const getPipelineStatusText = (): string => {
-    if (!brief?.master_brief?.pipeline_status) return "Processing... (~2-3 min)";
+    if (!brief?.master_brief?.pipeline_status) return "Processing... (~3 min)";
     switch (brief.master_brief.pipeline_status) {
-      case "pending": return "Queued... (~2-3 min)";
-      case "transcribing": return "Transcribing... (~1 min left)";
-      case "summarizing": return "Summarizing... (~1 min left)";
-      case "generating_audio": return "Generating audio... (~30s left)";
-      case "recording": return "Generating audio... (~30s left)";
-      default: return "Processing... (~2-3 min)";
+      case "pending": return "Queued... (~3 min)";
+      case "transcribing": return "Transcribing... (~2-3 min left)";
+      case "summarizing": return "Summarizing... (~2 min left)";
+      case "generating_audio": return "Generating audio... (~1-2 min left)";
+      case "recording": return "Generating audio... (~1-2 min left)";
+      default: return "Processing... (~3 min)";
     }
   };
 
