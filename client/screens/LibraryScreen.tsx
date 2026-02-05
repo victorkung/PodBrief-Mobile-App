@@ -430,17 +430,6 @@ export default function LibraryScreen() {
     [queryClient, showToast]
   );
 
-  const handleSummarizeEpisode = useCallback(
-    (episode: SavedEpisode) => {
-      (navigation as any).navigate("EpisodeDetail", {
-        episode,
-        source: "library",
-        autoSummarize: true,
-      });
-    },
-    [navigation]
-  );
-
   const handleDownloadEpisode = useCallback(
     async (episode: SavedEpisode) => {
       if (Platform.OS === "web") {
@@ -827,7 +816,6 @@ export default function LibraryScreen() {
           onRemoveDownload={() => handleRemoveEpisodeDownload(episode)}
           onRemoveFromPlaylist={() => handleRemoveEpisode(episode)}
           onMarkComplete={(isComplete) => handleMarkEpisodeComplete(episode, isComplete)}
-          onSummarize={() => handleSummarizeEpisode(episode)}
         />
       );
     } else if (selectedTab === "summaries") {
@@ -903,23 +891,6 @@ export default function LibraryScreen() {
           }}
           onRemoveFromPlaylist={() => handleRemoveDownload(download)}
           onRemoveDownload={() => handleRemoveDownload(download)}
-          onSummarize={download.type === "episode" ? () => {
-            if (download.taddyEpisodeUuid) {
-              (navigation as any).navigate("EpisodeDetail", {
-                episode: {
-                  taddy_episode_uuid: download.taddyEpisodeUuid,
-                  taddy_podcast_uuid: download.taddyPodcastUuid,
-                  episode_name: download.title,
-                  podcast_name: download.podcast,
-                  episode_thumbnail: download.artwork,
-                  episode_audio_url: download.audioUrl,
-                  episode_duration_seconds: download.episodeDurationSeconds,
-                },
-                source: "downloads",
-                autoSummarize: true,
-              });
-            }
-          } : undefined}
         />
       );
     }

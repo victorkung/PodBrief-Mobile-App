@@ -170,7 +170,7 @@ export default function GenerateBriefScreen() {
     generateMutation.mutate();
   }, [credits, isPro, episode, generateMutation, navigation, dontShowAgain, podcast]);
 
-  const estimatedSummaryMinutes = Math.min(Math.max(Math.round(episode.duration / 60 / 10), 3), 7);
+  const episodeMinutes = Math.round(episode.duration / 60);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -216,7 +216,7 @@ export default function GenerateBriefScreen() {
               <Feather name="zap" size={20} color={theme.buttonText} />
             </View>
             <ThemedText type="body" style={styles.conversionText}>
-              Turn this {formatDuration(episode.duration)} episode into a ~{estimatedSummaryMinutes} min summary.
+              Turn this {episodeMinutes} minute episode into a ~5 minute summary.
             </ThemedText>
           </View>
         </Card>
@@ -247,15 +247,21 @@ export default function GenerateBriefScreen() {
         {/* Credit Section */}
         <View style={styles.creditSection}>
           <View style={styles.creditRow}>
+            <ThemedText type="body">Current Balance:</ThemedText>
+            <ThemedText type="body">
+              {credits} {credits === 1 ? "Credit" : "Credits"}
+            </ThemedText>
+          </View>
+          <View style={styles.creditRow}>
             <ThemedText type="body">Cost:</ThemedText>
-            <ThemedText type="h3" style={{ color: theme.gold }}>
+            <ThemedText type="body" style={{ color: theme.gold }}>
               1 Credit
             </ThemedText>
           </View>
           <View style={styles.creditRow}>
-            <ThemedText type="body">Your Balance:</ThemedText>
-            <ThemedText type="h3">
-              {credits} {credits === 1 ? "Credit" : "Credits"}
+            <ThemedText type="body">Remaining Balance:</ThemedText>
+            <ThemedText type="body">
+              {Math.max(credits - 1, 0)} {credits - 1 === 1 ? "Credit" : "Credits"}
             </ThemedText>
           </View>
         </View>
@@ -273,6 +279,7 @@ export default function GenerateBriefScreen() {
         <Pressable 
           onPress={() => setDontShowAgain(!dontShowAgain)}
           style={styles.checkboxRow}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <View style={[
             styles.checkbox, 
@@ -371,7 +378,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   generateButton: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.xl,
   },
   checkboxRow: {
     flexDirection: "row",

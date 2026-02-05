@@ -35,7 +35,6 @@ interface LibraryItemCardProps {
   onRemoveDownload?: () => void;
   onRemoveFromPlaylist: () => void;
   onMarkComplete?: (isComplete: boolean) => void;
-  onSummarize?: () => void;
   isComplete?: boolean;
   isDownloading?: boolean;
   downloadProgress?: number;
@@ -78,7 +77,6 @@ export function LibraryItemCard({
   onRemoveDownload,
   onRemoveFromPlaylist,
   onMarkComplete,
-  onSummarize,
   isComplete = false,
   isDownloading = false,
   downloadProgress = 0,
@@ -197,13 +195,6 @@ export function LibraryItemCard({
     );
   }, [onRemoveFromPlaylist, getTitle, isRemoving]);
 
-  const handleSummarize = useCallback(() => {
-    setMenuVisible(false);
-    if (onSummarize) {
-      onSummarize();
-    }
-  }, [onSummarize]);
-
   const handleDownloadPress = useCallback(() => {
     if (isDownloaded && onRemoveDownload) {
       Alert.alert(
@@ -226,7 +217,6 @@ export function LibraryItemCard({
     }
   }, [isDownloaded, onDownload, onRemoveDownload]);
 
-  const showSummarizeOption = type === "episode" || (type === "download" && download?.type === "episode");
   const completed = getCompleted();
   const artwork = getArtwork();
 
@@ -400,18 +390,6 @@ export function LibraryItemCard({
           onPress={() => setMenuVisible(false)}
         >
           <View style={[styles.menuContainer, { backgroundColor: theme.backgroundDefault }]}>
-            {showSummarizeOption && onSummarize && !hasSummary ? (
-              <Pressable
-                style={styles.menuItem}
-                onPress={handleSummarize}
-              >
-                <Feather name="zap" size={20} color={theme.text} />
-                <ThemedText type="body" style={[styles.menuText, { color: theme.text }]}>
-                  Summarize Episode
-                </ThemedText>
-              </Pressable>
-            ) : null}
-
             <Pressable
               style={styles.menuItem}
               onPress={handleRemove}
