@@ -36,10 +36,12 @@ interface LibraryItemCardProps {
   onRemoveDownload?: () => void;
   onRemoveFromPlaylist: () => void;
   onMarkComplete?: (isComplete: boolean) => void;
+  onRetry?: () => void;
   isComplete?: boolean;
   isDownloading?: boolean;
   downloadProgress?: number;
   isRemoving?: boolean;
+  isRetrying?: boolean;
   hasSummary?: boolean;
   isPlaying?: boolean;
 }
@@ -77,10 +79,12 @@ export function LibraryItemCard({
   onRemoveDownload,
   onRemoveFromPlaylist,
   onMarkComplete,
+  onRetry,
   isComplete = false,
   isDownloading = false,
   downloadProgress = 0,
   isRemoving = false,
+  isRetrying = false,
   hasSummary = false,
   isPlaying = false,
 }: LibraryItemCardProps) {
@@ -232,15 +236,21 @@ export function LibraryItemCard({
     (type === "download" && download?.type === "episode" && hasSummary);
 
   // Check if this summary is still being processed
+  const pipelineStatus = brief?.master_brief?.pipeline_status;
   const isBriefProcessing = type === "summary" && 
-    brief?.master_brief?.pipeline_status !== undefined &&
-    brief?.master_brief?.pipeline_status !== null &&
-    brief.master_brief.pipeline_status !== "completed" && 
-    brief.master_brief.pipeline_status !== "failed";
+    pipelineStatus !== undefined &&
+    pipelineStatus !== null &&
+    pipelineStatus !== "completed" && 
+    pipelineStatus !== "failed" &&
+    pipelineStatus !== "summary_failed";
+
+  // Check if brief has failed and needs retry
+  const isBriefFailed = type === "summary" && 
+    (pipelineStatus === "failed" || pipelineStatus === "summary_failed");
 
   const getPipelineStatusText = (): string => {
-    if (!brief?.master_brief?.pipeline_status) return "Processing... (~3 min)";
-    switch (brief.master_brief.pipeline_status) {
+    if (!pipelineStatus) return "Processing... (~3 min)";
+    switch (pipelineStatus) {
       case "pending": return "Queued... (~3 min)";
       case "transcribing": return "Transcribing... (~2-3 min left)";
       case "summarizing": return "Summarizing... (~2 min left)";
@@ -250,8 +260,15 @@ export function LibraryItemCard({
     }
   };
 
-  // Dim the row if offline without download OR if processing
-  const isInactive = isDisabledOffline || isBriefProcessing;
+  const handleRetryPress = useCallback(() => {
+    if (onRetry && !isRetrying) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onRetry();
+    }
+  }, [onRetry, isRetrying]);
+
+  // Dim the row if offline without download OR if processing OR if failed
+  const isInactive = isDisabledOffline || isBriefProcessing || isBriefFailed;
 
   return (
     <View style={[styles.card, { borderBottomColor: theme.border, opacity: isInactive ? 0.5 : 1 }]}>
@@ -285,7 +302,14 @@ export function LibraryItemCard({
             {getPodcastName()}
           </ThemedText>
           <View style={styles.metaRow}>
-            {isBriefProcessing ? (
+            {isBriefFailed ? (
+              <View style={styles.errorRow}>
+                <Feather name="alert-circle" size={12} color={theme.error || "#EF4444"} />
+                <ThemedText type="caption" style={{ color: theme.error || "#EF4444", marginLeft: 4 }}>
+                  Generation failed
+                </ThemedText>
+              </View>
+            ) : isBriefProcessing ? (
               <ThemedText type="caption" style={{ color: theme.gold }}>
                 {getPipelineStatusText()}
               </ThemedText>
@@ -377,24 +401,43 @@ export function LibraryItemCard({
           </Pressable>
         </View>
 
-        <Pressable
-          onPress={isPlaying ? onPause : onPlay}
-          style={[
-            styles.playButton, 
-            { backgroundColor: isInactive ? theme.textTertiary : (isPlaying ? theme.gold : theme.text) }
-          ]}
-          disabled={isThisItemLoading || isInactive}
-        >
-          {isThisItemLoading ? (
-            <ActivityIndicator size="small" color={theme.backgroundRoot} />
-          ) : isBriefProcessing ? (
-            <ActivityIndicator size="small" color={theme.backgroundRoot} />
-          ) : isDisabledOffline ? (
-            <Feather name="wifi-off" size={16} color={theme.backgroundRoot} />
-          ) : (
-            <Feather name={isPlaying ? "pause" : "play"} size={18} color={theme.backgroundRoot} />
-          )}
-        </Pressable>
+        {isBriefFailed && onRetry ? (
+          <Pressable
+            onPress={handleRetryPress}
+            style={[styles.retryButton, { backgroundColor: theme.error || "#EF4444" }]}
+            disabled={isRetrying}
+          >
+            {isRetrying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Feather name="refresh-cw" size={14} color="#fff" />
+                <ThemedText type="caption" style={{ color: "#fff", marginLeft: 4, fontWeight: "600" }}>
+                  Retry
+                </ThemedText>
+              </>
+            )}
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={isPlaying ? onPause : onPlay}
+            style={[
+              styles.playButton, 
+              { backgroundColor: isInactive ? theme.textTertiary : (isPlaying ? theme.gold : theme.text) }
+            ]}
+            disabled={isThisItemLoading || isInactive}
+          >
+            {isThisItemLoading ? (
+              <ActivityIndicator size="small" color={theme.backgroundRoot} />
+            ) : isBriefProcessing ? (
+              <ActivityIndicator size="small" color={theme.backgroundRoot} />
+            ) : isDisabledOffline ? (
+              <Feather name="wifi-off" size={16} color={theme.backgroundRoot} />
+            ) : (
+              <Feather name={isPlaying ? "pause" : "play"} size={18} color={theme.backgroundRoot} />
+            )}
+          </Pressable>
+        )}
       </View>
 
       <Modal
@@ -479,6 +522,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 2,
   },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   dot: {
     width: 3,
     height: 3,
@@ -516,6 +563,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingLeft: 2,
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
   },
   modalOverlay: {
     flex: 1,

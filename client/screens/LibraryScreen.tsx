@@ -56,6 +56,7 @@ export default function LibraryScreen() {
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [downloadProgress, setDownloadProgress] = useState<Map<string, number>>(new Map());
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
 
   const loadDownloads = useCallback(async () => {
     try {
@@ -670,6 +671,82 @@ export default function LibraryScreen() {
     [downloads, handleRemoveDownload]
   );
 
+  // Retry handler for failed briefs
+  const handleRetryBrief = useCallback(
+    async (brief: UserBrief) => {
+      if (!brief.master_brief_id) return;
+      
+      const pipelineStatus = brief.master_brief?.pipeline_status;
+      setRetryingIds((prev) => new Set(prev).add(brief.id));
+      
+      try {
+        if (pipelineStatus === "failed") {
+          // Transcript failed - retry transcript fetch
+          const { data, error } = await supabase.functions.invoke("retry-taddy-transcript", {
+            body: { masterBriefId: brief.master_brief_id },
+          });
+          
+          if (error) throw error;
+          
+          if (data?.status === "not_available") {
+            showToast("Transcript not available for this episode. Please try a different episode.", "error");
+          } else {
+            showToast("Retrying summary generation...", "info");
+          }
+        } else if (pipelineStatus === "summary_failed") {
+          // Summary quality failed - regenerate summary
+          const { error } = await supabase.functions.invoke("regenerate-summary", {
+            body: { masterBriefId: brief.master_brief_id },
+          });
+          
+          if (error) throw error;
+          
+          showToast("Regenerating summary...", "info");
+        }
+        
+        // Refetch briefs to get updated status
+        setTimeout(() => {
+          refetchBriefs();
+        }, 2000);
+      } catch (error) {
+        console.error("Retry error:", error);
+        showToast("There was an issue retrying. Please try again.", "error");
+      } finally {
+        setRetryingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(brief.id);
+          return next;
+        });
+      }
+    },
+    [refetchBriefs, showToast]
+  );
+
+  // Auto-retry for stale transcripts (pending/transcribing for >2 minutes)
+  useEffect(() => {
+    if (!userBriefs) return;
+    
+    const staleBriefs = userBriefs.filter((brief) => {
+      const status = brief.master_brief?.pipeline_status;
+      if (status !== "pending" && status !== "transcribing") return false;
+      
+      const createdAt = new Date(brief.created_at).getTime();
+      const ageMinutes = (Date.now() - createdAt) / 1000 / 60;
+      
+      return ageMinutes >= 2 && !retryingIds.has(brief.id);
+    });
+    
+    // Auto-retry stale briefs (one at a time to avoid rate limits)
+    if (staleBriefs.length > 0) {
+      const briefToRetry = staleBriefs[0];
+      console.log("[LibraryScreen] Auto-retrying stale brief:", briefToRetry.master_brief_id);
+      
+      supabase.functions.invoke("retry-taddy-transcript", {
+        body: { masterBriefId: briefToRetry.master_brief_id },
+      }).catch((err) => console.error("[LibraryScreen] Auto-retry error:", err));
+    }
+  }, [userBriefs, retryingIds]);
+
   const segments = [
     { key: "episodes" as TabType, label: "Episodes" },
     { key: "summaries" as TabType, label: "Summaries" },
@@ -852,6 +929,9 @@ export default function LibraryScreen() {
     } else if (selectedTab === "summaries") {
       const brief = item as UserBrief;
       const briefsList = getFilteredData as UserBrief[];
+      const pipelineStatus = brief.master_brief?.pipeline_status;
+      const isFailed = pipelineStatus === "failed" || pipelineStatus === "summary_failed";
+      
       return (
         <LibraryItemCard
           type="summary"
@@ -861,13 +941,18 @@ export default function LibraryScreen() {
           isDownloading={downloadingIds.has(brief.id)}
           downloadProgress={downloadProgress.get(brief.id) || 0}
           isRemoving={removingIds.has(brief.id)}
+          isRetrying={retryingIds.has(brief.id)}
           isPlaying={isBriefPlaying(brief)}
           onPlay={() => handlePlayBrief(brief, briefsList)}
           onPause={pause}
           onNavigateToDetails={() => {
-            // Block navigation if summary is still processing
-            if (brief.master_brief?.pipeline_status && brief.master_brief.pipeline_status !== "completed") {
-              showToast("Summary is still being generated. You'll be notified when it's ready.", "info");
+            // Block navigation if summary is not completed
+            if (pipelineStatus && pipelineStatus !== "completed") {
+              if (isFailed) {
+                showToast("There was an issue generating your summary. Please retry.", "error");
+              } else {
+                showToast("Summary is still being generated. You'll be notified when it's ready.", "info");
+              }
               return;
             }
             (navigation as any).navigate("BriefDetail", {
@@ -879,6 +964,7 @@ export default function LibraryScreen() {
           onRemoveDownload={() => handleRemoveBriefDownload(brief)}
           onRemoveFromPlaylist={() => handleRemoveBrief(brief)}
           onMarkComplete={(isComplete) => handleMarkBriefComplete(brief, isComplete)}
+          onRetry={isFailed ? () => handleRetryBrief(brief) : undefined}
         />
       );
     } else {
