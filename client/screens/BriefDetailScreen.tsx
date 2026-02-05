@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -7,6 +7,15 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
 import * as Haptics from "expo-haptics";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withRepeat, 
+  withTiming,
+  withSequence,
+  Easing 
+} from "react-native-reanimated";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ThemedText } from "@/components/ThemedText";
@@ -19,6 +28,186 @@ import { formatDuration } from "@/lib/utils";
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
 type ContentTab = "summary" | "condensed" | "transcript";
+
+const PIPELINE_STATUS_MESSAGES: Record<string, { title: string; subtitle: string; icon: string }> = {
+  pending: {
+    title: "Starting Generation",
+    subtitle: "Your AI summary is queued and will begin shortly...",
+    icon: "clock",
+  },
+  transcribing: {
+    title: "Transcribing Audio",
+    subtitle: "Converting speech to text using advanced AI...",
+    icon: "mic",
+  },
+  summarizing: {
+    title: "Analyzing Content",
+    subtitle: "Our AI is reading and understanding the key points...",
+    icon: "cpu",
+  },
+  generating_audio: {
+    title: "Creating Narration",
+    subtitle: "Generating natural-sounding audio summary...",
+    icon: "volume-2",
+  },
+  processing: {
+    title: "Processing",
+    subtitle: "Your AI summary is being generated...",
+    icon: "loader",
+  },
+};
+
+function SkeletonLine({ width, height = 16, style }: { width: string | number; height?: number; style?: any }) {
+  const { theme } = useTheme();
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.3, { duration: 800, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: theme.backgroundSecondary,
+          borderRadius: 4,
+        },
+        animatedStyle,
+        style,
+      ]}
+    />
+  );
+}
+
+function ProcessingSkeleton({ pipelineStatus, theme }: { pipelineStatus: string; theme: any }) {
+  const statusInfo = PIPELINE_STATUS_MESSAGES[pipelineStatus] || PIPELINE_STATUS_MESSAGES.processing;
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 2000, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, []);
+
+  const spinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <View style={skeletonStyles.container}>
+      <View style={[skeletonStyles.statusCard, { backgroundColor: theme.backgroundSecondary }]}>
+        <Animated.View style={pipelineStatus === "processing" ? spinStyle : undefined}>
+          <Feather name={statusInfo.icon as any} size={32} color={theme.gold} />
+        </Animated.View>
+        <ThemedText type="h3" style={skeletonStyles.statusTitle}>
+          {statusInfo.title}
+        </ThemedText>
+        <ThemedText type="body" style={[skeletonStyles.statusSubtitle, { color: theme.textSecondary }]}>
+          {statusInfo.subtitle}
+        </ThemedText>
+        
+        <View style={skeletonStyles.progressBar}>
+          <View style={[skeletonStyles.progressTrack, { backgroundColor: theme.backgroundRoot }]}>
+            <Animated.View 
+              style={[
+                skeletonStyles.progressFill, 
+                { backgroundColor: theme.gold }
+              ]} 
+            />
+          </View>
+        </View>
+      </View>
+
+      <View style={skeletonStyles.previewSection}>
+        <ThemedText type="small" style={{ color: theme.textTertiary, marginBottom: Spacing.md }}>
+          Preview of what's coming...
+        </ThemedText>
+        
+        <View style={[skeletonStyles.skeletonCard, { backgroundColor: theme.backgroundDefault }]}>
+          <SkeletonLine width="90%" height={14} />
+          <SkeletonLine width="100%" height={14} style={{ marginTop: 12 }} />
+          <SkeletonLine width="85%" height={14} style={{ marginTop: 12 }} />
+          <SkeletonLine width="95%" height={14} style={{ marginTop: 12 }} />
+          <SkeletonLine width="70%" height={14} style={{ marginTop: 12 }} />
+        </View>
+      </View>
+
+      <View style={skeletonStyles.tipSection}>
+        <Feather name="info" size={16} color={theme.textTertiary} />
+        <ThemedText type="caption" style={[skeletonStyles.tipText, { color: theme.textTertiary }]}>
+          This usually takes 1-2 minutes. Feel free to browse other content while we work on your summary.
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: Spacing.lg,
+  },
+  statusCard: {
+    alignItems: "center",
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.xl,
+  },
+  statusTitle: {
+    marginTop: Spacing.md,
+    textAlign: "center",
+  },
+  statusSubtitle: {
+    textAlign: "center",
+    marginTop: Spacing.xs,
+  },
+  progressBar: {
+    width: "100%",
+    marginTop: Spacing.lg,
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    width: "60%",
+    borderRadius: 2,
+  },
+  previewSection: {
+    marginBottom: Spacing.xl,
+  },
+  skeletonCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+  },
+  tipSection: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  tipText: {
+    flex: 1,
+    lineHeight: 20,
+  },
+});
 
 function formatAudioDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -177,24 +366,33 @@ export default function BriefDetailScreen() {
           </View>
         </View>
 
-        <SegmentedControl
-          segments={segments}
-          selectedKey={selectedTab}
-          onSelect={setSelectedTab}
-        />
+        {isProcessing ? (
+          <ProcessingSkeleton 
+            pipelineStatus={masterBrief?.pipeline_status || "processing"} 
+            theme={theme} 
+          />
+        ) : (
+          <>
+            <SegmentedControl
+              segments={segments}
+              selectedKey={selectedTab}
+              onSelect={setSelectedTab}
+            />
 
-        <View
-          style={[styles.contentCard, { backgroundColor: theme.backgroundDefault }]}
-        >
-          <ThemedText type="caption" style={[styles.contentMeta, { color: theme.textTertiary }]}>
-            {selectedTab === "summary" ? "AI-generated summary" : null}
-            {selectedTab === "condensed" ? "AI-condensed transcript" : null}
-            {selectedTab === "transcript" ? "Full episode transcript" : null}
-          </ThemedText>
-          <ThemedText type="body" style={styles.contentText}>
-            {getContent()}
-          </ThemedText>
-        </View>
+            <View
+              style={[styles.contentCard, { backgroundColor: theme.backgroundDefault }]}
+            >
+              <ThemedText type="caption" style={[styles.contentMeta, { color: theme.textTertiary }]}>
+                {selectedTab === "summary" ? "AI-generated summary" : null}
+                {selectedTab === "condensed" ? "AI-condensed transcript" : null}
+                {selectedTab === "transcript" ? "Full episode transcript" : null}
+              </ThemedText>
+              <ThemedText type="body" style={styles.contentText}>
+                {getContent()}
+              </ThemedText>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
