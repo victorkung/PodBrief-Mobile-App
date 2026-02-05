@@ -1,0 +1,107 @@
+Here's a detailed walkthrough of the Brief Details page sections for Replit:
+
+---
+
+## 1. AI Summary Section (`SummarySection.tsx`)
+
+### Header Stats
+- **Title**: "AI Summary"
+- **Stats line**: `{readingTime} min read • {wordCount} words • {languageLabel}`
+  - Reading time: `Math.max(1, Math.ceil(wordCount / 300))` (300 wpm)
+  - Word count: `summaryContent.split(/\s+/).length`
+  - Language label: Uses `getLanguageLabel(summaryLanguage)` helper
+
+### Description
+**None** - The AI Summary section does NOT have a description paragraph.
+
+### Text Rendering
+- Uses **ReactMarkdown** with `rehype-sanitize` for XSS protection
+- CSS class: `prose-gemini` (custom Tailwind prose styling)
+```tsx
+{summaryContent}
+```
+
+### Copy Functionality
+- Copies **raw text** (not rendered HTML): `navigator.clipboard.writeText(summaryContent)`
+- Success toast: `"Summary copied to clipboard"`
+- Button shows checkmark + "Copied" for 2 seconds after success
+
+---
+
+## 2. AI Condensed Transcript Section (`CondensedTranscriptSection.tsx`)
+
+### Header Stats
+- **Title**: "AI Condensed Transcript"
+- **Stats line**: `{readingTime} min read • {wordCount.toLocaleString()} words • {languageLabel}`
+  - Reading time: `Math.max(1, Math.ceil(wordCount / 250))` (250 wpm - slower for dense content)
+  - Word count: Uses `.toLocaleString()` for comma formatting
+
+### Description
+**Always visible** in header:
+> "An AI-condensed version of the full transcript, structured by thematic chapters. Optimized for deep reading and retention without the filler of the raw text. Read-only."
+
+### Text Rendering
+- Uses **ReactMarkdown** with `rehype-sanitize` (same as Summary)
+- CSS class: `prose-gemini`
+```tsx
+{content}
+```
+
+### Copy Functionality
+- Copies **raw markdown text**: `navigator.clipboard.writeText(content)`
+- Success toast: `"Condensed transcript copied to clipboard"`
+
+---
+
+## 3. Full Transcript Section (`TranscriptSection.tsx`)
+
+### Header Stats
+- **Title**: "Full Transcript"
+- **Stats line**: `{readingTime} min read • {wordCount.toLocaleString()} words`
+  - Reading time: `Math.max(1, Math.ceil(wordCount / 300))` (300 wpm)
+  - **No language label** (raw transcript is always in original language)
+
+### Description
+**Always visible** in header:
+> "The raw, unedited transcript generated from the video."
+
+### Text Rendering
+- **Plain text** (NOT ReactMarkdown)
+- CSS: `whitespace-pre-wrap leading-relaxed` to preserve line breaks
+```tsx
+
+  {transcriptContent}
+
+```
+
+### Copy Functionality
+- Copies **raw text**: `navigator.clipboard.writeText(transcriptContent)`
+- Success toast: `"Transcript copied to clipboard"`
+
+---
+
+## Summary Table for Replit
+
+| Section | Title | Description | Text Rendering | Reading Speed | Copy Toast |
+|---------|-------|-------------|----------------|---------------|------------|
+| **AI Summary** | "AI Summary" | None | ReactMarkdown + rehype-sanitize | 300 wpm | "Summary copied to clipboard" |
+| **Condensed Transcript** | "AI Condensed Transcript" | "An AI-condensed version..." | ReactMarkdown + rehype-sanitize | 250 wpm | "Condensed transcript copied to clipboard" |
+| **Full Transcript** | "Full Transcript" | "The raw, unedited transcript..." | Plain text with `whitespace-pre-wrap` | 300 wpm | "Transcript copied to clipboard" |
+
+---
+
+## Key Implementation Notes for Mobile
+
+1. **Markdown Rendering**: Use a React Native markdown library (like `react-native-markdown-display`) for Summary and Condensed Transcript sections
+
+2. **Copy to Clipboard**: Use `Clipboard.setStringAsync(text)` from `expo-clipboard`
+
+3. **Word Count Calculation**: Same logic: `content.split(/\s+/).length`
+
+4. **Language Labels**: Import or replicate the `getLanguageLabel()` function from `src/lib/constants.ts`
+
+5. **Toast Messages**: Match the exact toast messages for consistency
+
+Test Summarize on mobile
+Document Brief Details specs in Mobile Guide
+Share getLanguageLabel helper with Replit
