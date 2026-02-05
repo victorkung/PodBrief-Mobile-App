@@ -1,0 +1,105 @@
+Let me get the raw code from GitHub:
+
+Now let me check the edge function's expected parameters:
+
+Based on my complete audit, here are the issues I found in the mobile app's Generate Summary functionality:
+
+---
+
+## Critical Issues
+
+### 1. **Parameter Key Mismatch (if not yet fixed)**
+The mobile app sends `episodeDurationSeconds` but the edge function expects `episodeDuration`:
+```typescript
+// Mobile sends:
+episodeDurationSeconds: episode.duration  // ❌
+
+// Edge function expects:
+episodeDuration  // ✅
+```
+
+### 2. **Response Status Handling Mismatch**
+The mobile app checks for `data.existing` but the edge function returns `status` values:
+
+```typescript
+// Mobile app (line 88):
+if (user?.email && !data.existing) {  // ❌ Wrong check
+
+// Edge function returns:
+{ status: "exists" }     // Brief already in library
+{ status: "restored" }   // Hidden brief restored
+{ status: "linked" }     // User linked to existing brief
+{ status: "processing" } // New generation started
+```
+
+**Fix needed:**
+```typescript
+if (user?.email && data.status === "processing") {
+  // Only sync engagement for NEW brief generations
+}
+```
+
+### 3. **Potential `podcastUuid` Null Issue**
+```typescript
+podcastUuid: podcast?.uuid || episode.podcastSeries?.uuid
+```
+If both are `undefined`, the edge function will return a 400 error since `podcastUuid` is required.
+
+---
+
+## Moderate Issues
+
+### 4. **No 402 Credit Error Handling**
+The edge function returns status `402` when credits are 0, but the mobile app catches this as a generic error. The pre-check at lines 128-142 might pass if credits deplete between the check and the API call.
+
+### 5. **Alert Message for Existing Briefs**
+The success handler always says "Brief Generation Started" even when the response is `"exists"` or `"linked"`, which don't trigger new generation.
+
+---
+
+## Minor Issues
+
+### 6. **Redundant `language` Parameter**
+The mobile app sends `language` but the edge function fetches it from the user's profile (line 1304). Not a bug, just redundant.
+
+### 7. **No Real-time Progress Updates**
+After starting generation, the user sees a static alert. Consider polling `master_briefs` for `pipeline_status` changes to show progress (transcribing → summarizing → generating audio → completed).
+
+---
+
+## Recommended Fixes for Replit
+
+```typescript
+// In GenerateBriefScreen.tsx mutation:
+onSuccess: async (data) => {
+  await refreshProfile();
+  queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+  // Fix: Check correct status values
+  const isNewGeneration = data.status === "processing";
+
+  if (user?.email && isNewGeneration) {
+    // Sync engagement only for new generations
+    // ... existing Loops sync code
+  }
+
+  // Fix: Show appropriate message based on status
+  const messages = {
+    processing: "Your AI summary is being generated. It will be ready in about 1-2 minutes.",
+    exists: "You already have this brief in your library!",
+    restored: "Brief restored to your library!",
+    linked: "Brief added to your library!",
+  };
+
+  Alert.alert(
+    isNewGeneration ? "Brief Generation Started" : "Brief Found",
+    messages[data.status] || "Brief is ready!",
+    [{ text: "Go to Library", onPress: () => /* navigate */ }]
+  );
+}
+```
+
+Test mobile summarize flow
+Update Mobile Integration Guide
+Check edge function logs
