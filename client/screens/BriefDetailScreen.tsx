@@ -22,7 +22,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { UserBrief } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { formatDuration, getLanguageLabel, calculateReadingTime, getWordCount } from "@/lib/utils";
+import { formatDuration, formatDateLong, getLanguageLabel, calculateReadingTime, getWordCount } from "@/lib/utils";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
@@ -414,8 +414,10 @@ export default function BriefDetailScreen() {
               {masterBrief?.episode_name || "Brief"}
             </ThemedText>
             <View style={styles.metaRow}>
-              <Feather name="clock" size={12} color={theme.gold} />
-              <ThemedText type="caption" style={{ color: theme.gold, marginLeft: 4 }}>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                {brief?.created_at ? formatDateLong(brief.created_at) : ""}
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                 {formatAudioDuration(audioDuration)} summary
               </ThemedText>
             </View>
@@ -451,14 +453,14 @@ export default function BriefDetailScreen() {
               >
                 <Feather 
                   name={copiedSection === selectedTab ? "check" : "copy"} 
-                  size={16} 
+                  size={12} 
                   color={copiedSection === selectedTab ? theme.gold : theme.text} 
                 />
                 <ThemedText 
-                  type="body" 
+                  type="caption" 
                   style={{ 
                     color: copiedSection === selectedTab ? theme.gold : theme.text,
-                    marginLeft: 8,
+                    marginLeft: 6,
                     fontWeight: "500"
                   }}
                 >
@@ -487,7 +489,7 @@ export default function BriefDetailScreen() {
           onPress={handleScrollToTop}
           style={[styles.scrollTopButton, { 
             backgroundColor: theme.gold,
-            bottom: insets.bottom + Spacing.miniPlayerHeight + Spacing.md 
+            bottom: 20
           }]}
         >
           <Feather name="arrow-up" size={20} color={theme.buttonText} />
@@ -503,7 +505,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   artwork: {
     width: 80,
@@ -520,6 +522,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: Spacing.sm,
   },
   sectionHeader: {
     marginTop: Spacing.md,
@@ -532,16 +535,18 @@ const styles = StyleSheet.create({
   },
   metadataText: {
     fontSize: 12,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   copyButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
+    alignSelf: "flex-start",
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
+    marginTop: Spacing.sm,
   },
   contentSection: {
     marginTop: Spacing.sm,
