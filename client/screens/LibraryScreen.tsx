@@ -140,6 +140,7 @@ export default function LibraryScreen() {
             transcript_content,
             audio_url,
             audio_duration_seconds,
+            total_duration_minutes,
             pipeline_status,
             language
           )
