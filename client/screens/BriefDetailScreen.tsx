@@ -26,7 +26,7 @@ import { formatDuration, formatDateLong, getLanguageLabel, calculateReadingTime,
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
-type ContentTab = "summary" | "condensed" | "transcript";
+type ContentTab = "summary" | "transcript";
 
 const PIPELINE_STATUS_MESSAGES: Record<string, { title: string; subtitle: string; icon: string }> = {
   pending: {
@@ -250,7 +250,6 @@ export default function BriefDetailScreen() {
 
   const segments = [
     { key: "summary" as ContentTab, label: "Summary" },
-    { key: "condensed" as ContentTab, label: "Condensed" },
     { key: "transcript" as ContentTab, label: "Transcript" },
   ];
 
@@ -258,8 +257,6 @@ export default function BriefDetailScreen() {
     switch (selectedTab) {
       case "summary":
         return masterBrief?.summary_text || "";
-      case "condensed":
-        return masterBrief?.ai_condensed_transcript || "";
       case "transcript":
         return masterBrief?.transcript_content || "";
       default:
@@ -271,8 +268,6 @@ export default function BriefDetailScreen() {
     switch (selectedTab) {
       case "summary":
         return "An AI-generated summary of the episode structured into thematic chapters, consisting of the most important takeaways";
-      case "condensed":
-        return "An AI-condensed version of the full transcript, structured by thematic chapters. Optimized for deep reading and retention.";
       case "transcript":
         return "The raw, unedited transcript generated from the episode.";
       default:
@@ -284,8 +279,6 @@ export default function BriefDetailScreen() {
     switch (selectedTab) {
       case "summary":
         return "Copy Summary";
-      case "condensed":
-        return "Copy Condensed";
       case "transcript":
         return "Copy Transcript";
       default:
@@ -492,7 +485,6 @@ export default function BriefDetailScreen() {
             ) : (
               <ThemedText type="body" style={{ color: theme.textTertiary, marginTop: Spacing.lg }}>
                 {selectedTab === "summary" ? "Summary not available" : null}
-                {selectedTab === "condensed" ? "Condensed transcript not available" : null}
                 {selectedTab === "transcript" ? "Full transcript not available" : null}
               </ThemedText>
             )}

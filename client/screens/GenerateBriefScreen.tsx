@@ -232,7 +232,6 @@ export default function GenerateBriefScreen() {
           <View style={styles.featureList}>
             {[
               "Full timestamped transcript",
-              "AI-condensed transcript",
               "AI-generated summary in your preferred language",
               "Premium AI-narrated audio",
               "Shareable with friends",
