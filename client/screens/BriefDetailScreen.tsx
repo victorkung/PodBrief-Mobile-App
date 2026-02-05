@@ -417,12 +417,22 @@ export default function BriefDetailScreen() {
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                 {brief?.created_at ? formatDateLong(brief.created_at) : ""}
               </ThemedText>
+              <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                 {formatAudioDuration(audioDuration)} summary
               </ThemedText>
             </View>
           </View>
         </View>
+
+        {!isProcessing && masterBrief?.episode_duration_seconds && audioDuration > 0 ? (
+          <View style={[styles.timeSavedBanner, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="zap" size={16} color={theme.gold} />
+            <ThemedText type="body" style={[styles.timeSavedText, { color: theme.textSecondary }]}>
+              This summary helped save you ~{Math.max(0, Math.round((masterBrief.episode_duration_seconds - audioDuration) / 60))} minutes
+            </ThemedText>
+          </View>
+        ) : null}
 
         {isProcessing ? (
           <ProcessingSkeleton 
@@ -524,6 +534,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  timeSavedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  timeSavedText: {
+    flex: 1,
   },
   sectionHeader: {
     marginTop: Spacing.md,
