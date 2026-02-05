@@ -1,0 +1,77 @@
+Here's guidance for implementing the Time Saved banner in the React Native mobile app:
+
+## Time Saved Banner Implementation for Mobile
+
+### Data Source
+The banner uses two fields from `master_briefs`:
+- `total_duration_minutes` - original episode length in minutes
+- `audio_duration_seconds` - generated summary audio length in seconds
+
+### Logic
+```typescript
+const summaryDurationMinutes = Math.round(audioDurationSeconds / 60);
+const timeSavedMinutes = totalDurationMinutes - summaryDurationMinutes;
+
+// Only show if both values exist and time saved > 0
+if (!totalDurationMinutes || !audioDurationSeconds || timeSavedMinutes <= 0) {
+  return null;
+}
+```
+
+### React Native Component Example
+```tsx
+import { View, Text, StyleSheet } from 'react-native';
+import { Zap } from 'lucide-react-native'; // or your icon library
+
+interface TimeSavedBannerProps {
+  totalDurationMinutes: number | null;
+  audioDurationSeconds: number | null;
+}
+
+export function TimeSavedBanner({ totalDurationMinutes, audioDurationSeconds }: TimeSavedBannerProps) {
+  if (!totalDurationMinutes || !audioDurationSeconds) return null;
+
+  const summaryDurationMinutes = Math.round(audioDurationSeconds / 60);
+  const timeSavedMinutes = totalDurationMinutes - summaryDurationMinutes;
+
+  if (timeSavedMinutes <= 0) return null;
+
+  return (
+
+        This summary helped save you ~{timeSavedMinutes} minutes.
+
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)', // card/60 equivalent
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#your-primary-color', // match your theme
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    flex: 1,
+    fontSize: 16,
+    color: '#your-foreground-color',
+  },
+});
+```
+
+### Placement
+Position between the action buttons and the summary content on the Brief Details screen.
+
+Document in API contract
+Review mobile screen code
