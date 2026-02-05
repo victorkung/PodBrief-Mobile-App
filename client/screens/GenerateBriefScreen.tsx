@@ -81,7 +81,10 @@ export default function GenerateBriefScreen() {
       queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      if (user?.email && !data.existing) {
+      // Only sync engagement for NEW brief generations
+      const isNewGeneration = data.status === "processing";
+      
+      if (user?.email && isNewGeneration) {
         const { count } = await supabase
           .from("user_briefs")
           .select("*", { count: "exact", head: true })
@@ -99,11 +102,17 @@ export default function GenerateBriefScreen() {
         }).catch(err => console.error('[generateMutation] sync-to-loops error:', err));
       }
       
+      // Show appropriate message based on status
+      const statusMessages: Record<string, string> = {
+        processing: "Your AI summary is being generated. It will be ready in about 1-2 minutes.",
+        exists: "You already have this brief in your library!",
+        restored: "Brief restored to your library!",
+        linked: "Brief added to your library!",
+      };
+      
       Alert.alert(
-        "Brief Generation Started",
-        data.existing
-          ? "You already have this brief in your library!"
-          : "Your AI summary is being generated. It will be ready in about 1-2 minutes.",
+        isNewGeneration ? "Brief Generation Started" : "Brief Found",
+        statusMessages[data.status] || "Brief is ready!",
         [
           {
             text: "Go to Library",
@@ -114,6 +123,24 @@ export default function GenerateBriefScreen() {
     },
     onError: (error: any) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      
+      // Handle specific 402 credit error
+      const errorMessage = error.message || "";
+      if (errorMessage.includes("402") || errorMessage.toLowerCase().includes("credit")) {
+        Alert.alert(
+          "No Credits Remaining",
+          "You've run out of credits. Upgrade to Pro or wait for your monthly credits to refresh.",
+          [
+            { text: "OK", style: "cancel" },
+            {
+              text: "View Plans",
+              onPress: () => (navigation as any).navigate("Main", { screen: "ProfileTab" }),
+            },
+          ]
+        );
+        return;
+      }
+      
       Alert.alert(
         "Generation Failed",
         error.message || "Unable to generate brief. Please try again."
@@ -133,6 +160,16 @@ export default function GenerateBriefScreen() {
             onPress: () => (navigation as any).navigate("Main", { screen: "ProfileTab" }),
           },
         ]
+      );
+      return;
+    }
+
+    // Validate required podcast UUID
+    const podcastUuid = podcast?.uuid || episode.podcastSeries?.uuid;
+    if (!podcastUuid) {
+      Alert.alert(
+        "Unable to Generate",
+        "Missing podcast information. Please try again from the podcast page."
       );
       return;
     }
