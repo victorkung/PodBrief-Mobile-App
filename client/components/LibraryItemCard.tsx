@@ -18,6 +18,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { SavedEpisode, UserBrief, Download } from "@/lib/types";
+import { formatDate as formatDateUtil, getLanguageLabel } from "@/lib/utils";
 
 type ItemType = "episode" | "summary" | "download";
 
@@ -53,8 +54,7 @@ function formatDuration(seconds: number | null | undefined): string {
 
 function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return "";
-  const d = new Date(dateString);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDateUtil(dateString);
 }
 
 function formatFileSize(bytes: number): string {
@@ -149,6 +149,13 @@ export function LibraryItemCard({
     return isComplete;
   };
 
+  const getLanguage = (): string | null => {
+    if (brief?.master_brief?.language) {
+      return getLanguageLabel(brief.master_brief.language);
+    }
+    return null;
+  };
+
   const handleShare = useCallback(async () => {
     try {
       let shareUrl = "";
@@ -225,27 +232,33 @@ export function LibraryItemCard({
     (type === "download" && download?.type === "episode" && hasSummary);
 
   // Check if this summary is still being processed
-  const isBriefProcessing = type === "summary" && brief?.master_brief?.pipeline_status && 
+  const isBriefProcessing = type === "summary" && 
+    brief?.master_brief?.pipeline_status !== undefined &&
+    brief?.master_brief?.pipeline_status !== null &&
     brief.master_brief.pipeline_status !== "completed" && 
     brief.master_brief.pipeline_status !== "failed";
 
   const getPipelineStatusText = (): string => {
-    if (!brief?.master_brief?.pipeline_status) return "Processing...";
+    if (!brief?.master_brief?.pipeline_status) return "Processing... (~2-3 min)";
     switch (brief.master_brief.pipeline_status) {
-      case "pending": return "Queued...";
-      case "transcribing": return "Transcribing...";
-      case "summarizing": return "Summarizing...";
-      case "generating_audio": return "Creating audio...";
-      default: return "Processing...";
+      case "pending": return "Queued... (~2-3 min)";
+      case "transcribing": return "Transcribing... (~1 min left)";
+      case "summarizing": return "Summarizing... (~1 min left)";
+      case "generating_audio": return "Generating audio... (~30s left)";
+      case "recording": return "Generating audio... (~30s left)";
+      default: return "Processing... (~2-3 min)";
     }
   };
 
+  // Dim the row if offline without download OR if processing
+  const isInactive = isDisabledOffline || isBriefProcessing;
+
   return (
-    <View style={[styles.card, { borderBottomColor: theme.border, opacity: isDisabledOffline ? 0.5 : 1 }]}>
+    <View style={[styles.card, { borderBottomColor: theme.border, opacity: isInactive ? 0.5 : 1 }]}>
       <Pressable 
-        onPress={isDisabledOffline ? undefined : (onNavigateToDetails || onPlay)} 
+        onPress={isInactive ? undefined : (onNavigateToDetails || onPlay)} 
         style={styles.contentRow}
-        disabled={isDisabledOffline}
+        disabled={isInactive}
       >
         <View style={[styles.artwork, { backgroundColor: theme.backgroundTertiary }]}>
           {artwork ? (
@@ -260,11 +273,6 @@ export function LibraryItemCard({
           {showSummaryBadge ? (
             <View style={[styles.summaryBadge, { backgroundColor: theme.gold }]}>
               <Feather name="zap" size={8} color={theme.buttonText} />
-            </View>
-          ) : null}
-          {isBriefProcessing ? (
-            <View style={[styles.processingBadge, { backgroundColor: theme.gold }]}>
-              <ActivityIndicator size={10} color={theme.buttonText} />
             </View>
           ) : null}
         </View>
@@ -291,6 +299,14 @@ export function LibraryItemCard({
                     <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
                     <ThemedText type="caption" style={{ color: theme.textTertiary }}>
                       {getDuration()}
+                    </ThemedText>
+                  </>
+                ) : null}
+                {type === "summary" && getLanguage() ? (
+                  <>
+                    <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+                    <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+                      {getLanguage()}
                     </ThemedText>
                   </>
                 ) : null}
@@ -365,11 +381,13 @@ export function LibraryItemCard({
           onPress={isPlaying ? onPause : onPlay}
           style={[
             styles.playButton, 
-            { backgroundColor: isDisabledOffline ? theme.textTertiary : (isPlaying ? theme.gold : theme.text) }
+            { backgroundColor: isInactive ? theme.textTertiary : (isPlaying ? theme.gold : theme.text) }
           ]}
-          disabled={isThisItemLoading || isDisabledOffline}
+          disabled={isThisItemLoading || isInactive}
         >
           {isThisItemLoading ? (
+            <ActivityIndicator size="small" color={theme.backgroundRoot} />
+          ) : isBriefProcessing ? (
             <ActivityIndicator size="small" color={theme.backgroundRoot} />
           ) : isDisabledOffline ? (
             <Feather name="wifi-off" size={16} color={theme.backgroundRoot} />
@@ -444,16 +462,6 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  processingBadge: {
-    position: "absolute",
-    top: 2,
-    right: 2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
   },

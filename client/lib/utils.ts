@@ -57,3 +57,50 @@ export function formatDuration(seconds: number): string {
   }
   return `${minutes}m`;
 }
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  nl: "Dutch",
+  ru: "Russian",
+  ja: "Japanese",
+  ko: "Korean",
+  zh: "Chinese",
+  ar: "Arabic",
+  hi: "Hindi",
+  sv: "Swedish",
+  da: "Danish",
+  no: "Norwegian",
+  fi: "Finnish",
+  pl: "Polish",
+  tr: "Turkish",
+  cs: "Czech",
+  el: "Greek",
+  he: "Hebrew",
+  th: "Thai",
+  vi: "Vietnamese",
+  id: "Indonesian",
+  ms: "Malay",
+  uk: "Ukrainian",
+  ro: "Romanian",
+  hu: "Hungarian",
+};
+
+export function getLanguageLabel(languageCode: string | null | undefined): string {
+  if (!languageCode) return "English";
+  const code = languageCode.toLowerCase().split("-")[0];
+  return LANGUAGE_LABELS[code] || languageCode.toUpperCase();
+}
+
+export function calculateReadingTime(text: string, wordsPerMinute: number = 300): number {
+  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+  return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
+}
+
+export function getWordCount(text: string): number {
+  return text.split(/\s+/).filter(w => w.length > 0).length;
+}
