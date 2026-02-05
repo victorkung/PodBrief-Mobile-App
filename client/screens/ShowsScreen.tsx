@@ -26,6 +26,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { useToast } from "@/contexts/ToastContext";
+import { useSummarize } from "@/hooks/useSummarize";
 import { supabase } from "@/lib/supabase";
 import { FollowedPodcast, TaddyEpisode, ShowsTabType, AudioItem } from "@/lib/types";
 import { Spacing } from "@/constants/theme";
@@ -41,6 +42,7 @@ export default function ShowsScreen() {
   const { user, profile } = useAuth();
   const { play } = useAudioPlayerContext();
   const { showToast } = useToast();
+  const { summarize, isGenerating } = useSummarize();
 
   const [selectedTab, setSelectedTab] = useState<ShowsTabType>("shows");
   const [refreshing, setRefreshing] = useState(false);
@@ -231,9 +233,9 @@ export default function ShowsScreen() {
 
   const handleGenerateBrief = useCallback(
     (episode: TaddyEpisode) => {
-      (navigation as any).navigate("GenerateBrief", { episode });
+      summarize(episode);
     },
-    [navigation]
+    [summarize]
   );
 
   const handleEpisodePress = useCallback(

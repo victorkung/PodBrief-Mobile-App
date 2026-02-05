@@ -17,6 +17,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { useToast } from "@/contexts/ToastContext";
+import { useSummarize } from "@/hooks/useSummarize";
 import { supabase } from "@/lib/supabase";
 import { TaddyEpisode, SavedEpisode, AudioItem } from "@/lib/types";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
@@ -40,6 +41,7 @@ export default function EpisodeDetailScreen() {
   const { user } = useAuth();
   const { play } = useAudioPlayerContext();
   const { showToast } = useToast();
+  const { summarize, isGenerating } = useSummarize();
 
   const { episode, podcast, source = "podcastDetail" } = route.params;
 
@@ -281,9 +283,9 @@ export default function EpisodeDetailScreen() {
 
   const handleGenerateBrief = useCallback(() => {
     if (isTaddyEpisode) {
-      (navigation as any).navigate("GenerateBrief", { episode, podcast });
+      summarize(episode as TaddyEpisode, podcast as any);
     }
-  }, [navigation, episode, podcast, isTaddyEpisode]);
+  }, [summarize, episode, podcast, isTaddyEpisode]);
 
   const [isDownloading, setIsDownloading] = useState(false);
 

@@ -18,10 +18,9 @@ import { supabase } from "@/lib/supabase";
 import { TaddyEpisode, TaddyPodcast } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { formatDuration, formatDateLong } from "@/lib/utils";
+import { SKIP_GENERATE_CONFIRMATION_KEY } from "@/hooks/useSummarize";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
-
-const SKIP_GENERATE_CONFIRMATION_KEY = "@podbrief_skip_generate_confirmation";
 
 export default function GenerateBriefScreen() {
   const { theme } = useTheme();
@@ -298,9 +297,6 @@ export default function GenerateBriefScreen() {
     </View>
   );
 }
-
-// Export the key for use in other components
-export { SKIP_GENERATE_CONFIRMATION_KEY };
 
 const styles = StyleSheet.create({
   container: {

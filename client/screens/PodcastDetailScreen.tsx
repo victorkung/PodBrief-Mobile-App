@@ -23,6 +23,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { useToast } from "@/contexts/ToastContext";
+import { useSummarize } from "@/hooks/useSummarize";
 import { supabase } from "@/lib/supabase";
 import { TaddyPodcast, TaddyEpisode, AudioItem } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -39,6 +40,7 @@ export default function PodcastDetailScreen() {
   const { user } = useAuth();
   const { play } = useAudioPlayerContext();
   const { showToast } = useToast();
+  const { summarize, isGenerating } = useSummarize();
 
   const podcast = (route.params as any)?.podcast as TaddyPodcast;
   const [searchTerm, setSearchTerm] = useState("");
@@ -290,9 +292,9 @@ export default function PodcastDetailScreen() {
 
   const handleGenerateBrief = useCallback(
     (episode: TaddyEpisode) => {
-      (navigation as any).navigate("GenerateBrief", { episode, podcast });
+      summarize(episode, podcast);
     },
-    [navigation, podcast]
+    [summarize, podcast]
   );
 
   const handleEpisodePress = useCallback(
