@@ -150,7 +150,7 @@ function ProcessingSkeleton({ pipelineStatus, theme }: { pipelineStatus: string;
       <View style={skeletonStyles.tipSection}>
         <Feather name="info" size={16} color={theme.textTertiary} />
         <ThemedText type="caption" style={[skeletonStyles.tipText, { color: theme.textTertiary }]}>
-          This usually takes 1-2 minutes. Feel free to browse other content while we work on your summary.
+          This usually takes 2-3 minutes. Feel free to browse other content while we work on your summary.
         </ThemedText>
       </View>
     </View>

@@ -17,6 +17,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { Colors } from "@/constants/theme";
 import { createErrorHandler } from "@/lib/errorLogger";
 
@@ -93,7 +94,9 @@ export default function App() {
                       },
                     }}
                   >
-                    <RootStackNavigator />
+                    <NotificationProvider>
+                      <RootStackNavigator />
+                    </NotificationProvider>
                   </NavigationContainer>
                   </ToastProvider>
                   <StatusBar style="light" />

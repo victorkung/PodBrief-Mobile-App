@@ -7,6 +7,7 @@ export interface Profile {
   preferred_language: string;
   pro_expires_at: string | null;
   subscription_cancel_at: string | null;
+  expo_push_token: string | null;
   created_at: string;
   updated_at: string;
 }
