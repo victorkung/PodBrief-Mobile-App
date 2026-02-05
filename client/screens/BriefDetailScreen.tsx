@@ -442,26 +442,26 @@ export default function BriefDetailScreen() {
                 {getSectionDescription()}
               </ThemedText>
               {contentMetadata ? (
-                <ThemedText type="caption" style={[styles.metadataText, { color: theme.textTertiary }]}>
+                <ThemedText type="body" style={[styles.metadataText, { color: theme.textSecondary }]}>
                   {contentMetadata.readingTime} min read • {contentMetadata.wordCount.toLocaleString()} words{selectedTab !== "transcript" ? ` • ${contentMetadata.language}` : ""}
                 </ThemedText>
               ) : null}
               
               <Pressable 
                 onPress={handleCopyContent}
-                style={[styles.copyButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                style={[styles.copyButton, { backgroundColor: theme.backgroundTertiary }]}
               >
                 <Feather 
                   name={copiedSection === selectedTab ? "check" : "copy"} 
-                  size={12} 
+                  size={14} 
                   color={copiedSection === selectedTab ? theme.gold : theme.text} 
                 />
                 <ThemedText 
                   type="caption" 
                   style={{ 
                     color: copiedSection === selectedTab ? theme.gold : theme.text,
-                    marginLeft: 6,
-                    fontWeight: "500"
+                    marginLeft: 4,
+                    fontWeight: "600"
                   }}
                 >
                   {copiedSection === selectedTab ? "Copied!" : getCopyButtonLabel()}
@@ -505,7 +505,8 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    marginBottom: Spacing.lg,
+    marginTop: 10,
+    marginBottom: Spacing.lg + 5,
   },
   artwork: {
     width: 80,
@@ -534,18 +535,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   metadataText: {
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 18,
     marginBottom: Spacing.md,
   },
   copyButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     alignSelf: "flex-start",
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: 999,
     marginTop: Spacing.sm,
   },
   contentSection: {
