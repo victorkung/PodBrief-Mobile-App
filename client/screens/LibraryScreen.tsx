@@ -135,6 +135,8 @@ export default function LibraryScreen() {
             podcast_name,
             episode_thumbnail,
             summary_text,
+            ai_condensed_transcript,
+            transcript_content,
             audio_url,
             audio_duration_seconds,
             pipeline_status,
@@ -172,6 +174,24 @@ export default function LibraryScreen() {
       }
     }, [user, refetchEpisodes, refetchBriefs, loadDownloads])
   );
+
+  // Auto-refresh when there are processing summaries (poll every 15 seconds)
+  useEffect(() => {
+    const hasProcessingSummaries = userBriefs?.some(
+      (brief) =>
+        brief.master_brief?.pipeline_status &&
+        brief.master_brief.pipeline_status !== "completed" &&
+        brief.master_brief.pipeline_status !== "failed"
+    );
+
+    if (!hasProcessingSummaries) return;
+
+    const intervalId = setInterval(() => {
+      refetchBriefs();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [userBriefs, refetchBriefs]);
 
   const handlePlayEpisode = useCallback(
     (episode: SavedEpisode, allEpisodes: SavedEpisode[]) => {

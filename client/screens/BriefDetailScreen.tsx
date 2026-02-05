@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -7,6 +7,7 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
 import * as Haptics from "expo-haptics";
+import * as Clipboard from "expo-clipboard";
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -16,6 +17,7 @@ import Animated, {
   Easing 
 } from "react-native-reanimated";
 import { useQueryClient } from "@tanstack/react-query";
+import Markdown from "react-native-markdown-display";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ThemedText } from "@/components/ThemedText";
@@ -23,7 +25,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { UserBrief, AudioItem } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, getLanguageLabel, calculateReadingTime, getWordCount } from "@/lib/utils";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
@@ -222,11 +224,14 @@ export default function BriefDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { play } = useAudioPlayerContext();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const brief = (route.params as any)?.brief as UserBrief;
   const masterBrief = brief?.master_brief;
 
   const [selectedTab, setSelectedTab] = useState<ContentTab>("summary");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   const handlePlay = useCallback(() => {
     if (!masterBrief || masterBrief.pipeline_status !== "completed") return;
@@ -262,23 +267,67 @@ export default function BriefDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
+  const handleCopyContent = useCallback(async () => {
+    const content = getContent();
+    if (content) {
+      await Clipboard.setStringAsync(content);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCopiedSection(selectedTab);
+      setTimeout(() => setCopiedSection(null), 2000);
+    }
+  }, [selectedTab]);
+
+  const handleScrollToTop = useCallback(() => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const handleScroll = useCallback((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollTop(offsetY > 400);
+  }, []);
+
   const segments = [
     { key: "summary" as ContentTab, label: "Summary" },
     { key: "condensed" as ContentTab, label: "Condensed" },
     { key: "transcript" as ContentTab, label: "Transcript" },
   ];
 
-  const getContent = () => {
+  const getContent = (): string => {
     switch (selectedTab) {
       case "summary":
-        return masterBrief?.summary_text || "Summary not available";
+        return masterBrief?.summary_text || "";
       case "condensed":
-        return masterBrief?.ai_condensed_transcript || "Condensed transcript not available";
+        return masterBrief?.ai_condensed_transcript || "";
       case "transcript":
-        return masterBrief?.transcript_content || "Full transcript not available";
+        return masterBrief?.transcript_content || "";
       default:
         return "";
     }
+  };
+
+  const getSectionTitle = (): string => {
+    switch (selectedTab) {
+      case "summary":
+        return "AI-Generated Summary";
+      case "condensed":
+        return "Condensed Transcript";
+      case "transcript":
+        return "Full Episode Transcript";
+      default:
+        return "";
+    }
+  };
+
+  const getContentMetadata = () => {
+    const content = getContent();
+    if (!content) return null;
+    
+    const wordCount = getWordCount(content);
+    const readingTime = calculateReadingTime(content);
+    const language = getLanguageLabel(masterBrief?.language);
+    
+    return { wordCount, readingTime, language };
   };
 
   const isProcessing =
@@ -287,9 +336,84 @@ export default function BriefDetailScreen() {
 
   const audioDuration = masterBrief?.audio_duration_seconds || 0;
 
+  const contentMetadata = getContentMetadata();
+  const content = getContent();
+
+  const markdownStyles = {
+    body: {
+      color: theme.text,
+      fontSize: 16,
+      lineHeight: 26,
+    },
+    heading1: {
+      color: theme.text,
+      fontSize: 24,
+      fontWeight: "700" as const,
+      marginTop: Spacing.lg,
+      marginBottom: Spacing.sm,
+    },
+    heading2: {
+      color: theme.text,
+      fontSize: 20,
+      fontWeight: "600" as const,
+      marginTop: Spacing.lg,
+      marginBottom: Spacing.sm,
+    },
+    heading3: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: "600" as const,
+      marginTop: Spacing.md,
+      marginBottom: Spacing.xs,
+    },
+    paragraph: {
+      color: theme.text,
+      fontSize: 16,
+      lineHeight: 26,
+      marginBottom: Spacing.md,
+    },
+    list_item: {
+      color: theme.text,
+      fontSize: 16,
+      lineHeight: 24,
+    },
+    bullet_list: {
+      marginBottom: Spacing.md,
+    },
+    ordered_list: {
+      marginBottom: Spacing.md,
+    },
+    strong: {
+      fontWeight: "600" as const,
+    },
+    em: {
+      fontStyle: "italic" as const,
+    },
+    blockquote: {
+      backgroundColor: theme.backgroundSecondary,
+      borderLeftColor: theme.gold,
+      borderLeftWidth: 3,
+      paddingLeft: Spacing.md,
+      paddingVertical: Spacing.sm,
+      marginVertical: Spacing.md,
+    },
+    code_inline: {
+      backgroundColor: theme.backgroundSecondary,
+      color: theme.gold,
+      paddingHorizontal: 4,
+      borderRadius: 4,
+    },
+    link: {
+      color: theme.gold,
+    },
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
+        ref={scrollViewRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
         contentContainerStyle={{
           paddingTop: headerHeight + Spacing.lg,
           paddingBottom: insets.bottom + Spacing.miniPlayerHeight + Spacing.xl,
@@ -382,18 +506,79 @@ export default function BriefDetailScreen() {
             <View
               style={[styles.contentCard, { backgroundColor: theme.backgroundDefault }]}
             >
-              <ThemedText type="caption" style={[styles.contentMeta, { color: theme.textTertiary }]}>
-                {selectedTab === "summary" ? "AI-generated summary" : null}
-                {selectedTab === "condensed" ? "AI-condensed transcript" : null}
-                {selectedTab === "transcript" ? "Full episode transcript" : null}
-              </ThemedText>
-              <ThemedText type="body" style={styles.contentText}>
-                {getContent()}
-              </ThemedText>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <ThemedText type="h4" style={{ color: theme.text }}>
+                    {getSectionTitle()}
+                  </ThemedText>
+                  <Pressable 
+                    onPress={handleCopyContent}
+                    style={[styles.copyButton, { backgroundColor: theme.backgroundSecondary }]}
+                  >
+                    <Feather 
+                      name={copiedSection === selectedTab ? "check" : "copy"} 
+                      size={16} 
+                      color={copiedSection === selectedTab ? theme.gold : theme.textSecondary} 
+                    />
+                    <ThemedText 
+                      type="caption" 
+                      style={{ 
+                        color: copiedSection === selectedTab ? theme.gold : theme.textSecondary,
+                        marginLeft: 6 
+                      }}
+                    >
+                      {copiedSection === selectedTab ? "Copied" : "Copy"}
+                    </ThemedText>
+                  </Pressable>
+                </View>
+                {contentMetadata ? (
+                  <View style={styles.metadataRow}>
+                    <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+                      {contentMetadata.wordCount.toLocaleString()} words
+                    </ThemedText>
+                    <View style={[styles.metaDot, { backgroundColor: theme.textTertiary }]} />
+                    <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+                      {contentMetadata.readingTime} min read
+                    </ThemedText>
+                    <View style={[styles.metaDot, { backgroundColor: theme.textTertiary }]} />
+                    <ThemedText type="caption" style={{ color: theme.textTertiary }}>
+                      {contentMetadata.language}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </View>
+              
+              {content ? (
+                selectedTab === "summary" ? (
+                  <Markdown style={markdownStyles}>{content}</Markdown>
+                ) : (
+                  <ThemedText type="body" style={styles.contentText}>
+                    {content}
+                  </ThemedText>
+                )
+              ) : (
+                <ThemedText type="body" style={{ color: theme.textTertiary }}>
+                  {selectedTab === "summary" ? "Summary not available" : null}
+                  {selectedTab === "condensed" ? "Condensed transcript not available" : null}
+                  {selectedTab === "transcript" ? "Full transcript not available" : null}
+                </ThemedText>
+              )}
             </View>
           </>
         )}
       </ScrollView>
+
+      {showScrollTop ? (
+        <Pressable
+          onPress={handleScrollToTop}
+          style={[styles.scrollTopButton, { 
+            backgroundColor: theme.gold,
+            bottom: insets.bottom + Spacing.miniPlayerHeight + Spacing.lg 
+          }]}
+        >
+          <Feather name="chevron-up" size={24} color={theme.buttonText} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -445,10 +630,50 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     marginTop: Spacing.lg,
   },
+  sectionHeader: {
+    marginBottom: Spacing.lg,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
+  copyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  metadataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    marginHorizontal: Spacing.xs,
+  },
   contentMeta: {
     marginBottom: Spacing.md,
   },
   contentText: {
     lineHeight: 26,
+  },
+  scrollTopButton: {
+    position: "absolute",
+    right: Spacing.lg,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
