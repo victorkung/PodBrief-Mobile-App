@@ -50,6 +50,17 @@ Preferred communication style: Simple, everyday language.
 - **Loops.so**: Marketing automation.
 - **PostHog**: Analytics.
 
+## Database Schema (Breaking Changes - Feb 2026)
+
+- **Dropped columns from `master_briefs`**: `pipeline_error`, `audio_status`, `transcript_content`, `ai_condensed_transcript`
+- **Dropped columns from `user_briefs`**: `total_duration_minutes`
+- **Retained on `master_briefs`**: `pipeline_status`, `total_duration_minutes`
+- **New table `brief_pipeline_state`**: `master_brief_id` (FK), `pipeline_status`, `pipeline_error`, `summary_phase`, `audio_status`, `audio_error`
+- **New table `brief_transcripts`**: `master_brief_id` (FK), `transcript_content`, `ai_condensed_transcript`
+- **BriefDetailScreen**: Fetches full master_brief data including JOINed `brief_transcripts` and `brief_pipeline_state` via react-query on mount
+- **LibraryScreen**: Query only selects columns still on `master_briefs`; no longer requests `transcript_content` or `ai_condensed_transcript`
+- **TypeScript types**: `MasterBrief` has optional nested `brief_pipeline_state?: BriefPipelineState` and `brief_transcripts?: BriefTranscripts`
+
 ## Recent Audio Player Improvements
 
 - **iOS Silent Mode Fix**: `setAudioModeAsync` is now called before each `play()` and `resume()` action to ensure `playsInSilentMode: true` is always active
