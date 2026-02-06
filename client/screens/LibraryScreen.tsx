@@ -136,8 +136,6 @@ export default function LibraryScreen() {
             podcast_name,
             episode_thumbnail,
             summary_text,
-            ai_condensed_transcript,
-            transcript_content,
             audio_url,
             audio_duration_seconds,
             total_duration_minutes,

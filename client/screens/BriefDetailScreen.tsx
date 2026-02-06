@@ -7,6 +7,7 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
+import { useQuery } from "@tanstack/react-query";
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -21,7 +22,8 @@ import { Card } from "@/components/Card";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { UserBrief } from "@/lib/types";
+import { UserBrief, MasterBrief } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { formatDuration, formatDateLong, getLanguageLabel, calculateReadingTime, getWordCount } from "@/lib/utils";
 
@@ -222,8 +224,39 @@ export default function BriefDetailScreen() {
   const route = useRoute();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const brief = (route.params as any)?.brief as UserBrief;
-  const masterBrief = brief?.master_brief;
+  const paramBrief = (route.params as any)?.brief as UserBrief;
+  const masterBriefId = paramBrief?.master_brief_id;
+
+  const { data: fetchedBrief } = useQuery({
+    queryKey: ["briefDetail", masterBriefId],
+    queryFn: async () => {
+      if (!masterBriefId) return null;
+      const { data, error } = await supabase
+        .from("master_briefs")
+        .select(
+          `
+          *,
+          brief_transcripts(transcript_content, ai_condensed_transcript),
+          brief_pipeline_state(pipeline_status, pipeline_error, summary_phase, audio_status, audio_error)
+        `
+        )
+        .eq("id", masterBriefId)
+        .single();
+      if (error) throw error;
+      const result = data as any;
+      if (Array.isArray(result.brief_transcripts)) {
+        result.brief_transcripts = result.brief_transcripts[0] || null;
+      }
+      if (Array.isArray(result.brief_pipeline_state)) {
+        result.brief_pipeline_state = result.brief_pipeline_state[0] || null;
+      }
+      return result as MasterBrief;
+    },
+    enabled: !!masterBriefId,
+  });
+
+  const masterBrief = fetchedBrief || paramBrief?.master_brief;
+  const brief = paramBrief;
 
   const [selectedTab, setSelectedTab] = useState<ContentTab>("summary");
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -259,7 +292,7 @@ export default function BriefDetailScreen() {
       case "summary":
         return masterBrief?.summary_text || "";
       case "transcript":
-        return masterBrief?.transcript_content || "";
+        return masterBrief?.brief_transcripts?.transcript_content || "";
       default:
         return "";
     }
