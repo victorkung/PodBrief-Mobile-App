@@ -12,6 +12,19 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface BriefPipelineState {
+  pipeline_status: string | null;
+  pipeline_error: string | null;
+  summary_phase: string | null;
+  audio_status: string | null;
+  audio_error: string | null;
+}
+
+export interface BriefTranscripts {
+  transcript_content: string | null;
+  ai_condensed_transcript: string | null;
+}
+
 export interface MasterBrief {
   id: string;
   taddy_episode_uuid: string | null;
@@ -24,17 +37,15 @@ export interface MasterBrief {
   episode_duration_seconds: number | null;
   episode_published_at: string | null;
   slug: string | null;
-  transcript_content: string | null;
-  ai_condensed_transcript: string | null;
   summary_text: string | null;
   audio_url: string | null;
-  audio_status: string | null;
   audio_duration_seconds: number | null;
   total_duration_minutes: number | null;
   pipeline_status: string | null;
-  pipeline_error: string | null;
   created_at: string;
   updated_at: string;
+  brief_pipeline_state?: BriefPipelineState;
+  brief_transcripts?: BriefTranscripts;
 }
 
 export interface UserBrief {
@@ -47,7 +58,6 @@ export interface UserBrief {
   is_hidden: boolean;
   is_gifted: boolean;
   preferred_language: string;
-  total_duration_minutes: number | null;
   created_at: string;
   updated_at: string;
   master_brief?: MasterBrief;
