@@ -267,15 +267,16 @@ export function LibraryItemCard({
     }
   }, [onRetry, isRetrying]);
 
-  // Dim the row if offline without download OR if processing (but NOT if failed — retry button needs to look tappable)
+  // Dim the row if offline without download OR if processing
   const isInactive = isDisabledOffline || isBriefProcessing;
   const isNonNavigable = isInactive || isBriefFailed;
+  const contentDimOpacity = (isInactive || isBriefFailed) ? 0.5 : 1;
 
   return (
-    <View style={[styles.card, { borderBottomColor: theme.border, opacity: isInactive ? 0.5 : 1 }]}>
+    <View style={[styles.card, { borderBottomColor: theme.border }]}>
       <Pressable 
         onPress={isNonNavigable ? undefined : (onNavigateToDetails || onPlay)} 
-        style={styles.contentRow}
+        style={[styles.contentRow, { opacity: contentDimOpacity }]}
         disabled={isNonNavigable}
       >
         <View style={[styles.artwork, { backgroundColor: theme.backgroundTertiary }]}>
@@ -350,7 +351,7 @@ export function LibraryItemCard({
       </Pressable>
 
       <View style={styles.actionsRow}>
-        <View style={styles.leftActions}>
+        <View style={[styles.leftActions, { opacity: contentDimOpacity }]}>
           <Pressable
             onPress={handleToggleComplete}
             style={styles.actionButton}
