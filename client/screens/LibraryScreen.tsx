@@ -678,6 +678,18 @@ export default function LibraryScreen() {
       const pipelineStatus = brief.master_brief?.pipeline_status;
       setRetryingIds((prev) => new Set(prev).add(brief.id));
       
+      // Optimistically update pipeline_status to "pending" so the row shows processing state immediately
+      const optimisticallySetPending = () => {
+        queryClient.setQueryData(["userBriefs", preferredLanguage], (old: UserBrief[] | undefined) => {
+          if (!old) return old;
+          return old.map((b) =>
+            b.id === brief.id && b.master_brief
+              ? { ...b, master_brief: { ...b.master_brief, pipeline_status: "pending" } }
+              : b
+          );
+        });
+      };
+
       try {
         if (pipelineStatus === "failed") {
           // Transcript failed - retry transcript fetch
@@ -690,6 +702,7 @@ export default function LibraryScreen() {
           if (data?.status === "not_available") {
             showToast("Transcript not available for this episode. Please try a different episode.", "error");
           } else {
+            optimisticallySetPending();
             showToast("Retrying summary generation...", "info");
           }
         } else if (pipelineStatus === "summary_failed") {
@@ -706,6 +719,7 @@ export default function LibraryScreen() {
             return;
           }
           
+          optimisticallySetPending();
           showToast("Regenerating summary...", "info");
         }
         
@@ -724,7 +738,7 @@ export default function LibraryScreen() {
         });
       }
     },
-    [refetchBriefs, showToast]
+    [refetchBriefs, showToast, queryClient, preferredLanguage]
   );
 
   // Auto-retry for stale transcripts (pending/transcribing for >2 minutes)
