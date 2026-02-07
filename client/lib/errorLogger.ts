@@ -23,6 +23,7 @@ export async function logErrorToServer({
         url: url,
         error_code: errorCode,
         metadata: metadata,
+        client_platform: 'mobile',
       },
     });
   } catch (err) {
