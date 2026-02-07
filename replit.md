@@ -63,7 +63,10 @@ Preferred communication style: Simple, everyday language.
 - **Edge function rename**: `generate-taddy-brief` renamed to `generate-brief` (same contract)
 - **Retry logic**: `retry-taddy-transcript` now runs full pipeline in background (no separate summarization call needed). `regenerate-summary` has `resetToFailed` recovery path when transcript is missing. LibraryScreen handles both `failed` (calls `retry-taddy-transcript`) and `summary_failed` (calls `regenerate-summary`) with unified "Something went wrong" UI.
 - **Error logging**: All `log-error` calls include `client_platform: 'mobile'`
-- **Auto-retry**: LibraryScreen auto-retries stale briefs stuck in `pending`/`transcribing` for >2 minutes
+- **Auto-retry**: LibraryScreen auto-retries stale briefs stuck in `pending`/`transcribing` for >2 minutes. Uses ref-based guard (`autoRetriedIdsRef`) so each brief is only auto-retried once per session.
+- **Deduplication**: Backend `retry-taddy-transcript` returns `{ status: "already_processing" }` if pipeline is already running. Mobile handles this gracefully in both manual retry (shows toast) and auto-retry (logs and skips). `generate-audio` now owns pipeline completion and notifications — `retry-taddy-transcript` and `regenerate-summary` no longer set `completed` or send notifications.
+- **Audio readiness check**: LibraryItemCard treats `pipeline_status === "completed"` with no `audio_url` as still processing, showing "Generating audio..." status. Defensive measure complementing backend fix.
+- **Failed brief UI**: Content area and action buttons dimmed at 50% opacity; Retry button stays at full opacity. After retry, optimistic update sets `pipeline_status` to `"pending"` immediately.
 
 ## Recent Audio Player Improvements
 
