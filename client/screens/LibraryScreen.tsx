@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { FlatList, View, StyleSheet, RefreshControl, Alert, TextInput, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -57,6 +57,7 @@ export default function LibraryScreen() {
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [downloadProgress, setDownloadProgress] = useState<Map<string, number>>(new Map());
   const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+  const autoRetriedIdsRef = useRef<Set<string>>(new Set());
 
   const loadDownloads = useCallback(async () => {
     try {
@@ -701,6 +702,8 @@ export default function LibraryScreen() {
           
           if (data?.status === "not_available") {
             showToast("Transcript not available for this episode. Please try a different episode.", "error");
+          } else if (data?.status === "already_processing") {
+            showToast("Brief is already being processed.", "info");
           } else {
             optimisticallySetPending();
             showToast("Retrying summary generation...", "info");
@@ -752,16 +755,22 @@ export default function LibraryScreen() {
       const createdAt = new Date(brief.created_at).getTime();
       const ageMinutes = (Date.now() - createdAt) / 1000 / 60;
       
-      return ageMinutes >= 2 && !retryingIds.has(brief.id);
+      return ageMinutes >= 2 && !retryingIds.has(brief.id) && !autoRetriedIdsRef.current.has(brief.master_brief_id!);
     });
     
     // Auto-retry stale briefs (one at a time to avoid rate limits)
     if (staleBriefs.length > 0) {
       const briefToRetry = staleBriefs[0];
-      console.log("[LibraryScreen] Auto-retrying stale brief:", briefToRetry.master_brief_id);
+      const masterBriefId = briefToRetry.master_brief_id!;
+      autoRetriedIdsRef.current.add(masterBriefId);
+      console.log("[LibraryScreen] Auto-retrying stale brief:", masterBriefId);
       
       supabase.functions.invoke("retry-taddy-transcript", {
-        body: { masterBriefId: briefToRetry.master_brief_id },
+        body: { masterBriefId },
+      }).then(({ data }) => {
+        if (data?.status === "already_processing") {
+          console.log("[LibraryScreen] Brief already processing, skipping:", masterBriefId);
+        }
       }).catch((err) => console.error("[LibraryScreen] Auto-retry error:", err));
     }
   }, [userBriefs, retryingIds]);
