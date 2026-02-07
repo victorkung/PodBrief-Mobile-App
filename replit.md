@@ -148,3 +148,13 @@ Preferred communication style: Simple, everyday language.
 - **Supabase Integration**: Edge Function should call the send-notification endpoint when pipeline completes/fails
 - **Web Compatibility**: Gracefully handles web platform where push notifications are not available
 - **Generation Time**: Summary generation takes 2-3 minutes; users receive push notification and email when complete
+
+## Referral Workflow (V1)
+
+- **Scope**: Sharing functionality and signup attribution only. No deep linking (referred users use web app). Referral stats UI will come later as a separate screen from Profile.
+- **Database**: New `referrals` table tracks referrer_id, referred_id, content_type, content_id, signed_up_at, converted_to_paid_at. Written by edge functions (service role), not client.
+- **Share URLs**: `podbrief.io/brief/{slug}?ref={userId}&sharedBy={firstName}` and `podbrief.io/episode/{slug}?ref={userId}&sharedBy={firstName}`
+- **LibraryItemCard sharing**: Updated `handleShare` generates referral URLs with `?ref=` and `&sharedBy=` params, calls `log-share-visit` edge function (fire-and-forget) with `referrerId`, `masterBriefId`, and `contentType` ('brief' or 'episode')
+- **EpisodeDetailScreen sharing**: Same referral URL pattern and `log-share-visit` call
+- **Signup attribution**: `AuthContext.signUp()` accepts optional `referredBy` param, passes it as `referred_by` in Supabase auth metadata for `handle_new_user()` trigger
+- **Backend (Lovable-managed)**: `claim-brief`, `claim-episode` edge functions insert referral rows. `stripe-webhook` updates `converted_to_paid_at` on Pro upgrade. `log-share-visit` supports `contentType: 'episode'`
