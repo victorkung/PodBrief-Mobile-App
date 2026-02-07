@@ -60,6 +60,10 @@ Preferred communication style: Simple, everyday language.
 - **BriefDetailScreen**: Fetches full master_brief data including JOINed `brief_transcripts` and `brief_pipeline_state` via react-query on mount
 - **LibraryScreen**: Query only selects columns still on `master_briefs`; no longer requests `transcript_content` or `ai_condensed_transcript`
 - **TypeScript types**: `MasterBrief` has optional nested `brief_pipeline_state?: BriefPipelineState` and `brief_transcripts?: BriefTranscripts`
+- **Edge function rename**: `generate-taddy-brief` renamed to `generate-brief` (same contract)
+- **Retry logic**: `retry-taddy-transcript` now runs full pipeline in background (no separate summarization call needed). `regenerate-summary` has `resetToFailed` recovery path when transcript is missing. LibraryScreen handles both `failed` (calls `retry-taddy-transcript`) and `summary_failed` (calls `regenerate-summary`) with unified "Something went wrong" UI.
+- **Error logging**: All `log-error` calls include `client_platform: 'mobile'`
+- **Auto-retry**: LibraryScreen auto-retries stale briefs stuck in `pending`/`transcribing` for >2 minutes
 
 ## Recent Audio Player Improvements
 
