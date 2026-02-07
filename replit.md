@@ -128,6 +128,13 @@ Preferred communication style: Simple, everyday language.
   - Progress state stored per item ID in Map for independent tracking
   - Web platform shows alert that downloads are only available in mobile app (expo-file-system native-only feature)
 
+## Pricing & Upgrade Flow
+
+- **PricingScreen** (`client/screens/PricingScreen.tsx`): Full native pricing page with plan comparison (Free vs Pro), gold "Most Popular" badge, context-dependent header/CTA, ROI calculator with 3 interactive sliders, FAQ accordion (6 items)
+- **UpgradeBanner** (`client/components/UpgradeBanner.tsx`): Reusable banner with 3 states — free users see "Unlock AI Summaries" linking to PricingScreen; pro users with 0 credits see "No Credits Remaining" linking to Stripe refill; pro users with 1-3 credits see "X Credits Left" linking to Stripe refill; hidden for pro users with >3 credits
+- **Integration points**: Banner shown on ShowsScreen and LibraryScreen (above SegmentedControl). ProfileScreen has "Upgrade to Pro" (free users) and "View Plans & Pricing" (all users) rows navigating to PricingScreen
+- **Stripe integration**: CTA calls `create-checkout` with `{ source: 'mobile' }`, opens URL via `WebBrowser.openBrowserAsync`, then refreshes profile
+
 ## Push Notifications
 
 - **Infrastructure**: Uses `expo-notifications` and `expo-device` for push notification handling
