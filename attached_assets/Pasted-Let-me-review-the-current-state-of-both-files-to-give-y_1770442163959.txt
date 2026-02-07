@@ -1,0 +1,44 @@
+Let me review the current state of both files to give you an accurate summary.
+
+Here's a summary you can share with Replit:
+
+---
+
+## Backend Changes: Race Condition Fix for `regenerate-summary`
+
+### What changed
+
+We fixed a race condition where the mobile app could see `pipeline_status === 'completed'` before audio was actually ready.
+
+### 1. `generate-audio` now owns the final pipeline status
+
+Previously, `generate-audio` only updated `audio_status` when it finished its background TTS work. Now it also sets the overall `pipeline_status`:
+
+- **On success**: Sets `master_briefs.pipeline_status = 'completed'` and `brief_pipeline_state.pipeline_completed_at` after the audio file is uploaded
+- **On failure**: Sets `master_briefs.pipeline_status = 'failed'` and `brief_pipeline_state.audio_error` with the error message
+
+This means `generate-audio` is now the **single source of truth** for when a brief is truly done — regardless of whether it was called from `generate-brief` (standard flow) or `regenerate-summary` (retry flow).
+
+### 2. `regenerate-summary` no longer sets `completed`
+
+Previously, `regenerate-summary` would trigger `generate-audio` and then immediately set `pipeline_status = 'completed'` — even though audio was still processing in the background. Now:
+
+- After a successful summary, it sets `pipeline_status = 'recording'` and triggers `generate-audio`
+- It **does not** set `pipeline_status = 'completed'` — that's left to `generate-audio`
+- It **does not** send email or push notifications (those were firing before audio existed)
+- If the HTTP call to `generate-audio` itself fails (i.e., the function didn't even start), it sets `pipeline_status = 'failed'`
+
+### What this means for the mobile app
+
+- **No changes needed** to how you call `regenerate-summary` — the API contract is the same
+- **Polling logic stays the same**: poll `master_briefs.pipeline_status` for the transition from `recording` → `completed`
+- **The fix**: You will no longer see `completed` before audio is ready. The status will correctly stay at `recording` until `generate-audio` finishes uploading the file and sets it to `completed`
+- **`summary_failed`** status still works the same way — if the summary quality check fails, it returns `pipeline_status = 'summary_failed'` with a push notification
+
+---
+
+The build error you're seeing (429 rate limit from Cloudflare R2) is a transient deployment issue, not related to your code changes — it should resolve on the next build automatically.
+
+Update migration docs
+Test regenerate-summary flow
+Create full Replit sync prompt
