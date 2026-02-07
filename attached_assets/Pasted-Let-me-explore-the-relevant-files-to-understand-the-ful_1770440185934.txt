@@ -1,0 +1,319 @@
+Let me explore the relevant files to understand the full picture of the regenerate summary logic and mobile integration requirements.
+
+Now let me check the current retry-taddy-transcript function and the generate-brief function to ensure I capture all the latest behavior:
+
+Now let me check the remaining portion of the retry-taddy-transcript function and also look at the Mobile Integration Guide audit findings section:
+
+Now I have a complete picture. Let me also quickly check the `generate-brief` function for the latest retry/recovery behavior:
+
+I now have a thorough understanding of the entire pipeline. Here's the comprehensive Replit prompt:
+
+---
+
+Here's a ready-to-use prompt you can paste into Replit for the mobile app. It covers everything the mobile app needs to properly handle the retry/regeneration logic based on the current backend state:
+
+---
+
+## Replit Prompt
+
+> **Context:** The PodBrief backend has been updated with improved retry and recovery logic for the summary generation pipeline. The mobile app needs to handle all pipeline failure states correctly with a unified "Something went wrong" UI pattern, proper edge function calls, and polling for completion. Below are the complete requirements.
+
+---
+
+### Summary of What Changed on the Backend
+
+1. **`generate-taddy-brief` has been renamed to `generate-brief`** (BREAKING). The old endpoint returns 404. Update all `supabase.functions.invoke('generate-taddy-brief', ...)` calls to `supabase.functions.invoke('generate-brief', ...)`. The request/response contract is identical.
+
+2. **`retry-taddy-transcript` now runs the FULL pipeline in the background.** After successfully saving a transcript, it automatically continues with extraction → synthesis → quality validation → audio generation → notifications using `EdgeRuntime.waitUntil`. The function returns immediately with `{ status: "completed", transcript, transcriptSource }` — the mobile app should NOT trigger a separate summarization call after this. Just poll `pipeline_status` on `master_briefs` until it reaches `completed` or a failure state.
+
+3. **`regenerate-summary` has a new recovery path for missing transcripts.** If the condensed transcript is missing, instead of failing, it returns `{ success: false, resetToFailed: true, error: "..." }` with HTTP 200. This resets the brief to `failed` status so the user can re-trigger the full pipeline via the "Summarize" button without being charged additional credits.
+
+4. **Deepgram Nova-2 is now a fallback transcription source** in both `generate-brief` and `retry-taddy-transcript`. If Taddy fails after 2 attempts, the pipeline automatically tries Deepgram. This is transparent to the mobile app — no changes needed, but `brief_transcripts.transcript_source` will be `'deepgram'` instead of `'taddy'` for these cases.
+
+---
+
+### Pipeline Status Values & Mobile UI Mapping
+
+The `master_briefs.pipeline_status` field drives all UI states. The mobile app should use a **unified error pattern** — show "Something went wrong" for both `failed` and `summary_failed`, with a single "Retry" button that calls the correct backend function based on the actual status.
+
+| `pipeline_status` | UI State | User Action |
+|---|---|---|
+| `pending` | Show loading/spinner | None — poll every 3s |
+| `transcribing` | Show "Processing..." | None — poll every 3s |
+| `summarizing` | Show "Generating Summary..." | None — poll every 3s |
+| `recording` | Show "Generating Audio..." | None — poll every 3s |
+| `completed` | Brief ready — show summary + play button | View/listen |
+| `failed` | Show "Something went wrong" + Retry button | Tap Retry → call `retry-taddy-transcript` |
+| `summary_failed` | Show "Something went wrong" + Retry button | Tap Retry → call `regenerate-summary` |
+
+---
+
+### Unified Retry Button Implementation
+
+```typescript
+// Single "Retry" button handler that routes to the correct function
+async function handleRetryBrief(masterBriefId: string, pipelineStatus: string) {
+  try {
+    if (pipelineStatus === 'summary_failed') {
+      // Summary quality failed — regenerate using existing transcript
+      const { data, error } = await supabase.functions.invoke('regenerate-summary', {
+        body: { masterBriefId },
+      });
+
+      if (error) {
+        showToast('Failed to start regeneration. Please try again.');
+        return;
+      }
+
+      // Handle the "resetToFailed" recovery path
+      // This means the transcript was missing, so the brief was reset to 'failed'
+      // The user needs to re-trigger the full pipeline
+      if (data?.resetToFailed) {
+        showToast('Brief has been reset. Tap Summarize to regenerate from scratch.');
+        // Refresh the brief data — status will now be 'failed'
+        // The UI should update to show the retry button again
+        await refreshBriefData(masterBriefId);
+        return;
+      }
+
+      // If regeneration started successfully, begin polling
+      startPollingForCompletion(masterBriefId);
+      showToast('Regenerating summary...');
+
+    } else {
+      // Transcript failed — retry transcript fetch (triggers full pipeline in background)
+      const { data, error } = await supabase.functions.invoke('retry-taddy-transcript', {
+        body: { masterBriefId },
+      });
+
+      if (error) {
+        showToast('Failed to retry. Please try again.');
+        return;
+      }
+
+      if (data?.status === 'completed') {
+        // Transcript saved — full pipeline running in background
+        // Poll for completion
+        startPollingForCompletion(masterBriefId);
+        showToast('Processing your summary...');
+      } else if (data?.status === 'processing') {
+        showToast('Transcript is still being generated. Please try again in a minute.');
+      }
+    }
+  } catch (err) {
+    console.error('Retry failed:', err);
+    showToast('Something went wrong. Please try again.');
+  }
+}
+```
+
+---
+
+### Polling for Pipeline Completion
+
+When the pipeline is in progress (`pending`, `transcribing`, `summarizing`, `recording`), poll `master_briefs` every 3 seconds:
+
+```typescript
+function startPollingForCompletion(masterBriefId: string) {
+  const pollInterval = setInterval(async () => {
+    const { data, error } = await supabase
+      .from('master_briefs')
+      .select('pipeline_status, summary_text, audio_url, audio_duration_seconds')
+      .eq('id', masterBriefId)
+      .single();
+
+    if (error || !data) return;
+
+    const status = data.pipeline_status;
+
+    if (status === 'completed' && data.audio_url) {
+      clearInterval(pollInterval);
+      // Brief is ready — update UI, refresh data
+      await refreshBriefData(masterBriefId);
+    } else if (status === 'failed' || status === 'summary_failed') {
+      clearInterval(pollInterval);
+      // Pipeline failed — show error UI with retry button
+      await refreshBriefData(masterBriefId);
+    }
+  }, 3000);
+
+  // Safety timeout — stop polling after 3 minutes
+  setTimeout(() => clearInterval(pollInterval), 180000);
+}
+```
+
+---
+
+### Auto-Retry for Stale Briefs
+
+When viewing a brief that's been stuck in `pending` or `transcribing` for more than 2 minutes, automatically trigger a retry:
+
+```typescript
+// In brief detail screen
+useEffect(() => {
+  if (!brief) return;
+
+  const isStale = brief.pipeline_status === 'pending' || brief.pipeline_status === 'transcribing';
+  const ageMinutes = (Date.now() - new Date(brief.created_at).getTime()) / 1000 / 60;
+
+  if (isStale && ageMinutes >= 2) {
+    // Auto-retry transcript fetch
+    supabase.functions.invoke('retry-taddy-transcript', {
+      body: { masterBriefId: brief.id },
+    }).catch(console.error);
+
+    // Start polling for completion
+    startPollingForCompletion(brief.id);
+  }
+}, [brief?.pipeline_status, brief?.created_at]);
+```
+
+---
+
+### Library Query (Correct JOINs)
+
+Several columns have been DROPPED from `master_briefs` and moved to dedicated tables. Here is the correct query pattern:
+
+```typescript
+const { data, error } = await supabase
+  .from('user_briefs')
+  .select(`
+    id,
+    slug,
+    is_completed,
+    audio_progress_seconds,
+    is_gifted,
+    created_at,
+    master_brief_id,
+    master_briefs!inner (
+      id,
+      pipeline_status,
+      summary_text,
+      audio_url,
+      audio_duration_seconds,
+      episode_name,
+      podcast_name,
+      episode_thumbnail,
+      episode_audio_url,
+      episode_duration_seconds,
+      episode_published_at,
+      language,
+      total_duration_minutes,
+      brief_pipeline_state (
+        pipeline_error,
+        summary_phase,
+        audio_status
+      )
+    )
+  `)
+  .eq('user_id', user.id)
+  .eq('is_hidden', false)
+  .eq('master_briefs.language', profile?.preferred_language || 'en')
+  .order('created_at', { ascending: false });
+```
+
+**Columns that NO LONGER EXIST on `master_briefs`:**
+- `pipeline_error` → now in `brief_pipeline_state.pipeline_error`
+- `summary_phase` → now in `brief_pipeline_state.summary_phase`
+- `audio_status` → now in `brief_pipeline_state.audio_status`
+- `audio_error` → now in `brief_pipeline_state.audio_error`
+- `transcript_content` → now in `brief_transcripts.transcript_content`
+- `ai_condensed_transcript` → now in `brief_transcripts.ai_condensed_transcript`
+- All `*_completed_at` timestamp fields → now in `brief_pipeline_state`
+
+**Still on `master_briefs` (kept for performance):**
+- `pipeline_status` — used for filtering and realtime
+- `summary_text`, `audio_url`, `audio_duration_seconds` — used for display/playback
+
+---
+
+### `regenerate-summary` Response Contract
+
+```typescript
+// Success: Pipeline started
+{ success: true, message: "Summary regenerated successfully", wordCount: 847 }
+
+// Failure: Quality gate failed
+// HTTP 500
+{ success: false, error: "Summary regeneration produced insufficient content. Please try again." }
+
+// Recovery: No transcript data — brief reset to 'failed'
+// HTTP 200 (not an error — this is a deliberate recovery path)
+{ success: false, resetToFailed: true, error: "No transcript data available. The brief has been reset — please tap \"Summarize\" to regenerate from scratch." }
+```
+
+---
+
+### `retry-taddy-transcript` Response Contract
+
+```typescript
+// Success: Transcript saved, full pipeline running in background
+// HTTP 200
+{ status: "completed", transcript: "...", transcriptSource: "taddy" | "deepgram" }
+
+// Still processing: Transcript not yet available from any source
+// HTTP 202
+{ status: "processing", message: "Transcript is still being generated" }
+
+// Error
+// HTTP 400/404/500
+{ error: "Brief not found" | "Not a Taddy brief" | "No episode UUID available" | ... }
+```
+
+After receiving `status: "completed"`, the mobile app should begin polling `master_briefs.pipeline_status` every 3 seconds until it reaches `completed` or a failure state. The function runs the full summarization + audio pipeline in the background automatically.
+
+---
+
+### Push Notification Handling
+
+Both `retry-taddy-transcript` and `regenerate-summary` send push notifications on completion/failure if the user has an `expo_push_token` in their profile:
+
+**Success payload:**
+```json
+{ "title": "Your summary is ready! 🎧", "body": "Episode Name - Podcast Name", "data": { "masterBriefId": "uuid" } }
+```
+
+**Failure payload:**
+```json
+{ "title": "Summary generation failed", "body": "We couldn't generate a summary for Episode Name. Tap to retry.", "data": { "masterBriefId": "uuid" } }
+```
+
+Handle notification taps by navigating to the brief detail screen using `masterBriefId` from the notification data.
+
+---
+
+### Error Logging
+
+When logging errors from the mobile app, include `client_platform: 'mobile'`:
+
+```typescript
+await supabase.functions.invoke('log-error', {
+  body: {
+    error_code: 'RETRY_FAILED',
+    error_message: 'Retry failed for brief',
+    error_source: 'edge_function',
+    url: 'BriefDetailScreen',
+    client_platform: 'mobile',
+    metadata: { masterBriefId, platform: Platform.OS },
+  },
+});
+```
+
+---
+
+### Implementation Checklist
+
+- [ ] Rename all `generate-taddy-brief` calls to `generate-brief`
+- [ ] Remove any separate summarization call after `retry-taddy-transcript` (full pipeline runs automatically)
+- [ ] Handle `resetToFailed` response from `regenerate-summary`
+- [ ] Implement unified "Something went wrong" UI for both `failed` and `summary_failed` statuses
+- [ ] Single Retry button that routes to `retry-taddy-transcript` or `regenerate-summary` based on status
+- [ ] Poll `master_briefs.pipeline_status` every 3 seconds during processing
+- [ ] Auto-retry stale briefs (>2 minutes in `pending`/`transcribing`)
+- [ ] Update all queries to use JOINs to `brief_pipeline_state` and `brief_transcripts` (dropped columns)
+- [ ] Include `client_platform: 'mobile'` in error log calls
+- [ ] Handle push notification deep links for `masterBriefId`
+
+Update mobile documentation with latest changes
+Test regenerate-summary edge function
+Verify retry-taddy-transcript pipeline logs
