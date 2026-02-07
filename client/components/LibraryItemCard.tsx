@@ -267,15 +267,16 @@ export function LibraryItemCard({
     }
   }, [onRetry, isRetrying]);
 
-  // Dim the row if offline without download OR if processing OR if failed
-  const isInactive = isDisabledOffline || isBriefProcessing || isBriefFailed;
+  // Dim the row if offline without download OR if processing (but NOT if failed — retry button needs to look tappable)
+  const isInactive = isDisabledOffline || isBriefProcessing;
+  const isNonNavigable = isInactive || isBriefFailed;
 
   return (
     <View style={[styles.card, { borderBottomColor: theme.border, opacity: isInactive ? 0.5 : 1 }]}>
       <Pressable 
-        onPress={isInactive ? undefined : (onNavigateToDetails || onPlay)} 
+        onPress={isNonNavigable ? undefined : (onNavigateToDetails || onPlay)} 
         style={styles.contentRow}
-        disabled={isInactive}
+        disabled={isNonNavigable}
       >
         <View style={[styles.artwork, { backgroundColor: theme.backgroundTertiary }]}>
           {artwork ? (
