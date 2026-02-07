@@ -306,7 +306,7 @@ export function LibraryItemCard({
               <View style={styles.errorRow}>
                 <Feather name="alert-circle" size={12} color={theme.error || "#EF4444"} />
                 <ThemedText type="caption" style={{ color: theme.error || "#EF4444", marginLeft: 4 }}>
-                  Generation failed
+                  Something went wrong
                 </ThemedText>
               </View>
             ) : isBriefProcessing ? (

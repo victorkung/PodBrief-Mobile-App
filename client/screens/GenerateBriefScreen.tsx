@@ -132,7 +132,7 @@ export default function GenerateBriefScreen() {
       }
       
       Alert.alert(
-        "Generation Failed",
+        "Something went wrong",
         error.message || "Unable to generate summary. Please try again."
       );
     },
