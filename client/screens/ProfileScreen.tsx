@@ -236,10 +236,17 @@ export default function ProfileScreen() {
             onPress={handleManageSubscription}
           />
         ) : (
-          <View style={styles.upgradeContainer}>
-            <Button onPress={handleUpgrade}>Upgrade to Pro</Button>
-          </View>
+          <SettingsRow
+            icon="zap"
+            label="Upgrade to Pro"
+            onPress={() => (navigation as any).navigate("Pricing")}
+          />
         )}
+        <SettingsRow
+          icon="tag"
+          label="View Plans & Pricing"
+          onPress={() => (navigation as any).navigate("Pricing")}
+        />
       </Card>
 
       <Card style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
