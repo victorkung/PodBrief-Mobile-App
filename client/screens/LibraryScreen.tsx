@@ -12,6 +12,7 @@ import * as Haptics from "expo-haptics";
 
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { LibraryItemCard } from "@/components/LibraryItemCard";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1073,6 +1074,7 @@ export default function LibraryScreen() {
             <ThemedText type="caption" style={[styles.subtitle, { color: theme.textSecondary }]}>
               Your saved episodes, AI summaries, and downloads
             </ThemedText>
+            <UpgradeBanner />
             <SegmentedControl
               segments={segments}
               selectedKey={selectedTab}

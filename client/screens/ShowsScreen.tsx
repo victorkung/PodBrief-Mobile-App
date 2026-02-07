@@ -17,6 +17,7 @@ import { SegmentedControl } from "@/components/SegmentedControl";
 import { PodcastCard } from "@/components/PodcastCard";
 import { EpisodeCard } from "@/components/EpisodeCard";
 import { EmptyState } from "@/components/EmptyState";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import {
   PodcastCardSkeleton,
   EpisodeCardSkeleton,
@@ -371,6 +372,7 @@ export default function ShowsScreen() {
             <ThemedText type="caption" style={[styles.subtitle, { color: theme.textSecondary }]}>
               View your shows and their latest episodes
             </ThemedText>
+            <UpgradeBanner />
             <SegmentedControl
               segments={segments}
               selectedKey={selectedTab}
