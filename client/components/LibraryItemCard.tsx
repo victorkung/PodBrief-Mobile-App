@@ -237,18 +237,23 @@ export function LibraryItemCard({
 
   // Check if this summary is still being processed
   const pipelineStatus = brief?.master_brief?.pipeline_status;
-  const isBriefProcessing = type === "summary" && 
-    pipelineStatus !== undefined &&
+  const hasAudioReady = brief?.master_brief?.audio_url != null;
+  const isCompletedWithoutAudio = pipelineStatus === "completed" && !hasAudioReady;
+  const isBriefProcessing = type === "summary" && (
+    isCompletedWithoutAudio ||
+    (pipelineStatus !== undefined &&
     pipelineStatus !== null &&
     pipelineStatus !== "completed" && 
     pipelineStatus !== "failed" &&
-    pipelineStatus !== "summary_failed";
+    pipelineStatus !== "summary_failed")
+  );
 
   // Check if brief has failed and needs retry
   const isBriefFailed = type === "summary" && 
     (pipelineStatus === "failed" || pipelineStatus === "summary_failed");
 
   const getPipelineStatusText = (): string => {
+    if (isCompletedWithoutAudio) return "Generating audio... (~1-2 min left)";
     if (!pipelineStatus) return "Processing... (~3 min)";
     switch (pipelineStatus) {
       case "pending": return "Queued... (~3 min)";
