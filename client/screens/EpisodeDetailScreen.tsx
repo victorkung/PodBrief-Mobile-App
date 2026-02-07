@@ -38,7 +38,7 @@ export default function EpisodeDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: EpisodeDetailParams }, "params">>();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { play } = useAudioPlayerContext();
   const { showToast } = useToast();
   const { summarize, isGenerating } = useSummarize();
@@ -269,17 +269,32 @@ export default function EpisodeDetailScreen() {
 
   const handleShare = useCallback(async () => {
     try {
-      const shareUrl = `https://podbrief.io/episode/${uuid}`;
+      const userId = profile?.id;
+      const firstName = profile?.first_name || "";
+      let shareUrl = `https://podbrief.io/episode/${uuid}`;
+      if (userId) {
+        shareUrl += `?ref=${userId}&sharedBy=${encodeURIComponent(firstName)}`;
+      }
       await Share.share({
         message: `Listen to "${name}" from ${podcastName} on PodBrief: ${shareUrl}`,
         url: shareUrl,
         title: name,
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      if (userId) {
+        supabase.functions.invoke("log-share-visit", {
+          body: {
+            referrerId: userId,
+            masterBriefId: uuid,
+            contentType: "episode",
+          },
+        }).catch((err) => console.error("[Share] log-share-visit failed:", err));
+      }
     } catch (error) {
       console.error("Error sharing:", error);
     }
-  }, [uuid, name, podcastName]);
+  }, [uuid, name, podcastName, profile]);
 
   const handleGenerateBrief = useCallback(() => {
     if (isTaddyEpisode) {

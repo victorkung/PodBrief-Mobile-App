@@ -15,10 +15,12 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "./ThemedText";
 import { CircularProgress } from "./CircularProgress";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { SavedEpisode, UserBrief, Download } from "@/lib/types";
 import { formatDate as formatDateUtil, getLanguageLabel } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 type ItemType = "episode" | "summary" | "download";
 
@@ -89,6 +91,7 @@ export function LibraryItemCard({
   isPlaying = false,
 }: LibraryItemCardProps) {
   const { theme } = useTheme();
+  const { profile } = useAuth();
   const { isLoading: audioLoading, currentItem } = useAudioPlayerContext();
   
   const isDisabledOffline = isOffline && !isDownloaded;
@@ -162,22 +165,47 @@ export function LibraryItemCard({
 
   const handleShare = useCallback(async () => {
     try {
+      const userId = profile?.id;
+      const firstName = profile?.first_name || "";
       let shareUrl = "";
+      let contentType: "brief" | "episode" = "brief";
+      let contentId = "";
+
       if (episode) {
+        contentType = "episode";
+        contentId = episode.taddy_episode_uuid;
         shareUrl = `https://podbrief.io/episode/${episode.taddy_episode_uuid}`;
       } else if (brief) {
+        contentType = "brief";
+        contentId = brief.master_brief_id;
         shareUrl = `https://podbrief.io/brief/${brief.slug}`;
       }
+
+      if (shareUrl && userId) {
+        shareUrl += `?ref=${userId}&sharedBy=${encodeURIComponent(firstName)}`;
+      }
+
       if (shareUrl) {
         await Share.share({
           message: `Check out this on PodBrief: ${getTitle()} - ${shareUrl}`,
           url: shareUrl,
         });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+        if (userId && contentId) {
+          supabase.functions.invoke("log-share-visit", {
+            body: {
+              referrerId: userId,
+              masterBriefId: contentId,
+              contentType,
+            },
+          }).catch((err) => console.error("[Share] log-share-visit failed:", err));
+        }
       }
     } catch (error) {
       console.error("Share error:", error);
     }
-  }, [episode, brief]);
+  }, [episode, brief, profile]);
 
   const handleToggleComplete = useCallback(() => {
     if (onMarkComplete) {

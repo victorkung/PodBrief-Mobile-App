@@ -16,7 +16,7 @@ interface AuthContextType {
   profile: Profile | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, firstName?: string, preferredLanguage?: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName?: string, preferredLanguage?: string, referredBy?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -98,15 +98,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, firstName?: string, preferredLanguage?: string) => {
+  const signUp = async (email: string, password: string, firstName?: string, preferredLanguage?: string, referredBy?: string) => {
+    const metadata: Record<string, string | undefined> = {
+      first_name: firstName,
+      preferred_language: preferredLanguage || "en",
+    };
+    if (referredBy) {
+      metadata.referred_by = referredBy;
+    }
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          first_name: firstName,
-          preferred_language: preferredLanguage || "en",
-        },
+        data: metadata,
       },
     });
     if (error) throw error;
