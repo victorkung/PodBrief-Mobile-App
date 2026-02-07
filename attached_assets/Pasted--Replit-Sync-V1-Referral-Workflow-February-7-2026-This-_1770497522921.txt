@@ -1,0 +1,210 @@
+
+
+# Replit Sync: V1 Referral Workflow (February 7, 2026)
+
+This document covers the complete referral tracking system that was just implemented. It includes a new database table, updates to three edge functions, and a new share URL pattern for episodes.
+
+---
+
+## 1. NEW TABLE: `referrals`
+
+**Type:** Schema addition (non-breaking for existing mobile queries)
+
+Tracks the lifecycle of user-to-user referrals: who shared, who signed up, what content triggered it, and whether they converted to paid.
+
+| Column | Type | Default | Description |
+|--------|------|---------|-------------|
+| `id` | uuid | gen_random_uuid() | Primary key |
+| `referrer_id` | uuid | NOT NULL | The user who shared the content |
+| `referred_id` | uuid | NOT NULL | The user who signed up via the shared link |
+| `content_type` | text | 'brief' | Either `'brief'` or `'episode'` |
+| `content_id` | text | nullable | `master_brief_id` (for briefs) or `taddy_episode_uuid` (for episodes) |
+| `signed_up_at` | timestamptz | nullable | When the referred user created their account |
+| `converted_to_paid_at` | timestamptz | nullable | When they upgraded to Pro (set by stripe-webhook) |
+| `created_at` | timestamptz | now() | Row creation timestamp |
+
+**Constraints:** `UNIQUE(referrer_id, referred_id)` -- one referral record per user pair.
+
+**RLS Policies:**
+- Users can SELECT where `referrer_id = auth.uid()` (see who they referred)
+- Users can SELECT where `referred_id = auth.uid()` (see who referred them)
+- Admins can SELECT all
+- Anonymous access denied
+
+**Mobile impact:** Non-breaking. This table is written to by edge functions (service role), not by the client. You can optionally query it to show "People You've Referred" UI.
+
+```typescript
+// Optional: Query referrals a user has made
+const { data: myReferrals } = await supabase
+  .from('referrals')
+  .select('*')
+  .order('created_at', { ascending: false });
+```
+
+---
+
+## 2. `claim-brief` -- Now Records Referral
+
+**Type:** Behavior addition (non-breaking)
+
+After successfully adding a brief to a user's library, the function now checks if the user has a `referred_by` value on their profile. If so, it inserts a row into the `referrals` table.
+
+**What's new in the response?** Nothing -- the request/response contract is unchanged:
+
+```typescript
+// Request (unchanged)
+const { data, error } = await supabase.functions.invoke('claim-brief', {
+  body: { masterBriefId: 'uuid-here' }  // or { briefSlug: 'slug-here' }
+});
+
+// Response (unchanged)
+// { success: true, userBriefSlug: 'slug', alreadyOwned: false }
+```
+
+**Internal behavior change:** After a successful claim, the function:
+1. Fetches the user's profile to check `referred_by`
+2. If `referred_by` is set, inserts into `referrals` with:
+   - `referrer_id` = profile.referred_by
+   - `referred_id` = user.id
+   - `content_type` = 'brief'
+   - `content_id` = master_brief_id
+   - `signed_up_at` = profile.created_at
+3. Uses `ON CONFLICT DO NOTHING` (error code `23505`) to gracefully handle duplicate claims
+
+**Mobile impact:** None -- this is transparent to the client.
+
+---
+
+## 3. `claim-episode` -- Now Records Referral
+
+**Type:** Behavior addition (non-breaking)
+
+Same pattern as `claim-brief`. After saving an episode to a user's library, the function checks for `referred_by` and inserts a referral record.
+
+```typescript
+// Request (unchanged)
+const { data, error } = await supabase.functions.invoke('claim-episode', {
+  body: { episodeSlug: 'episode-slug-here' }
+});
+
+// Response (unchanged)
+// { success: true, alreadySaved: false }
+```
+
+**Internal behavior change:** After a successful save, the function:
+1. Fetches the user's profile to check `referred_by`
+2. If `referred_by` is set, inserts into `referrals` with:
+   - `referrer_id` = profile.referred_by
+   - `referred_id` = user.id
+   - `content_type` = 'episode'
+   - `content_id` = episode.taddy_episode_uuid
+   - `signed_up_at` = profile.created_at
+3. Uses `ON CONFLICT DO NOTHING` for duplicate handling
+
+**Mobile impact:** None -- this is transparent to the client.
+
+---
+
+## 4. `stripe-webhook` -- Now Tracks Paid Conversions
+
+**Type:** Behavior addition (non-breaking)
+
+In the `checkout.session.completed` handler (subscription flow), after upgrading a user to Pro, the webhook now checks if the user was referred. If so, it updates the `referrals` table to record the conversion timestamp.
+
+**Internal behavior change:**
+1. After setting the user to Pro plan, fetches their profile for `referred_by`
+2. If `referred_by` is set, runs: `UPDATE referrals SET converted_to_paid_at = now() WHERE referred_id = profile.id`
+3. This captures the exact moment a referred user becomes a paying customer
+
+**Mobile impact:** None -- this is a webhook, not a client-callable function.
+
+---
+
+## 5. `log-share-visit` -- Now Supports Episodes
+
+**Type:** Behavior addition (non-breaking, backward compatible)
+
+The function now accepts an optional `contentType` parameter to support logging share visits for both briefs and episodes.
+
+```typescript
+// Brief share visit (unchanged -- contentType defaults to 'brief')
+await supabase.functions.invoke('log-share-visit', {
+  body: { referrerId: 'uuid', masterBriefId: 'master-brief-uuid' }
+});
+
+// Episode share visit (NEW)
+await supabase.functions.invoke('log-share-visit', {
+  body: { 
+    referrerId: 'uuid', 
+    masterBriefId: 'taddy-episode-uuid',  // reuses the same field name
+    contentType: 'episode' 
+  }
+});
+```
+
+**Validation changes:**
+- For `contentType: 'brief'` (default): validates `masterBriefId` is a UUID and that the referrer owns the brief via `user_briefs`
+- For `contentType: 'episode'`: validates that the referrer either has the episode in `saved_episodes` OR has a brief for it in `user_briefs`
+
+**Mobile impact:** If you implement sharing in the mobile app, pass `contentType: 'episode'` when logging episode share visits.
+
+---
+
+## 6. Share URL Pattern (Frontend Reference)
+
+Both brief and episode share URLs now follow the same pattern:
+
+```
+Brief:   https://podbrief.io/brief/{slug}?ref={userId}&sharedBy={firstName}
+Episode: https://podbrief.io/episode/{slug}?ref={userId}&sharedBy={firstName}
+```
+
+- `ref` = the sharing user's UUID (used for attribution on signup)
+- `sharedBy` = the sharing user's first name (used for the "Alice shared this with you" banner)
+
+**Mobile sharing implementation:**
+```typescript
+// Build share URL for an episode
+const shareUrl = `https://podbrief.io/episode/${episodeSlug}?ref=${currentUserId}&sharedBy=${encodeURIComponent(firstName)}`;
+
+// Build share URL for a brief
+const shareUrl = `https://podbrief.io/brief/${briefSlug}?ref=${currentUserId}&sharedBy=${encodeURIComponent(firstName)}`;
+```
+
+---
+
+## 7. Complete Referral Data Flow
+
+```
+1. User A shares content
+   URL includes ?ref={userA_id}&sharedBy={name}
+
+2. Visitor B opens the link
+   - Web: Shows "Alice shared this with you" banner (GiftedBanner)
+   - Share visit logged via log-share-visit (under User A's analytics)
+   - CTA links include ?ref={userA_id} to preserve attribution through signup
+
+3. Visitor B signs up
+   - SignUp page reads ?ref= and passes it as referredBy metadata
+   - handle_new_user() trigger stores referred_by on profiles table
+   - Content auto-claimed via claim-brief or claim-episode
+   - Referral row inserted into referrals table
+
+4. User B upgrades to Pro
+   - stripe-webhook updates referrals.converted_to_paid_at = now()
+```
+
+---
+
+## Mobile Recommended Actions
+
+### Non-Breaking (Implement When Ready)
+
+1. **Add sharing functionality** -- Generate share URLs with `?ref={userId}&sharedBy={name}` pattern when users share briefs or episodes from the mobile app.
+
+2. **Call `log-share-visit`** -- When a user opens the app via a shared link, call `log-share-visit` with the `referrerId` and content ID to track the visit.
+
+3. **Pass `ref` through signup** -- If the user arrived via a shared link, ensure the `ref` parameter is passed as `referredBy` in the signup metadata so `handle_new_user()` can store it.
+
+4. **Optional: Show referral data** -- Query the `referrals` table to display "People You've Referred" with signup dates and paid conversion status.
+
