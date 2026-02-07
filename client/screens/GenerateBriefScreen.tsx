@@ -46,7 +46,7 @@ export default function GenerateBriefScreen() {
   const generateMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke(
-        "generate-taddy-brief",
+        "generate-brief",
         {
           body: {
             episodeUuid: episode.uuid,

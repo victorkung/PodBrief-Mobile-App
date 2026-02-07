@@ -44,7 +44,7 @@ export function useSummarize(options?: UseSummarizeOptions) {
 
       try {
         const { data, error } = await supabase.functions.invoke(
-          "generate-taddy-brief",
+          "generate-brief",
           {
             body: {
               episodeUuid: episode.uuid,
