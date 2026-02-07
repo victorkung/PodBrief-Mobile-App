@@ -1,0 +1,45 @@
+Let me look at the relevant pages to understand all the upgrade banner logic across the web app.
+
+Now I have a clear picture of all the upgrade/credit banner rules. Here's a summary:
+
+## Upgrade Banner Rules in the Web App
+
+The banner logic is **identical** on both the **Library** (`/library`) and **Shows** (`/shows`) pages. There are three mutually exclusive banners, shown based on the user's `plan` and `credits`:
+
+---
+
+### 1. **Upgrade Banner (Free Users)**
+- **Condition:** `!isPro` (user is on the free plan)
+- **Icon:** `AlertTriangle` if `credits === 0`, otherwise `Sparkles`
+- **Title:** `"You're out of credits"` if `credits === 0`, otherwise `"Upgrade to Pro"`
+- **Subtitle:** `"Upgrade to Pro to continue creating briefs"` if `credits === 0`, otherwise `"Get 30 credits per month"`
+- **CTA:** "Upgrade to Pro" button → navigates to `/pricing?source=shows` (or `source=library`)
+
+---
+
+### 2. **Zero Credits Banner (Pro Users)**
+- **Condition:** `credits === 0 && isPro`
+- **Icon:** `AlertTriangle`
+- **Title:** `"You're out of credits"`
+- **Subtitle:** `"Need more? Get 10 extra credits for $5"`
+- **CTA:** "Refill Credits" button → triggers `handleCreditRefill` (Stripe credit top-up checkout)
+
+---
+
+### 3. **Low Credits Banner (Pro Users)**
+- **Condition:** `credits > 0 && credits <= 5 && isPro`
+- **Icon:** `AlertTriangle`
+- **Title:** `"Running low on credits"`
+- **Subtitle:** `"{credits} remaining — get 10 extra credits for $5"`
+- **CTA:** "Refill Credits" button → triggers `handleCreditRefill`
+
+---
+
+### Key Rules:
+- **Only one banner shows at a time** — the conditions are mutually exclusive (`!isPro` vs `isPro && credits === 0` vs `isPro && credits > 0 && credits <= 5`)
+- **Pro users with >5 credits see no banner**
+- **Free users always see a banner** (either "out of credits" or "upgrade to Pro")
+- **Both pages also handle `?payment=success` and `?refill=success`** query params to show toast notifications and refresh the profile after returning from Stripe
+
+Create Replit sync prompt
+Sync banner rules to mobile

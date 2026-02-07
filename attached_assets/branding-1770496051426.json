@@ -1,0 +1,117 @@
+{
+  "colorScheme": "dark",
+  "fonts": [
+    {
+      "family": "Google Sans Flex",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#394256",
+    "accent": "#9CA3AF",
+    "background": "#000000",
+    "textPrimary": "#000000",
+    "link": "#9CA3AF"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Google Sans Flex",
+      "heading": "Google Sans Flex"
+    },
+    "fontStacks": {
+      "heading": [
+        "Google Sans Flex",
+        "sans-serif",
+        "serif"
+      ],
+      "body": [
+        "Google Sans Flex",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Google Sans Flex",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "48px",
+      "h2": "30px",
+      "body": "18px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "8px"
+  },
+  "components": {
+    "buttonPrimary": {
+      "background": "#080A0F",
+      "textColor": "#080C16",
+      "borderRadius": "10px",
+      "borderRadiusCorners": {
+        "topLeft": "10px",
+        "topRight": "10px",
+        "bottomRight": "10px",
+        "bottomLeft": "10px"
+      },
+      "shadow": "rgba(232, 186, 48, 0.4) 0px 0px 20px 0px, rgba(232, 186, 48, 0.2) 0px 0px 40px 0px, rgba(232, 186, 48, 0.1) 0px 0px 80px 0px"
+    }
+  },
+  "images": {
+    "logo": "https://podbrief.io/assets/podbrief-logo-D001f7cq.png",
+    "favicon": "https://podbrief.io/favicon.png",
+    "ogImage": "https://storage.googleapis.com/gpt-engineer-file-uploads/YlHIQ8eQHjTbHa0oreAwXYZfTgl1/social-images/social-1766550197607-podbrief-logo-square.png",
+    "logoHref": "File saved at: attached_assets/logoHref.html",
+    "logoAlt": "PodBrief"
+  },
+  "__framework_hints": [],
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Selected #0 because it is visible, medium-sized, located in the header, and links to the homepage, matching the brand name 'PodBrief'.",
+    "confidence": 0.95,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": 0,
+      "text": "Get Started For Free",
+      "reasoning": "The button 'Get Started For Free' is the primary CTA due to its action-oriented text and prominent placement, despite the dark color scheme."
+    },
+    "secondary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "There is only one button detected, so no secondary button can be identified."
+    },
+    "confidence": 0.9
+  },
+  "personality": {
+    "tone": "modern",
+    "energy": "medium",
+    "targetAudience": "podcasters and content creators"
+  },
+  "designSystem": {
+    "framework": "tailwind",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.9,
+    "colors": 0.8,
+    "overall": 0.8500000000000001
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is visible, medium-sized, located in the header, and links to the homepage, matching the brand name 'PodBrief'.",
+        "confidence": 0.95
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}

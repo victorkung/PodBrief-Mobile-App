@@ -1,0 +1,37 @@
+Let me review all the Stripe-related edge functions and the frontend hooks to verify the mobile redirect handling is complete.
+
+Now let me check where the checkout hooks are used and whether any of them pass `source: 'mobile'`:
+
+Now I have a clear picture. Here's the analysis:
+
+**Good news:** All three backend edge functions (`create-checkout`, `create-credit-refill`, `customer-portal`) already correctly handle the `source: 'mobile'` parameter -- they parse it from the request body and append it to Stripe redirect URLs.
+
+**The gap:** The frontend hooks (`useCheckout` and `useCreditRefill`) and the `handleManageSubscription` function in Settings **never pass `source: 'mobile'`** to the edge functions. They call the functions with no body at all.
+
+This means when the **mobile app** calls these same edge functions, **the mobile app itself** must be the one passing `{ source: 'mobile' }` in the request body. Since the mobile app calls these edge functions directly (not through the web frontend hooks), the web code doesn't need to pass `source: 'mobile'` -- it's the mobile Replit code's responsibility.
+
+**Also:** The `cancel-subscription` function doesn't involve any Stripe redirect at all (it's an API-only call that returns `{ success: true }`), so no redirect handling is needed there.
+
+Here's the summary for your Replit conversation:
+
+---
+
+**All three Stripe redirect flows are fully handled on the backend.** Here's what the mobile app needs to do:
+
+| Edge Function | What backend does with `source: 'mobile'` | Mobile app action needed |
+|---|---|---|
+| `create-checkout` | Appends `&source=mobile` to success URL → `/payment-success?payment=success&source=mobile` | Pass `{ source: 'mobile' }` in request body |
+| `create-credit-refill` | Appends `&source=mobile` to success URL → `/payment-success?refill=success&source=mobile` | Pass `{ source: 'mobile' }` in request body |
+| `customer-portal` | Appends `?source=mobile` to return URL → `/settings?source=mobile` | Pass `{ source: 'mobile' }` in request body |
+| `cancel-subscription` | No redirect (returns JSON `{ success: true }`) | No body needed, just handle the JSON response |
+
+**What happens on the web side after redirect:**
+- `/payment-success?source=mobile` → Shows "Close Window" button instead of auto-redirect countdown
+- `/settings?source=mobile` → Shows toast: "Changes saved! You can close this window to return to the app."
+
+**No changes needed on the Lovable/backend side.** The mobile app just needs to include `{ source: 'mobile' }` in the request body when invoking these three edge functions.
+
+Create Replit sync prompt for mobile Stripe + pipeline changes
+Test create-checkout mobile redirect
+Test credit refill mobile redirect
+Review PaymentSuccess mobile UX

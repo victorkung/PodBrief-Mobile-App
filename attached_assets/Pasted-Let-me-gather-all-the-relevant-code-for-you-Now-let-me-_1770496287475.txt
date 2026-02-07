@@ -1,0 +1,178 @@
+Let me gather all the relevant code for you.
+
+Now let me also check the theme/color definitions so Replit has the design tokens:
+
+Here's everything Replit needs to recreate the Pricing and FAQ screens in the mobile app. I've organized it into sections:
+
+---
+
+## 1. Data & Business Logic
+
+### Pricing Plans
+
+```typescript
+// Free plan features
+const freeFeatures = [
+  'Unlimited podcast listening',
+  'Follow unlimited shows',
+  'Build your episode library',
+  '5 AI summaries included'
+];
+
+// Pro plan features ($19/month)
+const proFeatures = [
+  'Full episode transcription',
+  'AI-generated summary for reading',
+  'AI-narrated summary for listening',
+  'Download audio for offline listening',
+  'Translation to 10+ languages',
+  'Ability to share briefs with friends at no cost to either party'
+];
+```
+
+### ROI Calculator Logic
+
+```typescript
+const WEEKS_PER_MONTH = 4;
+const PODBRIEF_COST = 19; // $/month
+const SUMMARY_DURATION = 7.5; // minutes - based on real average
+
+// Default slider values
+const [podcastLength, setPodcastLength] = useState(60);     // min:15, max:180, step:5
+const [podcastsPerWeek, setPodcastsPerWeek] = useState(5);  // min:1,  max:20,  step:1
+const [hourlyRate, setHourlyRate] = useState(30);            // min:10, max:200, step:5
+
+// Calculator formula
+const timeSavedPerPodcast = podcastLength - SUMMARY_DURATION;
+const totalMinutesSaved = timeSavedPerPodcast * podcastsPerWeek * WEEKS_PER_MONTH;
+const hoursSaved = totalMinutesSaved / 60;           // e.g. "14.0"
+const grossValue = Math.round(hoursSaved * hourlyRate); // e.g. "$420"
+const netSavings = Math.max(0, Math.round(grossValue - PODBRIEF_COST)); // e.g. "$401"
+const roiMultiplier = Math.round(grossValue / PODBRIEF_COST); // e.g. "22x"
+```
+
+### FAQ Content
+
+```typescript
+const faqs = [
+  {
+    question: "What's included with each credit?",
+    answer: "One credit gives you the ability to generate a brief for a single podcast episode. Each brief comes with a full podcast transcription, a written AI-generated summary, and a premium AI-narration of your summary to listen to. Translations to 10+ languages are supported."
+  },
+  {
+    question: "Do credits roll over?",
+    answer: "Credits from your monthly Pro subscription do not roll over each billing cycle. Make the most of your 30 credits each month!"
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer: "Yes, you can cancel your Pro subscription at any time. You'll always have access to your existing transcriptions and summaries."
+  },
+  {
+    question: "What podcasts are supported?",
+    answer: "PodBrief works with virtually any podcast available on major platforms. Simply search for your favorite show and we'll find it for you. If you cannot find your show for whatever reason, let us know and we'll make sure to add it to our library."
+  },
+  {
+    question: "How long does it take to generate a summary?",
+    answer: "Most summaries are generated within 2-5 minutes, depending on the length of the episode. You'll receive a notification when your summary is ready."
+  },
+  {
+    question: "Can I listen offline?",
+    answer: "Yes, you can download the audio for full episodes and summaries for offline listening. Perfect for commutes or when you're away from WiFi.\n\nOn our web app, you'll be able to download the mp3 files. On our mobile app (coming soon!), you'll be able to download the audio onto your device."
+  }
+];
+```
+
+---
+
+## 2. CTA Logic (Context-Dependent)
+
+```typescript
+// Three states for CTAs:
+// 1. Not logged in → "Get Started For Free" → navigate to signup
+//    Subtitle: "No credit card required."
+// 2. Logged in + Free plan → "Upgrade Now" → calls create-checkout with { source: 'mobile' }
+//    Subtitle: "Cancel anytime."
+// 3. Logged in + Pro plan → "You're on Pro!" (disabled button)
+
+// Authenticated free users see different header copy:
+// Title: "Complete Your Upgrade" (vs "Choose Your Plan")
+// Subtitle: "You're one step away from saving hours every week with AI-powered summaries."
+```
+
+---
+
+## 3. Design Tokens (Dark Theme with Gold Accents)
+
+```css
+/* Color palette (HSL) */
+--background: 0 0% 0%;           /* Pure black */
+--foreground: 45 30% 95%;        /* Warm off-white */
+--primary: 45 80% 55%;           /* Gold */
+--primary-foreground: 222 47% 6%; /* Dark navy (text on gold) */
+--secondary: 222 30% 15%;        /* Dark navy card bg */
+--border: 222 20% 28%;           /* Subtle border */
+--muted-foreground: 220 15% 65%; /* Gray text */
+
+/* Gold gradient (used on CTA buttons and accent text) */
+--gradient-gold: linear-gradient(135deg, hsl(45 80% 55%) 0%, hsl(35 90% 45%) 100%);
+
+/* Glass card effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* CTA button glow */
+.shadow-glow-intense {
+  box-shadow: 0 0 20px hsl(45 80% 55% / 0.4), 0 0 40px hsl(45 80% 55% / 0.2), 0 0 80px hsl(45 80% 55% / 0.1);
+}
+
+/* Gold gradient text */
+.text-gradient-gold {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Font: Google Sans Flex (body), Playfair Display (H1 headings) */
+```
+
+---
+
+## 4. Screen Layout Structure
+
+### Pricing Screen Sections (top to bottom):
+1. **Header** — Title + subtitle (context-dependent copy)
+2. **Pricing Card** — Two-column layout (Free | Pro) with a "Most Popular" badge on Pro
+3. **CTA Button** — Below the card, full-width (context-dependent action)
+4. **Calculator Section** — "See How Much Time You'll Save" heading
+   - Three sliders: podcast length, podcasts/week, hourly rate
+   - One read-only line: average summary length (7.5 min)
+   - Results card: hours saved, value of time, net savings, ROI multiplier
+5. **Bottom CTA** — Only shown if not Pro
+
+### FAQ Screen Sections:
+1. **Header** — "Frequently Asked Questions"
+2. **Accordion** — Single-expand collapsible, 6 items with rounded borders
+
+---
+
+## 5. Backend Integration
+
+For the mobile app, remember to pass `{ source: 'mobile' }` when calling the checkout edge function:
+
+```typescript
+// Upgrade to Pro
+const { data } = await supabase.functions.invoke('create-checkout', {
+  body: { source: 'mobile' }
+});
+// data.url → open in browser (openBrowserAsync)
+```
+
+This should give Replit everything they need — the data, the logic, the visual design, and the backend integration details.
+
+Update FAQ offline listening copy
+Create Replit sync doc for pricing screen
