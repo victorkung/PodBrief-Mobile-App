@@ -694,11 +694,17 @@ export default function LibraryScreen() {
           }
         } else if (pipelineStatus === "summary_failed") {
           // Summary quality failed - regenerate summary
-          const { error } = await supabase.functions.invoke("regenerate-summary", {
+          const { data, error } = await supabase.functions.invoke("regenerate-summary", {
             body: { masterBriefId: brief.master_brief_id },
           });
           
           if (error) throw error;
+          
+          if (data?.resetToFailed) {
+            showToast("Brief has been reset. Tap Retry to regenerate from scratch.", "info");
+            refetchBriefs();
+            return;
+          }
           
           showToast("Regenerating summary...", "info");
         }
