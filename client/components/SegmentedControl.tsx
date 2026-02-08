@@ -14,14 +14,12 @@ interface SegmentedControlProps<T extends string> {
   segments: { key: T; label: string; count?: number }[];
   selectedKey: T;
   onSelect: (key: T) => void;
-  containerStyle?: any;
 }
 
 export function SegmentedControl<T extends string>({
   segments,
   selectedKey,
   onSelect,
-  containerStyle,
 }: SegmentedControlProps<T>) {
   const { theme } = useTheme();
 
@@ -34,7 +32,7 @@ export function SegmentedControl<T extends string>({
 
   return (
     <View
-      style={[styles.container, { backgroundColor: theme.backgroundSecondary }, containerStyle]}
+      style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}
     >
       {segments.map((segment) => {
         const isSelected = segment.key === selectedKey;

@@ -639,7 +639,8 @@ const styles = StyleSheet.create({
   },
   descriptionBackground: {
     marginHorizontal: -Spacing.lg,
-    marginTop: Spacing.xl,
+    borderTopLeftRadius: BorderRadius.lg,
+    borderTopRightRadius: BorderRadius.lg,
     paddingTop: Spacing.lg,
     minHeight: 200,
   },

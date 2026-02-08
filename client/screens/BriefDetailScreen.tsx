@@ -507,13 +507,13 @@ export default function BriefDetailScreen() {
           />
         ) : (
           <View style={[styles.contentBackground, { backgroundColor: theme.backgroundContent }]}>
-            <SegmentedControl
-              segments={segments}
-              selectedKey={selectedTab}
-              onSelect={setSelectedTab}
-              containerStyle={styles.fullWidthSegmented}
-            />
             <View style={styles.contentInner}>
+              <SegmentedControl
+                segments={segments}
+                selectedKey={selectedTab}
+                onSelect={setSelectedTab}
+              />
+
               <View style={styles.sectionHeader}>
                 <ThemedText type="body" style={[styles.sectionDescription, { color: theme.textSecondary }]}>
                   {getSectionDescription()}
@@ -653,16 +653,13 @@ const styles = StyleSheet.create({
   },
   contentBackground: {
     marginHorizontal: -Spacing.md,
-    marginTop: Spacing.xl,
+    borderTopLeftRadius: BorderRadius.lg,
+    borderTopRightRadius: BorderRadius.lg,
+    paddingTop: Spacing.lg,
     minHeight: 200,
-  },
-  fullWidthSegmented: {
-    borderRadius: 0,
-    paddingHorizontal: Spacing.md,
   },
   contentInner: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
   },
   contentSection: {
     marginTop: Spacing.sm,
