@@ -198,13 +198,25 @@ export default function AnalyticsScreen() {
     setError(null);
     try {
       const { startDate, endDate } = getDateRange(dateRange, customStartDate, customEndDate);
+      const startISO = new Date(startDate + "T00:00:00.000Z").toISOString();
+      const endISO = new Date(endDate + "T23:59:59.999Z").toISOString();
       const { data: result, error: fnError } = await supabase.functions.invoke(
         "user-analytics",
-        { body: { startDate, endDate } }
+        { body: { startDate: startISO, endDate: endISO } }
       );
       if (fnError) throw fnError;
-      setData(result);
+      if (result && typeof result === "object") {
+        setData(result as UserAnalyticsResponse);
+      } else {
+        setData({
+          summary: { totalSummaries: 0, totalEpisodes: 0, totalShowsFollowing: 0, totalTimeSavedMinutes: 0 },
+          favoritePodcasts: [],
+          activityTimeline: [],
+          genreBreakdown: [],
+        });
+      }
     } catch (e: any) {
+      console.error("[Analytics] Error fetching:", e);
       setError(e?.message || "Failed to load analytics");
     } finally {
       setLoading(false);

@@ -37,7 +37,7 @@ const PRO_FEATURES = [
   "AI-narrated summary for listening",
   "Download audio for offline listening",
   "Translation to 10+ languages",
-  "Ability to share briefs with friends at no cost to either party",
+  "Ability to share with friends at no cost",
 ];
 
 const FAQ_ITEMS = [
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ctaSection: {
-    marginBottom: Spacing["3xl"],
+    marginBottom: Spacing["5xl"],
   },
   gradientButton: {
     height: Spacing.buttonHeight,
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   roiSection: {
-    marginBottom: Spacing["3xl"],
+    marginBottom: Spacing["5xl"],
   },
   roiTitle: {
     marginBottom: Spacing.xl,
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   bottomCtaSection: {
-    marginBottom: Spacing["3xl"],
+    marginBottom: Spacing["5xl"],
   },
   faqSection: {
     marginBottom: Spacing.xl,
