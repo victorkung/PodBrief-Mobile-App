@@ -96,21 +96,7 @@ function formatTimeSaved(minutes: number): string {
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  return `${months[d.getMonth()]} ${d.getDate()}`;
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function getDateRange(range: DateRange, customStart: string, customEnd: string): { startDate: string; endDate: string } {
@@ -167,6 +153,8 @@ export default function AnalyticsScreen() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [activityMode, setActivityMode] = useState<"daily" | "cumulative">("daily");
+  const [timeSavedMode, setTimeSavedMode] = useState<"daily" | "cumulative">("daily");
+  const [selectedPoint, setSelectedPoint] = useState<{chartKey: string, index: number, x: number, y: number, date: string, values: string[]} | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
@@ -374,6 +362,7 @@ export default function AnalyticsScreen() {
     const labelWidth = 120;
     const barAreaWidth = chartWidth - labelWidth - 8;
     const svgHeight = podcasts.length * rowHeight + 8;
+    const titleHeight = 28;
 
     return (
       <Card
@@ -383,74 +372,103 @@ export default function AnalyticsScreen() {
         ])}
       >
         <ThemedText type="h4" style={styles.sectionTitle}>
-          Favorite Podcasts
+          Favorite Shows
         </ThemedText>
-        <Svg width={chartWidth} height={svgHeight}>
-          {podcasts.map((p, idx) => {
-            const total = p.summaryCount + p.episodeCount;
-            const summaryWidth = (p.summaryCount / maxVal) * barAreaWidth;
-            const episodeWidth = (p.episodeCount / maxVal) * barAreaWidth;
-            const y = idx * rowHeight + 4;
+        <View style={{ position: "relative", height: svgHeight }}>
+          <Svg width={chartWidth} height={svgHeight}>
+            {podcasts.map((p, idx) => {
+              const total = p.summaryCount + p.episodeCount;
+              const summaryWidth = (p.summaryCount / maxVal) * barAreaWidth;
+              const episodeWidth = (p.episodeCount / maxVal) * barAreaWidth;
+              const y = idx * rowHeight + 4;
 
-            return (
-              <G key={idx}>
-                <Rect
-                  x={labelWidth + 8}
-                  y={y + (rowHeight - barHeight) / 2}
-                  width={Math.max(summaryWidth, 0)}
-                  height={barHeight}
-                  rx={4}
-                  fill={GOLD}
-                />
-                <Rect
-                  x={labelWidth + 8 + summaryWidth}
-                  y={y + (rowHeight - barHeight) / 2}
-                  width={Math.max(episodeWidth, 0)}
-                  height={barHeight}
-                  rx={total > 0 && p.summaryCount === 0 ? 4 : 0}
-                  fill={TEAL}
-                />
-              </G>
-            );
-          })}
-        </Svg>
-        <View style={{ position: "absolute", top: 0, left: Spacing.lg }}>
-          {podcasts.map((p, idx) => {
-            const name =
-              p.podcastName.length > 18
-                ? p.podcastName.substring(0, 18) + "..."
-                : p.podcastName;
-            return (
-              <View
-                key={idx}
-                style={{
-                  height: rowHeight,
-                  justifyContent: "center",
-                  marginTop: idx === 0 ? 4 : 0,
-                }}
-              >
-                <Text
+              return (
+                <G key={idx}>
+                  <Rect
+                    x={labelWidth + 8}
+                    y={y + (rowHeight - barHeight) / 2}
+                    width={Math.max(summaryWidth, 0)}
+                    height={barHeight}
+                    rx={4}
+                    fill={GOLD}
+                  />
+                  <Rect
+                    x={labelWidth + 8 + summaryWidth}
+                    y={y + (rowHeight - barHeight) / 2}
+                    width={Math.max(episodeWidth, 0)}
+                    height={barHeight}
+                    rx={total > 0 && p.summaryCount === 0 ? 4 : 0}
+                    fill={TEAL}
+                  />
+                </G>
+              );
+            })}
+          </Svg>
+          <View style={{ position: "absolute", top: 0, left: 0 }}>
+            {podcasts.map((p, idx) => {
+              const name =
+                p.podcastName.length > 18
+                  ? p.podcastName.substring(0, 18) + "..."
+                  : p.podcastName;
+              return (
+                <View
+                  key={idx}
                   style={{
-                    color: theme.text,
-                    fontSize: 12,
-                    fontFamily: "GoogleSansFlex",
+                    height: rowHeight,
+                    justifyContent: "center",
+                    marginTop: idx === 0 ? 4 : 0,
                   }}
-                  numberOfLines={1}
                 >
-                  {name}
-                </Text>
-              </View>
-            );
-          })}
+                  <Text
+                    style={{
+                      color: theme.text,
+                      fontSize: 12,
+                      fontFamily: "GoogleSansFlex",
+                    }}
+                    numberOfLines={1}
+                  >
+                    {name}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+          <View style={{ position: "absolute", top: 0, right: 0 }}>
+            {podcasts.map((p, idx) => {
+              const total = p.summaryCount + p.episodeCount;
+              const barEnd = labelWidth + 8 + (total / maxVal) * barAreaWidth;
+              return (
+                <View
+                  key={idx}
+                  style={{
+                    height: rowHeight,
+                    justifyContent: "center",
+                    alignItems: "flex-end",
+                    marginTop: idx === 0 ? 4 : 0,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.textSecondary,
+                      fontSize: 10,
+                      fontFamily: "GoogleSansFlex",
+                    }}
+                  >
+                    {p.summaryCount}s {p.episodeCount}e
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         </View>
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: GOLD }]} />
-            <ThemedText type="caption">Summaries</ThemedText>
+            <ThemedText type="caption">Summaries Completed</ThemedText>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: TEAL }]} />
-            <ThemedText type="caption">Episodes</ThemedText>
+            <ThemedText type="caption">Episodes Completed</ThemedText>
           </View>
         </View>
       </Card>
@@ -534,22 +552,25 @@ export default function AnalyticsScreen() {
           </Svg>
         </View>
         <View style={styles.genreLegend}>
-          {genres.map((g, idx) => (
-            <View key={idx} style={styles.genreLegendItem}>
-              <View
-                style={[
-                  styles.legendDot,
-                  {
-                    backgroundColor:
-                      GENRE_COLORS[idx % GENRE_COLORS.length],
-                  },
-                ]}
-              />
-              <ThemedText type="caption">
-                {g.genre} ({g.count})
-              </ThemedText>
-            </View>
-          ))}
+          {genres.map((g, idx) => {
+            const percent = Math.round((g.count / total) * 100);
+            return (
+              <View key={idx} style={styles.genreLegendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    {
+                      backgroundColor:
+                        GENRE_COLORS[idx % GENRE_COLORS.length],
+                    },
+                  ]}
+                />
+                <ThemedText type="caption">
+                  {g.genre} ({g.count}, {percent}%)
+                </ThemedText>
+              </View>
+            );
+          })}
         </View>
       </Card>
     );
@@ -577,7 +598,7 @@ export default function AnalyticsScreen() {
     const niceMax = Math.ceil(maxVal / 4) * 4 || 4;
 
     const showDots = timelineData.length <= 30;
-    const labelCount = Math.min(6, timelineData.length);
+    const labelCount = Math.min(5, timelineData.length);
     const labelStep = Math.max(1, Math.floor((timelineData.length - 1) / (labelCount - 1)));
 
     const getX = (idx: number) =>
@@ -590,82 +611,146 @@ export default function AnalyticsScreen() {
 
     const ticks = [0, 1, 2, 3, 4].map((i) => Math.round((niceMax / 4) * i));
 
+    const allPointPositions = timelineData.map((d, i) => ({
+      x: getX(i),
+      values: colors.map((_, lineIdx) => ({
+        y: getY(d.values[lineIdx]?.[0] ?? 0),
+        value: d.values[lineIdx]?.[0] ?? 0,
+      })),
+      date: d.x,
+      index: i,
+    }));
+
     return (
-      <Svg width={chartWidth} height={chartHeight}>
-        {ticks.map((tick, idx) => (
-          <G key={`tick-${idx}`}>
-            <Line
-              x1={paddingLeft}
-              y1={getY(tick)}
-              x2={chartWidth - paddingRight}
-              y2={getY(tick)}
-              stroke={theme.border}
-              strokeWidth={1}
-              strokeDasharray="4,4"
-            />
-          </G>
-        ))}
-
-        {colors.map((color, lineIdx) => {
-          const points = timelineData.map((d, i) => ({
-            x: getX(i),
-            y: getY(d.values[lineIdx]?.[0] ?? 0),
-          }));
-
-          const linePath = points
-            .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-            .join(" ");
-
-          const fillPath =
-            isCumulative && points.length > 1
-              ? `${linePath} L ${points[points.length - 1].x} ${paddingTop + drawHeight} L ${points[0].x} ${paddingTop + drawHeight} Z`
-              : "";
-
-          return (
-            <G key={`line-${lineIdx}`}>
-              {isCumulative && fillPath ? (
-                <>
-                  <Defs>
-                    <LinearGradient
-                      id={`${chartKey}-grad-${lineIdx}`}
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <Stop offset="0" stopColor={color} stopOpacity="0.3" />
-                      <Stop offset="1" stopColor={color} stopOpacity="0.05" />
-                    </LinearGradient>
-                  </Defs>
-                  <Path
-                    d={fillPath}
-                    fill={`url(#${chartKey}-grad-${lineIdx})`}
-                  />
-                </>
-              ) : null}
-              <Path
-                d={linePath}
-                fill="none"
-                stroke={color}
-                strokeWidth={2}
-                strokeLinejoin="round"
-                strokeLinecap="round"
+      <View style={{ position: "relative" }}>
+        <Svg width={chartWidth} height={chartHeight}>
+          {ticks.map((tick, idx) => (
+            <G key={`tick-${idx}`}>
+              <Line
+                x1={paddingLeft}
+                y1={getY(tick)}
+                x2={chartWidth - paddingRight}
+                y2={getY(tick)}
+                stroke={theme.border}
+                strokeWidth={1}
+                strokeDasharray="4,4"
               />
-              {showDots
-                ? points.map((p, pIdx) => (
-                    <Circle
-                      key={pIdx}
-                      cx={p.x}
-                      cy={p.y}
-                      r={3}
-                      fill={color}
-                    />
-                  ))
-                : null}
             </G>
-          );
-        })}
-      </Svg>
+          ))}
+
+          {colors.map((color, lineIdx) => {
+            const points = timelineData.map((d, i) => ({
+              x: getX(i),
+              y: getY(d.values[lineIdx]?.[0] ?? 0),
+            }));
+
+            const linePath = points
+              .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+              .join(" ");
+
+            const fillPath =
+              isCumulative && points.length > 1
+                ? `${linePath} L ${points[points.length - 1].x} ${paddingTop + drawHeight} L ${points[0].x} ${paddingTop + drawHeight} Z`
+                : "";
+
+            return (
+              <G key={`line-${lineIdx}`}>
+                {isCumulative && fillPath ? (
+                  <>
+                    <Defs>
+                      <LinearGradient
+                        id={`${chartKey}-grad-${lineIdx}`}
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <Stop offset="0" stopColor={color} stopOpacity="0.3" />
+                        <Stop offset="1" stopColor={color} stopOpacity="0.05" />
+                      </LinearGradient>
+                    </Defs>
+                    <Path
+                      d={fillPath}
+                      fill={`url(#${chartKey}-grad-${lineIdx})`}
+                    />
+                  </>
+                ) : null}
+                <Path
+                  d={linePath}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                {showDots
+                  ? points.map((p, pIdx) => (
+                      <Circle
+                        key={pIdx}
+                        cx={p.x}
+                        cy={p.y}
+                        r={3}
+                        fill={color}
+                      />
+                    ))
+                  : null}
+              </G>
+            );
+          })}
+        </Svg>
+        {allPointPositions.map((point) => (
+          <Pressable
+            key={`touch-${point.index}`}
+            onPress={() => {
+              if (selectedPoint && selectedPoint.chartKey === chartKey && selectedPoint.index === point.index) {
+                setSelectedPoint(null);
+              } else {
+                const tooltipValues = labels.map((label, li) => `${label}: ${point.values[li]?.value ?? 0}`);
+                const minY = Math.min(...point.values.map(v => v.y));
+                setSelectedPoint({
+                  chartKey,
+                  index: point.index,
+                  x: point.x,
+                  y: minY,
+                  date: point.date,
+                  values: tooltipValues,
+                });
+              }
+            }}
+            style={{
+              position: "absolute",
+              left: point.x - 12,
+              top: Math.min(...point.values.map(v => v.y)) - 12,
+              width: 24,
+              height: 24,
+            }}
+          />
+        ))}
+        {selectedPoint && selectedPoint.chartKey === chartKey ? (
+          <View
+            style={{
+              position: "absolute",
+              left: Math.max(0, Math.min(selectedPoint.x - 70, chartWidth - 140)),
+              top: Math.max(0, selectedPoint.y - 60 - (selectedPoint.values.length * 14)),
+              backgroundColor: "rgba(0,0,0,0.85)",
+              borderRadius: BorderRadius.xs,
+              paddingHorizontal: Spacing.sm,
+              paddingVertical: Spacing.xs,
+              minWidth: 120,
+            }}
+            pointerEvents="none"
+          >
+            <Text style={{ color: "#fff", fontSize: 10, fontFamily: "GoogleSansFlex", marginBottom: 2 }}>
+              {formatDateLabel(selectedPoint.date)}
+            </Text>
+            {selectedPoint.values.map((v, vi) => (
+              <Text key={vi} style={{ color: "#fff", fontSize: 10, fontFamily: "GoogleSansFlex" }}>
+                {v}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </View>
     );
   };
 
@@ -702,7 +787,7 @@ export default function AnalyticsScreen() {
   };
 
   const renderXAxisLabels = (dates: string[]) => {
-    const labelCount = Math.min(6, dates.length);
+    const labelCount = Math.min(5, dates.length);
     const labelStep = Math.max(
       1,
       Math.floor((dates.length - 1) / (labelCount - 1))
@@ -732,7 +817,7 @@ export default function AnalyticsScreen() {
               style={[
                 styles.xAxisLabel,
                 {
-                  left: left - 20,
+                  left: left - 15,
                   color: theme.textTertiary,
                 },
               ]}
@@ -837,7 +922,7 @@ export default function AnalyticsScreen() {
           {renderLineChart(
             timelineData,
             [GOLD, TEAL],
-            ["Summaries", "Episodes"],
+            ["Summaries Completed", "Episodes Completed"],
             activityMode === "cumulative",
             "activity"
           )}
@@ -846,11 +931,11 @@ export default function AnalyticsScreen() {
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: GOLD }]} />
-            <ThemedText type="caption">Summaries</ThemedText>
+            <ThemedText type="caption">Summaries Completed</ThemedText>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: TEAL }]} />
-            <ThemedText type="caption">Episodes</ThemedText>
+            <ThemedText type="caption">Episodes Completed</ThemedText>
           </View>
         </View>
       </Card>
@@ -872,8 +957,8 @@ export default function AnalyticsScreen() {
 
     let currentAngle = -Math.PI / 2;
     const slices = [
-      { value: s, color: GOLD, label: "Summaries" },
-      { value: e, color: TEAL, label: "Episodes" },
+      { value: s, color: GOLD, label: "Summaries Completed" },
+      { value: e, color: TEAL, label: "Episodes Completed" },
     ].filter((sl) => sl.value > 0);
 
     const arcs = slices.map((sl) => {
@@ -949,7 +1034,7 @@ export default function AnalyticsScreen() {
     const timeline = data.activityTimeline;
     let hours = timeline.map((t) => t.timeSavedHours);
 
-    if (activityMode === "cumulative") {
+    if (timeSavedMode === "cumulative") {
       let acc = 0;
       hours = hours.map((v) => {
         acc += v;
@@ -971,16 +1056,65 @@ export default function AnalyticsScreen() {
           { backgroundColor: theme.backgroundDefault },
         ])}
       >
-        <ThemedText type="h4" style={styles.sectionTitle}>
-          Time Saved (hours)
-        </ThemedText>
+        <View style={styles.chartHeader}>
+          <ThemedText type="h4">Time Saved (hours)</ThemedText>
+          <View
+            style={[
+              styles.segmentedControl,
+              { backgroundColor: theme.backgroundSecondary },
+            ]}
+          >
+            <Pressable
+              onPress={() => setTimeSavedMode("daily")}
+              style={[
+                styles.segmentButton,
+                timeSavedMode === "daily"
+                  ? { backgroundColor: theme.backgroundTertiary }
+                  : null,
+              ]}
+            >
+              <ThemedText
+                type="caption"
+                style={{
+                  color:
+                    timeSavedMode === "daily"
+                      ? theme.text
+                      : theme.textTertiary,
+                }}
+              >
+                Daily
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => setTimeSavedMode("cumulative")}
+              style={[
+                styles.segmentButton,
+                timeSavedMode === "cumulative"
+                  ? { backgroundColor: theme.backgroundTertiary }
+                  : null,
+              ]}
+            >
+              <ThemedText
+                type="caption"
+                style={{
+                  color:
+                    timeSavedMode === "cumulative"
+                      ? theme.text
+                      : theme.textTertiary,
+                }}
+              >
+                Cumulative
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
         <View style={styles.chartArea}>
           {renderYAxisLabels(maxVal)}
           {renderLineChart(
             timelineData,
             [ORANGE],
             ["Hours Saved"],
-            activityMode === "cumulative",
+            timeSavedMode === "cumulative",
             "timesaved"
           )}
         </View>
@@ -1103,6 +1237,9 @@ export default function AnalyticsScreen() {
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
       showsVerticalScrollIndicator={false}
+      onTouchStart={() => {
+        if (selectedPoint) setSelectedPoint(null);
+      }}
     >
       <ThemedText type="h2">Your Analytics</ThemedText>
       <ThemedText
@@ -1260,7 +1397,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     fontSize: 10,
     fontFamily: "GoogleSansFlex",
-    width: 40,
+    width: 30,
     textAlign: "center",
   },
   skeletonCard: {
