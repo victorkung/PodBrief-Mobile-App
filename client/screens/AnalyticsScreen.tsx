@@ -11,7 +11,7 @@ import {
   Text,
 } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import Svg, {
   Rect,
@@ -156,7 +156,7 @@ export default function AnalyticsScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
 
   const [data, setData] = useState<UserAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1086,10 +1086,10 @@ export default function AnalyticsScreen() {
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
       contentContainerStyle={{
         paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: tabBarHeight + Spacing.miniPlayerHeight + Spacing.xl,
+        paddingBottom: insets.bottom + Spacing.miniPlayerHeight + Spacing.xl,
         paddingHorizontal: Spacing.lg,
       }}
-      scrollIndicatorInsets={{ bottom: tabBarHeight }}
+      scrollIndicatorInsets={{ bottom: insets.bottom }}
       showsVerticalScrollIndicator={false}
     >
       <ThemedText type="h2">Your Analytics</ThemedText>
