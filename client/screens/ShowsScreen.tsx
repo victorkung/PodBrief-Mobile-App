@@ -90,7 +90,7 @@ export default function ShowsScreen() {
       const { data, error } = await supabase.functions.invoke(
         "taddy-latest-episodes",
         {
-          body: { uuids: podcastUuids, page: 1, limitPerPage: 30 },
+          body: { uuids: podcastUuids, page: 1, limitPerPage: 50 },
         }
       );
       if (error) throw error;
