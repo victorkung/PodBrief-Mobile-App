@@ -29,6 +29,7 @@ Preferred communication style: Simple, everyday language.
 - **Pricing & Upgrade Flow**: Dedicated PricingScreen with plan comparison and ROI calculator. An `UpgradeBanner` provides context-dependent calls to action.
 - **Push Notifications**: Uses `expo-notifications` for registration, token storage in Supabase, and a notification handler for deep linking to summaries.
 - **Referral Workflow (V1)**: Focuses on sharing functionality and signup attribution. Share URLs include referral parameters, and a `log-share-visit` edge function tracks shares. Signup attribution is handled via Supabase auth metadata.
+- **Analytics Screen**: Accessible from Profile > Account > Analytics. Displays user listening stats via `user-analytics` edge function. Features: date filter (7d/30d/90d/1yr/custom), 2x2 summary cards (Time Saved, Summaries, Episodes, Shows), horizontal bar chart (favorite podcasts), donut chart (genre breakdown), activity line chart with Daily/Cumulative toggle, summaries vs episodes donut, time saved line chart. All charts built with custom react-native-svg components. Handles loading skeleton, empty, and error states.
 
 ### Backend
 
