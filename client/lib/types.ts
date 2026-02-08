@@ -129,6 +129,7 @@ export interface AudioItem {
   progress: number;
   masterBriefId?: string;
   userBriefId?: string;
+  episodeSlug?: string;
   savedEpisodeId?: string;
 }
 

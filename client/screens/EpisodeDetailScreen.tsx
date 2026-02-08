@@ -275,7 +275,32 @@ export default function EpisodeDetailScreen() {
     try {
       const userId = profile?.id;
       const firstName = profile?.first_name || "";
-      let shareUrl = `https://podbrief.io/episode/${uuid}`;
+
+      let episodeSlug = episodeDetails?.slug;
+      if (!episodeSlug) {
+        try {
+          const { data } = await supabase.functions.invoke("ensure-episode-metadata", {
+            body: {
+              taddyEpisodeUuid: uuid,
+              taddyPodcastUuid: podcastUuid,
+              episodeName: name,
+              podcastName: podcastName,
+              imageUrl: imageUrl,
+              audioUrl: audioUrl,
+              durationSeconds: duration,
+              publishedAt: typeof publishedAt === "number"
+                ? new Date(publishedAt * 1000).toISOString()
+                : publishedAt,
+            },
+          });
+          episodeSlug = data?.slug;
+        } catch (err) {
+          console.error("[Share] ensure-episode-metadata failed:", err);
+        }
+      }
+
+      const urlPath = episodeSlug || uuid;
+      let shareUrl = `https://podbrief.io/episode/${urlPath}`;
       if (userId) {
         shareUrl += `?ref=${userId}&sharedBy=${encodeURIComponent(firstName)}`;
       }
@@ -296,7 +321,7 @@ export default function EpisodeDetailScreen() {
     } catch (error) {
       console.error("Error sharing:", error);
     }
-  }, [uuid, name, podcastName, profile]);
+  }, [uuid, name, podcastName, profile, episodeDetails, podcastUuid, imageUrl, audioUrl, duration, publishedAt]);
 
   const handleGenerateBrief = useCallback(() => {
     if (isTaddyEpisode) {
