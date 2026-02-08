@@ -1,0 +1,63 @@
+Item 1: Mobile App Language-Aware Summarize Logic (Documentation)
+
+This is documentation to share with the Replit mobile team. Here's a summary of how the web app handles language-aware brief checking:
+
+How the Web App Works
+
+1. "Summarize" button on New Episodes feed (useNewEpisodes.ts / Shows.tsx)
+
+The fetchExistingBriefs function queries user_briefs joined with master_briefs and only marks an episode as "Summarized" if a brief exists in the user's current preferred_language:
+
+
+// useNewEpisodes.ts -> fetchExistingBriefs
+const { data } = await supabase
+  .from('user_briefs')
+  .select('master_briefs!inner(taddy_episode_uuid, language)')
+  .eq('user_id', user.id)
+  .eq('is_hidden', false);
+
+// Only mark as "has brief" if language matches
+return new Set(
+  data
+    .filter(b => b.master_briefs?.language === currentProfile.preferred_language)
+    .map(b => b.master_briefs?.taddy_episode_uuid)
+    .filter(Boolean)
+);
+2. "Summarize" button on Show Details page (ShowDiscovery.tsx)
+
+Same pattern -- fetches all user briefs, then filters by profile.preferred_language:
+
+
+// ShowDiscovery.tsx -> fetchExistingBriefs
+const { data: briefsData } = await supabase
+  .from('user_briefs')
+  .select('master_briefs!inner(taddy_episode_uuid, language)')
+  .eq('user_id', user.id)
+  .eq('is_hidden', false);
+
+const episodeUuids = new Set(
+  briefsData
+    .filter(b => b.master_briefs?.language === profile.preferred_language)
+    .map(b => b.master_briefs?.taddy_episode_uuid)
+);
+The useEffect dependency includes profile?.preferred_language, so changing the language in Settings automatically re-evaluates which episodes are marked as "Summarized".
+
+3. Episode Detail page (EpisodeDetail.tsx) -- NOT language-filtered (bug)
+
+The Episode Detail page's checkUserBrief does NOT filter by language. It checks if ANY brief exists for the episode, regardless of language. This means:
+
+If a user has a Spanish brief, the Episode Detail page still shows "Summarized" even when their language is set to English.
+This is inconsistent with the New Episodes and Show Discovery pages.
+This should be fixed on both web and mobile.
+
+4. Summary generation always uses the current language
+
+The generate-brief edge function reads the user's preferred_language from their profile and uses it for the brief generation. No language parameter needs to be passed from the client -- the backend reads it from the profile.
+
+Key Takeaways for Mobile Team
+
+Query pattern: Join user_briefs with master_briefs, filter by is_hidden = false AND master_briefs.language = profile.preferred_language.
+Re-evaluate on language change: When the user changes their language in Settings, the brief existence check must be re-run.
+Generation: The backend reads the language from the user's profile -- the mobile app just needs to ensure the profile is updated before triggering generation.
+Bug to fix: Episode Detail page brief check needs language filtering too.
+No code changes needed for this item -- this is purely documentation for the mobile team. I'll update docs/Replit_Sync_2026_02_08.md with this information.
