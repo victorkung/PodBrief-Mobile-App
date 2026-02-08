@@ -148,35 +148,47 @@ export default function ProfileScreen() {
     value?: string;
     onPress?: () => void;
     danger?: boolean;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.settingsRow,
-        { opacity: pressed ? 0.7 : 1 },
-      ]}
-    >
-      <Feather
-        name={icon as any}
-        size={20}
-        color={danger ? theme.error : theme.textSecondary}
-      />
-      <ThemedText
-        type="body"
-        style={[styles.settingsLabel, danger && { color: theme.error }]}
-      >
-        {label}
-      </ThemedText>
-      {value ? (
-        <ThemedText type="small" style={{ color: theme.textTertiary }}>
-          {value}
+  }) => {
+    const content = (
+      <>
+        <Feather
+          name={icon as any}
+          size={20}
+          color={danger ? theme.error : theme.textSecondary}
+        />
+        <ThemedText
+          type="body"
+          style={[styles.settingsLabel, danger && { color: theme.error }]}
+        >
+          {label}
         </ThemedText>
-      ) : null}
-      {onPress ? (
-        <Feather name="chevron-right" size={20} color={theme.textTertiary} />
-      ) : null}
-    </Pressable>
-  );
+        {value ? (
+          <ThemedText type="small" style={{ color: theme.textTertiary }}>
+            {value}
+          </ThemedText>
+        ) : null}
+        {onPress ? (
+          <Feather name="chevron-right" size={20} color={theme.textTertiary} />
+        ) : null}
+      </>
+    );
+
+    if (!onPress) {
+      return <View style={styles.settingsRow}>{content}</View>;
+    }
+
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.settingsRow,
+          { opacity: pressed ? 0.7 : 1 },
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
+  };
 
   return (
     <KeyboardAwareScrollViewCompat
