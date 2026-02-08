@@ -279,11 +279,11 @@ export default function EpisodeDetailScreen() {
       let episodeSlug = episodeDetails?.slug;
       if (!episodeSlug) {
         try {
-          const { data } = await supabase.functions.invoke("ensure-episode-metadata", {
+          const { data, error } = await supabase.functions.invoke("ensure-episode-metadata", {
             body: {
               taddyEpisodeUuid: uuid,
               taddyPodcastUuid: podcastUuid,
-              episodeName: name,
+              name: name,
               podcastName: podcastName,
               imageUrl: imageUrl,
               audioUrl: audioUrl,
@@ -293,7 +293,12 @@ export default function EpisodeDetailScreen() {
                 : publishedAt,
             },
           });
-          episodeSlug = data?.slug;
+          if (error) {
+            console.error("[Share] ensure-episode-metadata error:", error);
+          } else {
+            console.log("[Share] ensure-episode-metadata response:", JSON.stringify(data));
+            episodeSlug = data?.slug;
+          }
         } catch (err) {
           console.error("[Share] ensure-episode-metadata failed:", err);
         }

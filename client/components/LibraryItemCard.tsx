@@ -177,11 +177,11 @@ export function LibraryItemCard({
 
         let episodeSlug: string | undefined;
         try {
-          const { data } = await supabase.functions.invoke("ensure-episode-metadata", {
+          const { data, error } = await supabase.functions.invoke("ensure-episode-metadata", {
             body: {
               taddyEpisodeUuid: episode.taddy_episode_uuid,
               taddyPodcastUuid: episode.taddy_podcast_uuid,
-              episodeName: episode.episode_name,
+              name: episode.episode_name,
               podcastName: episode.podcast_name,
               imageUrl: episode.episode_thumbnail,
               audioUrl: episode.episode_audio_url,
@@ -189,7 +189,12 @@ export function LibraryItemCard({
               publishedAt: episode.episode_published_at,
             },
           });
-          episodeSlug = data?.slug;
+          if (error) {
+            console.error("[Share] ensure-episode-metadata error:", error);
+          } else {
+            console.log("[Share] ensure-episode-metadata response:", JSON.stringify(data));
+            episodeSlug = data?.slug;
+          }
         } catch (err) {
           console.error("[Share] ensure-episode-metadata failed:", err);
         }

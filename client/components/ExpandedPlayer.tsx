@@ -158,14 +158,19 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
         if (!slug) {
           try {
             const taddyUuid = currentItem.id.replace("episode-", "");
-            const { data } = await supabase.functions.invoke("ensure-episode-metadata", {
+            const { data, error } = await supabase.functions.invoke("ensure-episode-metadata", {
               body: {
                 taddyEpisodeUuid: taddyUuid,
-                episodeName: currentItem.title,
+                name: currentItem.title,
                 podcastName: currentItem.podcast,
               },
             });
-            slug = data?.slug;
+            if (error) {
+              console.error("[Share] ensure-episode-metadata error:", error);
+            } else {
+              console.log("[Share] ensure-episode-metadata response:", JSON.stringify(data));
+              slug = data?.slug;
+            }
           } catch (err) {
             console.error("[Share] ensure-episode-metadata failed:", err);
           }
