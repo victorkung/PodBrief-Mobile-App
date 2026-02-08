@@ -8,12 +8,15 @@ import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
 import Constants from "expo-constants";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
 import { supabase } from "@/lib/supabase";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
@@ -35,6 +38,8 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
@@ -48,6 +53,7 @@ export default function ProfileScreen() {
 
   const handleSelectLanguage = useCallback(async (langCode: string) => {
     setLanguageModalVisible(false);
+    const selectedLang = LANGUAGES.find((l) => l.code === langCode);
     try {
       const { error } = await supabase
         .from("profiles")
@@ -55,12 +61,16 @@ export default function ProfileScreen() {
         .eq("id", user?.id);
       if (error) throw error;
       await refreshProfile();
+      queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
+      queryClient.invalidateQueries({ queryKey: ["newEpisodes"] });
+      queryClient.invalidateQueries({ queryKey: ["savedEpisodes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showToast(`Language updated to ${selectedLang?.name || langCode}`, "success");
     } catch (error) {
       console.error("Error updating language:", error);
-      Alert.alert("Error", "Unable to update language. Please try again.");
+      showToast("Unable to update language. Please try again.", "error");
     }
-  }, [user?.id, refreshProfile]);
+  }, [user?.id, refreshProfile, queryClient, showToast]);
 
   const handleUpgrade = useCallback(async () => {
     try {
