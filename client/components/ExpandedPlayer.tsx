@@ -146,9 +146,12 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
 
   const handleShare = async () => {
     try {
+      const shareType = currentItem.type === "episode" ? "podcast episode" : "podcast summary";
+      const shareUrl = currentItem.type === "episode"
+        ? `https://podbrief.io/episode/${currentItem.id}`
+        : `https://podbrief.io/brief/${currentItem.masterBriefId || currentItem.id}`;
       await Share.share({
-        message: `Check out "${currentItem.title}" on PodBrief`,
-        url: `https://podbrief.io/brief/${currentItem.masterBriefId || currentItem.id}`,
+        message: `Check out this ${shareType} on PodBrief: "${currentItem.title}" - ${currentItem.podcast}\n${shareUrl}`,
       });
     } catch (error) {
       console.error("Error sharing:", error);

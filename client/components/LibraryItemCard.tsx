@@ -186,9 +186,9 @@ export function LibraryItemCard({
       }
 
       if (shareUrl) {
+        const shareLabel = contentType === "episode" ? "podcast episode" : "podcast summary";
         await Share.share({
-          message: `Check out this on PodBrief: ${getTitle()} - ${shareUrl}`,
-          url: shareUrl,
+          message: `Check out this ${shareLabel} on PodBrief: "${getTitle()}" - ${getPodcastName()}\n${shareUrl}`,
         });
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 

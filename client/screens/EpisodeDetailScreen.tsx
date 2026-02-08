@@ -280,9 +280,7 @@ export default function EpisodeDetailScreen() {
         shareUrl += `?ref=${userId}&sharedBy=${encodeURIComponent(firstName)}`;
       }
       await Share.share({
-        message: `Listen to "${name}" from ${podcastName} on PodBrief: ${shareUrl}`,
-        url: shareUrl,
-        title: name,
+        message: `Check out this podcast episode on PodBrief: "${name}" - ${podcastName}\n${shareUrl}`,
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
