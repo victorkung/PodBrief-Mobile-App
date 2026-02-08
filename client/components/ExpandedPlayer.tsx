@@ -35,6 +35,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAudioPlayerContext, SPEED_OPTIONS } from "@/contexts/AudioPlayerContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
@@ -64,6 +65,7 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
   const [seekValue, setSeekValue] = useState(0);
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { profile } = useAuth();
 
   const translateY = useSharedValue(0);
 
@@ -146,13 +148,55 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
 
   const handleShare = async () => {
     try {
+      const userId = profile?.id;
+      const firstName = profile?.first_name || "";
       const shareType = currentItem.type === "episode" ? "podcast episode" : "podcast summary";
-      const shareUrl = currentItem.type === "episode"
-        ? `https://podbrief.io/episode/${currentItem.id}`
-        : `https://podbrief.io/brief/${currentItem.masterBriefId || currentItem.id}`;
+
+      let urlPath: string;
+      if (currentItem.type === "episode") {
+        let slug = currentItem.episodeSlug;
+        if (!slug) {
+          try {
+            const taddyUuid = currentItem.id.replace("episode-", "");
+            const { data } = await supabase.functions.invoke("ensure-episode-metadata", {
+              body: {
+                taddyEpisodeUuid: taddyUuid,
+                episodeName: currentItem.title,
+                podcastName: currentItem.podcast,
+              },
+            });
+            slug = data?.slug;
+          } catch (err) {
+            console.error("[Share] ensure-episode-metadata failed:", err);
+          }
+        }
+        urlPath = `https://podbrief.io/episode/${slug || currentItem.id}`;
+      } else {
+        urlPath = `https://podbrief.io/brief/${currentItem.masterBriefId || currentItem.id}`;
+      }
+
+      let shareUrl = urlPath;
+      if (userId) {
+        shareUrl += `?ref=${userId}&sharedBy=${encodeURIComponent(firstName)}`;
+      }
+
       await Share.share({
         message: `Check out this ${shareType} on PodBrief: "${currentItem.title}" - ${currentItem.podcast}\n${shareUrl}`,
       });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      if (userId) {
+        const contentId = currentItem.type === "episode"
+          ? currentItem.id.replace("episode-", "")
+          : currentItem.masterBriefId || currentItem.id;
+        supabase.functions.invoke("log-share-visit", {
+          body: {
+            referrerId: userId,
+            masterBriefId: contentId,
+            contentType: currentItem.type === "episode" ? "episode" : "brief",
+          },
+        }).catch((err) => console.error("[Share] log-share-visit failed:", err));
+      }
     } catch (error) {
       console.error("Error sharing:", error);
     }
