@@ -564,16 +564,18 @@ export default function EpisodeDetailScreen() {
         )}
 
         {description ? (
-          <View style={styles.descriptionSection}>
-            <ThemedText type="h4" style={styles.sectionTitle}>
-              About This Episode
-            </ThemedText>
-            <ThemedText
-              type="small"
-              style={[styles.description, { color: theme.text }]}
-            >
-              {description}
-            </ThemedText>
+          <View style={[styles.descriptionBackground, { backgroundColor: theme.backgroundContent }]}>
+            <View style={styles.descriptionInner}>
+              <ThemedText type="h4" style={styles.sectionTitle}>
+                About This Episode
+              </ThemedText>
+              <ThemedText
+                type="small"
+                style={[styles.description, { color: theme.text }]}
+              >
+                {description}
+              </ThemedText>
+            </View>
           </View>
         ) : null}
       </ScrollView>
@@ -634,6 +636,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.sm,
+  },
+  descriptionBackground: {
+    marginHorizontal: -Spacing.lg,
+    borderTopLeftRadius: BorderRadius.lg,
+    borderTopRightRadius: BorderRadius.lg,
+    paddingTop: Spacing.lg,
+    minHeight: 200,
+  },
+  descriptionInner: {
+    paddingHorizontal: Spacing.lg,
   },
   descriptionSection: {
     marginTop: Spacing.sm,
