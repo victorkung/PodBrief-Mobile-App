@@ -254,6 +254,11 @@ export default function ProfileScreen() {
           Account
         </ThemedText>
         <SettingsRow
+          icon="bar-chart-2"
+          label="Analytics"
+          onPress={() => (navigation as any).navigate("Analytics")}
+        />
+        <SettingsRow
           icon="globe"
           label="Language"
           value={currentLanguage.name}

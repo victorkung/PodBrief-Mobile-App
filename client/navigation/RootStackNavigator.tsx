@@ -20,6 +20,7 @@ import GenerateBriefScreen from "@/screens/GenerateBriefScreen";
 import NowPlayingScreen from "@/screens/NowPlayingScreen";
 import EpisodeDetailScreen from "@/screens/EpisodeDetailScreen";
 import PricingScreen from "@/screens/PricingScreen";
+import AnalyticsScreen from "@/screens/AnalyticsScreen";
 
 import { TaddyPodcast, TaddyEpisode, SavedEpisode, UserBrief } from "@/lib/types";
 
@@ -35,6 +36,7 @@ export type RootStackParamList = {
   EpisodeDetail: { episode: TaddyEpisode | SavedEpisode; source: "newEpisodes" | "library" };
   NowPlaying: undefined;
   Pricing: undefined;
+  Analytics: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -161,6 +163,14 @@ export function RootStackNavigator() {
             component={PricingScreen}
             options={{
               headerTitle: "Pricing",
+              headerBackTitle: "Back",
+            }}
+          />
+          <Stack.Screen
+            name="Analytics"
+            component={AnalyticsScreen}
+            options={{
+              headerTitle: "Analytics",
               headerBackTitle: "Back",
             }}
           />
