@@ -174,7 +174,27 @@ export function LibraryItemCard({
       if (episode) {
         contentType = "episode";
         contentId = episode.taddy_episode_uuid;
-        shareUrl = `https://podbrief.io/episode/${episode.taddy_episode_uuid}`;
+
+        let episodeSlug: string | undefined;
+        try {
+          const { data } = await supabase.functions.invoke("ensure-episode-metadata", {
+            body: {
+              taddyEpisodeUuid: episode.taddy_episode_uuid,
+              taddyPodcastUuid: episode.taddy_podcast_uuid,
+              episodeName: episode.episode_name,
+              podcastName: episode.podcast_name,
+              imageUrl: episode.episode_thumbnail,
+              audioUrl: episode.episode_audio_url,
+              durationSeconds: episode.episode_duration_seconds,
+              publishedAt: episode.episode_published_at,
+            },
+          });
+          episodeSlug = data?.slug;
+        } catch (err) {
+          console.error("[Share] ensure-episode-metadata failed:", err);
+        }
+        const urlPath = episodeSlug || episode.taddy_episode_uuid;
+        shareUrl = `https://podbrief.io/episode/${urlPath}`;
       } else if (brief) {
         contentType = "brief";
         contentId = brief.master_brief_id;
