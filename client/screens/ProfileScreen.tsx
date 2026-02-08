@@ -260,7 +260,7 @@ export default function ProfileScreen() {
         />
         <SettingsRow
           icon="globe"
-          label="Language"
+          label="Summary Language"
           value={currentLanguage.name}
           onPress={() => setLanguageModalVisible(true)}
         />
@@ -297,6 +297,9 @@ export default function ProfileScreen() {
           <View style={[styles.modalContainer, { backgroundColor: theme.backgroundDefault }]}>
             <ThemedText type="h3" style={styles.modalTitle}>
               Select Language
+            </ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+              All new summaries will be generated in this language.
             </ThemedText>
             {LANGUAGES.map((lang) => (
               <Pressable
