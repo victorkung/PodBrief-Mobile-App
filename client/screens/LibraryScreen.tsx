@@ -116,14 +116,12 @@ export default function LibraryScreen() {
     enabled: !!user,
   });
 
-  const preferredLanguage = profile?.preferred_language || "en";
-
   const {
     data: userBriefs,
     isLoading: isLoadingBriefs,
     refetch: refetchBriefs,
   } = useQuery({
-    queryKey: ["userBriefs", preferredLanguage],
+    queryKey: ["userBriefs"],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -148,7 +146,6 @@ export default function LibraryScreen() {
         )
         .eq("user_id", user.id)
         .eq("is_hidden", false)
-        .eq("master_brief.language", preferredLanguage)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as UserBrief[];
@@ -682,7 +679,7 @@ export default function LibraryScreen() {
       
       // Optimistically update pipeline_status to "pending" so the row shows processing state immediately
       const optimisticallySetPending = () => {
-        queryClient.setQueryData(["userBriefs", preferredLanguage], (old: UserBrief[] | undefined) => {
+        queryClient.setQueryData(["userBriefs"], (old: UserBrief[] | undefined) => {
           if (!old) return old;
           return old.map((b) =>
             b.id === brief.id && b.master_brief
@@ -742,7 +739,7 @@ export default function LibraryScreen() {
         });
       }
     },
-    [refetchBriefs, showToast, queryClient, preferredLanguage]
+    [refetchBriefs, showToast, queryClient]
   );
 
   // Auto-retry for stale transcripts (pending/transcribing for >2 minutes)
