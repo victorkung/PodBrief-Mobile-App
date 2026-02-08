@@ -507,6 +507,7 @@ export default function BriefDetailScreen() {
           />
         ) : (
           <>
+            <View style={{ marginTop: Spacing.lg }} />
             <SegmentedControl
               segments={segments}
               selectedKey={selectedTab}
