@@ -437,7 +437,7 @@ export default function BriefDetailScreen() {
             <ThemedText type="h3" numberOfLines={3} style={styles.title}>
               {masterBrief?.episode_name || "Brief"}
             </ThemedText>
-            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>
+            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.gold, marginBottom: Spacing.xs }}>
               {masterBrief?.podcast_name}
             </ThemedText>
             {masterBrief?.episode_published_at ? (
@@ -506,58 +506,56 @@ export default function BriefDetailScreen() {
             theme={theme} 
           />
         ) : (
-          <View style={[styles.contentBackground, { backgroundColor: theme.backgroundContent }]}>
-            <View style={styles.contentInner}>
-              <SegmentedControl
-                segments={segments}
-                selectedKey={selectedTab}
-                onSelect={setSelectedTab}
-              />
+          <>
+            <SegmentedControl
+              segments={segments}
+              selectedKey={selectedTab}
+              onSelect={setSelectedTab}
+            />
 
-              <View style={styles.sectionHeader}>
-                <ThemedText type="body" style={[styles.sectionDescription, { color: theme.textSecondary }]}>
-                  {getSectionDescription()}
+            <View style={styles.sectionHeader}>
+              <ThemedText type="body" style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+                {getSectionDescription()}
+              </ThemedText>
+              {contentMetadata ? (
+                <ThemedText type="body" style={[styles.metadataText, { color: theme.textSecondary }]}>
+                  {contentMetadata.readingTime} min read • {contentMetadata.wordCount.toLocaleString()} words{selectedTab !== "transcript" ? ` • ${contentMetadata.language}` : ""}
                 </ThemedText>
-                {contentMetadata ? (
-                  <ThemedText type="body" style={[styles.metadataText, { color: theme.textSecondary }]}>
-                    {contentMetadata.readingTime} min read • {contentMetadata.wordCount.toLocaleString()} words{selectedTab !== "transcript" ? ` • ${contentMetadata.language}` : ""}
-                  </ThemedText>
-                ) : null}
-                
-                <Pressable 
-                  onPress={handleCopyContent}
-                  style={[styles.copyButton, { backgroundColor: theme.backgroundTertiary }]}
+              ) : null}
+              
+              <Pressable 
+                onPress={handleCopyContent}
+                style={[styles.copyButton, { backgroundColor: theme.backgroundTertiary }]}
+              >
+                <Feather 
+                  name={copiedSection === selectedTab ? "check" : "copy"} 
+                  size={14} 
+                  color={copiedSection === selectedTab ? theme.gold : theme.text} 
+                />
+                <ThemedText 
+                  type="caption" 
+                  style={{ 
+                    color: copiedSection === selectedTab ? theme.gold : theme.text,
+                    marginLeft: 4,
+                    fontWeight: "600"
+                  }}
                 >
-                  <Feather 
-                    name={copiedSection === selectedTab ? "check" : "copy"} 
-                    size={14} 
-                    color={copiedSection === selectedTab ? theme.gold : theme.text} 
-                  />
-                  <ThemedText 
-                    type="caption" 
-                    style={{ 
-                      color: copiedSection === selectedTab ? theme.gold : theme.text,
-                      marginLeft: 4,
-                      fontWeight: "600"
-                    }}
-                  >
-                    {copiedSection === selectedTab ? "Copied!" : getCopyButtonLabel()}
-                  </ThemedText>
-                </Pressable>
-              </View>
-                
-              {content ? (
-                <View style={styles.contentSection}>
-                  <Markdown style={markdownStyles}>{content}</Markdown>
-                </View>
-              ) : (
-                <ThemedText type="body" style={{ color: theme.textTertiary, marginTop: Spacing.lg }}>
-                  {selectedTab === "summary" ? "Summary not available" : null}
-                  {selectedTab === "transcript" ? "Full transcript not available" : null}
+                  {copiedSection === selectedTab ? "Copied!" : getCopyButtonLabel()}
                 </ThemedText>
-              )}
+              </Pressable>
             </View>
-          </View>
+              
+            {content ? (
+              <View style={styles.contentSection}>
+                <Markdown style={markdownStyles}>{content}</Markdown>
+              </View>
+            ) : (
+              <ThemedText type="body" style={{ color: theme.textTertiary, marginTop: Spacing.lg }}>
+                {selectedTab === "summary" ? "Summary not available" : null}
+                {selectedTab === "transcript" ? "Full transcript not available" : null}
+              </ThemedText>
+            )}
+          </>
         )}
       </ScrollView>
 
@@ -650,16 +648,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: 999,
     marginTop: Spacing.sm,
-  },
-  contentBackground: {
-    marginHorizontal: -Spacing.md,
-    borderTopLeftRadius: BorderRadius.lg,
-    borderTopRightRadius: BorderRadius.lg,
-    paddingTop: Spacing.lg,
-    minHeight: 200,
-  },
-  contentInner: {
-    paddingHorizontal: Spacing.md,
   },
   contentSection: {
     marginTop: Spacing.sm,
