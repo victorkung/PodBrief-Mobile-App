@@ -1,0 +1,195 @@
+Let me explore the current implementation thoroughly so I can write a comprehensive prompt for Replit.
+
+Now I have a complete picture. This is a research/documentation task, not an implementation task -- so I'll provide the prompt directly rather than a plan.
+
+Here's a comprehensive prompt you can give to Replit to implement the Analytics screen in the mobile app:
+
+---
+
+## Replit Prompt: Implement Analytics Screen
+
+```
+## Task: Build a User Analytics Screen
+
+We need a new Analytics screen in the mobile app that displays the user's personal listening analytics. The data comes from the existing `user-analytics` edge function — no backend changes needed.
+
+---
+
+### API Contract
+
+**Endpoint:** `POST /functions/v1/user-analytics`  
+**Auth Required:** Yes (Bearer token)
+
+**Request Body:**
+```json
+{
+  "startDate": "2025-02-08T00:00:00.000Z",  // ISO string, optional
+  "endDate": "2026-02-08T23:59:59.999Z"      // ISO string, optional
+}
+```
+
+**Response Shape:**
+```typescript
+interface UserAnalyticsResponse {
+  summary: {
+    totalSummaries: number;        // Count of completed summaries
+    totalEpisodes: number;         // Count of completed episodes
+    totalShowsFollowing: number;   // Number of followed shows
+    totalTimeSavedMinutes: number; // Time saved in minutes (decimal)
+  };
+  favoritePodcasts: Array<{
+    podcastName: string;
+    imageUrl: string | null;
+    summaryCount: number;       // Completed summaries for this show
+    episodeCount: number;       // Completed episodes for this show
+    totalEngagements: number;   // summaryCount + episodeCount
+  }>;  // Sorted by totalEngagements desc, max 8 items
+  activityTimeline: Array<{
+    date: string;               // "YYYY-MM-DD" format
+    summariesCompleted: number;
+    episodesCompleted: number;
+    timeSavedHours: number;     // Decimal, rounded to 1 place
+  }>;  // Sorted chronologically
+  genreBreakdown: Array<{
+    genre: string;   // Sanitized parent genre, e.g. "Business", "News", "Science"
+    count: number;
+  }>;  // Sorted by count desc, max 10 items
+}
+```
+
+**Example call:**
+```typescript
+const { data, error } = await supabase.functions.invoke('user-analytics', {
+  body: { 
+    startDate: new Date(Date.now() - 365 * 86400000).toISOString(),
+    endDate: new Date().toISOString()
+  },
+});
+```
+
+---
+
+### Screen Layout (Top to Bottom)
+
+#### 1. Header
+- Title: "Your Analytics"
+- Subtitle: "See how you've been using PodBrief"
+
+#### 2. Date Filter Selector
+A dropdown/picker with these options:
+- "Last 7 Days" (default calculates: now minus 7 days)
+- "Last 30 Days"
+- "Last 90 Days"
+- **"Last Year" (DEFAULT selection)**
+- "Custom Range" — shows two date pickers (start/end), both capped at 1 year ago maximum
+
+There is NO "All Time" option. The maximum lookback is 1 year.
+
+#### 3. Summary Cards (2x2 grid)
+Four stat cards in a grid:
+
+| Card | Icon | Label | Value |
+|------|------|-------|-------|
+| Time Saved | Clock | "Time Saved" | Format as human-readable: e.g. "2 hours 15 min", "45 minutes", "0 minutes" |
+| Summaries | FileText/Document | "Summaries Completed" | Integer from `summary.totalSummaries` |
+| Episodes | Headphones | "Episodes Completed" | Integer from `summary.totalEpisodes` |
+| Shows | Radio | "Shows" | Integer from `summary.totalShowsFollowing` |
+
+#### 4. Favorite Podcasts (Horizontal Bar Chart)
+- Title: "Favorite Podcasts"
+- Horizontal stacked bar chart
+- Y-axis: podcast names (truncate at 18 chars with "…")
+- Two bar segments per podcast: "Summaries Completed" (gold) and "Episodes Completed" (teal)
+- Only show if `favoritePodcasts.length > 0`
+
+#### 5. Genre Breakdown (Donut/Pie Chart)
+- Title: "Genre Breakdown"
+- Donut chart with legend below (horizontal layout)
+- Data: `genreBreakdown` array, `genre` as label, `count` as value
+- If no genre data but favorite podcasts exist, show placeholder: "Genre data will appear as podcasts are indexed"
+
+#### 6. Activity Line Chart
+- Title: "Activity"
+- **Daily/Cumulative toggle** in the header (segmented control)
+- Two lines: "Summaries Completed" (gold) and "Episodes Completed" (teal)
+- X-axis: dates formatted as "Jan 6", "Feb 4", etc.
+- When "Cumulative" is selected, compute running totals client-side:
+  ```typescript
+  let sumS = 0, sumE = 0;
+  const cumulative = timeline.map(d => ({
+    ...d,
+    summariesCompleted: (sumS += d.summariesCompleted),
+    episodesCompleted: (sumE += d.episodesCompleted),
+  }));
+  ```
+- In cumulative mode, add a subtle gradient fill under each line
+- Only show if `activityTimeline.length > 0`
+
+#### 7. Summaries vs Episodes (Small Donut)
+- Title: "Summaries vs Episodes"
+- Simple donut with two slices: total summaries (gold) vs total episodes (teal)
+- Legend below the chart
+- Only show if at least one value > 0
+
+#### 8. Time Saved Line Chart
+- Title: "Time Saved (hours)"
+- **Same Daily/Cumulative toggle** as the Activity chart (they share the same toggle state)
+- Single line: "Hours Saved" (orange)
+- Same cumulative logic as Activity chart but for `timeSavedHours`
+- Only show if timeline has at least one entry with `timeSavedHours > 0`
+
+---
+
+### Chart Colors
+```
+Gold:   hsl(45, 80%, 55%)   — Summaries
+Teal:   hsl(160, 70%, 45%)  — Episodes
+Orange: hsl(20, 85%, 55%)   — Time Saved
+Purple: hsl(280, 65%, 60%)  — Genre 3
+Blue:   hsl(200, 75%, 50%)  — Genre 4
+Pink:   hsl(340, 70%, 55%)  — Genre 5
+```
+
+---
+
+### States to Handle
+
+1. **Loading**: Show skeleton placeholders for the cards (4 rectangles) and charts (2-3 larger rectangles)
+2. **Empty**: If `totalSummaries === 0 && totalEpisodes === 0 && totalShowsFollowing === 0`, show centered empty state with a chart icon and text: "No data yet — Start generating summaries and saving episodes to see your listening analytics here."
+3. **Data**: Render all sections, conditionally hiding charts that have no data
+4. **Not authenticated**: Redirect to login screen
+
+---
+
+### Performance Notes
+- If the timeline has more than 30 data points, hide individual dots on the line charts (just show the line). Dots still appear on tap/hover via tooltip.
+- Cache/stale time: 2 minutes stale, 10 minutes garbage collection
+- The edge function already parallelizes its queries — response time should be under 2 seconds
+
+---
+
+### Navigation
+- Add "Analytics" to the appropriate navigation menu/tab bar
+- The screen requires authentication — redirect unauthenticated users to login
+
+---
+
+### Time Saved Formatting Helper
+```typescript
+function formatTimeSaved(minutes: number): string {
+  if (minutes < 1) return '0 minutes';
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hours === 0) return `${mins} minute${mins !== 1 ? 's' : ''}`;
+  if (mins === 0) return `${hours} hour${hours !== 1 ? 's' : ''}`;
+  return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} min`;
+}
+```
+```
+
+---
+
+This prompt gives Replit everything it needs: the exact API contract, response types, layout order, chart specifications, color tokens, state handling, the cumulative toggle logic, and performance notes. It doesn't reference any web-specific libraries (Recharts, Radix, etc.) so Replit can choose the appropriate React Native charting library.
+
+Document Analytics endpoint in Mobile API Contract
+Create today's Replit Sync doc
