@@ -29,7 +29,7 @@ type AuthMode = "signin" | "signup";
 
 const LANGUAGES = [
   { label: "English", value: "en" },
-  { label: "Chinese", value: "zh" },
+  { label: "Mandarin Chinese", value: "zh" },
   { label: "Dutch", value: "nl" },
   { label: "French", value: "fr" },
   { label: "German", value: "de" },

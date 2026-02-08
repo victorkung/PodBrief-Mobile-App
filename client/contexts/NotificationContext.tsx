@@ -148,7 +148,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             },
           })
         );
-      } else if (data?.type === "summary_error" && data?.briefId) {
+      } else if ((data?.type === "summary_error" || data?.type === "brief_failed") && (data?.briefId || data?.masterBriefId)) {
         navigation.dispatch(
           CommonActions.navigate({
             name: "Main",

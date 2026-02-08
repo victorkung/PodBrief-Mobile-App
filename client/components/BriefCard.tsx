@@ -43,7 +43,7 @@ function getLanguageName(code: string): string {
     de: "German",
     it: "Italian",
     pt: "Portuguese",
-    zh: "Chinese",
+    zh: "Mandarin Chinese",
     ja: "Japanese",
     ko: "Korean",
     ru: "Russian",

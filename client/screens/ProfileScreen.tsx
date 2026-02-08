@@ -24,7 +24,7 @@ const LANGUAGES = [
   { code: "de", name: "German" },
   { code: "pt", name: "Portuguese" },
   { code: "it", name: "Italian" },
-  { code: "zh", name: "Chinese" },
+  { code: "zh", name: "Mandarin Chinese" },
   { code: "ja", name: "Japanese" },
   { code: "ko", name: "Korean" },
 ];

@@ -69,7 +69,7 @@ const LANGUAGE_LABELS: Record<string, string> = {
   ru: "Russian",
   ja: "Japanese",
   ko: "Korean",
-  zh: "Chinese",
+  zh: "Mandarin Chinese",
   ar: "Arabic",
   hi: "Hindi",
   sv: "Swedish",
@@ -96,11 +96,15 @@ export function getLanguageLabel(languageCode: string | null | undefined): strin
   return LANGUAGE_LABELS[code] || languageCode.toUpperCase();
 }
 
-export function calculateReadingTime(text: string, wordsPerMinute: number = 300): number {
-  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-  return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
+export function getWordCount(text: string): number {
+  if (!text || !text.trim()) return 0;
+  const whitespaceWords = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const cjkPattern = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g;
+  const cjkChars = (text.match(cjkPattern) || []).length;
+  return cjkChars > whitespaceWords ? cjkChars : whitespaceWords;
 }
 
-export function getWordCount(text: string): number {
-  return text.split(/\s+/).filter(w => w.length > 0).length;
+export function calculateReadingTime(text: string, wordsPerMinute: number = 300): number {
+  const wordCount = getWordCount(text);
+  return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
 }

@@ -9,12 +9,10 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { useAudioPlayerContext } from "@/contexts/AudioPlayerContext";
+import { useAudioPlayerContext, SPEED_OPTIONS } from "@/contexts/AudioPlayerContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
-
-const SPEED_OPTIONS = [0.5, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -45,9 +43,10 @@ export default function NowPlayingScreen() {
   } = useAudioPlayerContext();
 
   const handleSpeedPress = useCallback(() => {
-    const currentIndex = SPEED_OPTIONS.indexOf(playbackSpeed);
-    const nextIndex = (currentIndex + 1) % SPEED_OPTIONS.length;
-    setSpeed(SPEED_OPTIONS[nextIndex]);
+    const speedValues = SPEED_OPTIONS.map(o => o.value);
+    const currentIndex = speedValues.indexOf(playbackSpeed);
+    const nextIndex = (currentIndex + 1) % speedValues.length;
+    setSpeed(speedValues[nextIndex]);
   }, [playbackSpeed, setSpeed]);
 
   const handleSeek = useCallback(
