@@ -576,6 +576,40 @@ export default function AnalyticsScreen() {
     );
   };
 
+  const findNearestPointIndex = (touchX: number, pointPositions: Array<{ x: number }>) => {
+    let nearestIdx = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < pointPositions.length; i++) {
+      const dist = Math.abs(touchX - pointPositions[i].x);
+      if (dist < minDist) {
+        minDist = dist;
+        nearestIdx = i;
+      }
+    }
+    return nearestIdx;
+  };
+
+  const handleChartTouch = (
+    touchX: number,
+    allPointPositions: Array<{ x: number; values: Array<{ y: number; value: number }>; date: string; index: number }>,
+    chartKey: string,
+    labels: string[]
+  ) => {
+    const nearestIdx = findNearestPointIndex(touchX, allPointPositions);
+    const point = allPointPositions[nearestIdx];
+    if (!point) return;
+    const tooltipValues = labels.map((label, li) => `${label}: ${point.values[li]?.value ?? 0}`);
+    const minY = Math.min(...point.values.map(v => v.y));
+    setSelectedPoint({
+      chartKey,
+      index: point.index,
+      x: point.x,
+      y: minY,
+      date: point.date,
+      values: tooltipValues,
+    });
+  };
+
   const renderLineChart = (
     timelineData: Array<{ x: string; values: number[][] }>,
     colors: string[],
@@ -598,8 +632,6 @@ export default function AnalyticsScreen() {
     const niceMax = Math.ceil(maxVal / 4) * 4 || 4;
 
     const showDots = timelineData.length <= 30;
-    const labelCount = Math.min(5, timelineData.length);
-    const labelStep = Math.max(1, Math.floor((timelineData.length - 1) / (labelCount - 1)));
 
     const getX = (idx: number) =>
       paddingLeft +
@@ -621,8 +653,25 @@ export default function AnalyticsScreen() {
       index: i,
     }));
 
+    const isSelected = selectedPoint && selectedPoint.chartKey === chartKey;
+
     return (
-      <View style={{ position: "relative" }}>
+      <View
+        style={{ position: "relative" }}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={(e) => {
+          const touchX = e.nativeEvent.locationX;
+          handleChartTouch(touchX, allPointPositions, chartKey, labels);
+        }}
+        onResponderMove={(e) => {
+          const touchX = e.nativeEvent.locationX;
+          handleChartTouch(touchX, allPointPositions, chartKey, labels);
+        }}
+        onResponderRelease={() => {
+          setTimeout(() => setSelectedPoint(null), 1500);
+        }}
+      >
         <Svg width={chartWidth} height={chartHeight}>
           {ticks.map((tick, idx) => (
             <G key={`tick-${idx}`}>
@@ -637,6 +686,18 @@ export default function AnalyticsScreen() {
               />
             </G>
           ))}
+
+          {isSelected ? (
+            <Line
+              x1={selectedPoint.x}
+              y1={paddingTop}
+              x2={selectedPoint.x}
+              y2={paddingTop + drawHeight}
+              stroke={theme.textTertiary}
+              strokeWidth={1}
+              strokeDasharray="3,3"
+            />
+          ) : null}
 
           {colors.map((color, lineIdx) => {
             const points = timelineData.map((d, i) => ({
@@ -689,7 +750,7 @@ export default function AnalyticsScreen() {
                         key={pIdx}
                         cx={p.x}
                         cy={p.y}
-                        r={3}
+                        r={isSelected && selectedPoint.index === pIdx ? 5 : 3}
                         fill={color}
                       />
                     ))
@@ -697,36 +758,25 @@ export default function AnalyticsScreen() {
               </G>
             );
           })}
+
+          {isSelected ? (
+            <>
+              {allPointPositions[selectedPoint.index]?.values.map((v, vi) => (
+                <Circle
+                  key={`highlight-${vi}`}
+                  cx={selectedPoint.x}
+                  cy={v.y}
+                  r={6}
+                  fill="none"
+                  stroke={colors[vi] || GOLD}
+                  strokeWidth={2}
+                  opacity={0.6}
+                />
+              ))}
+            </>
+          ) : null}
         </Svg>
-        {allPointPositions.map((point) => (
-          <Pressable
-            key={`touch-${point.index}`}
-            onPress={() => {
-              if (selectedPoint && selectedPoint.chartKey === chartKey && selectedPoint.index === point.index) {
-                setSelectedPoint(null);
-              } else {
-                const tooltipValues = labels.map((label, li) => `${label}: ${point.values[li]?.value ?? 0}`);
-                const minY = Math.min(...point.values.map(v => v.y));
-                setSelectedPoint({
-                  chartKey,
-                  index: point.index,
-                  x: point.x,
-                  y: minY,
-                  date: point.date,
-                  values: tooltipValues,
-                });
-              }
-            }}
-            style={{
-              position: "absolute",
-              left: point.x - 12,
-              top: Math.min(...point.values.map(v => v.y)) - 12,
-              width: 24,
-              height: 24,
-            }}
-          />
-        ))}
-        {selectedPoint && selectedPoint.chartKey === chartKey ? (
+        {isSelected ? (
           <View
             style={{
               position: "absolute",
@@ -795,13 +845,22 @@ export default function AnalyticsScreen() {
     const paddingLeft = 40;
     const paddingRight = 10;
     const drawWidth = chartWidth - paddingLeft - paddingRight;
+    const labelWidth = 30;
+    const minLabelGap = labelWidth + 4;
 
     const indices: number[] = [];
     for (let i = 0; i < dates.length; i += labelStep) {
       indices.push(i);
     }
     if (indices[indices.length - 1] !== dates.length - 1 && dates.length > 1) {
-      indices.push(dates.length - 1);
+      const lastIdx = dates.length - 1;
+      const prevIdx = indices[indices.length - 1];
+      const lastLeft = (lastIdx / (dates.length - 1)) * drawWidth;
+      const prevLeft = (prevIdx / (dates.length - 1)) * drawWidth;
+      if (lastLeft - prevLeft < minLabelGap) {
+        indices.pop();
+      }
+      indices.push(lastIdx);
     }
 
     return (
@@ -1237,9 +1296,6 @@ export default function AnalyticsScreen() {
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
       showsVerticalScrollIndicator={false}
-      onTouchStart={() => {
-        if (selectedPoint) setSelectedPoint(null);
-      }}
     >
       <ThemedText type="h2">Your Analytics</ThemedText>
       <ThemedText
