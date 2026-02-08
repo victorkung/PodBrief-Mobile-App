@@ -32,7 +32,7 @@ function formatDuration(seconds: number): string {
 
 function formatDate(dateString: string): string {
   const d = new Date(dateString);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 function getLanguageName(code: string): string {

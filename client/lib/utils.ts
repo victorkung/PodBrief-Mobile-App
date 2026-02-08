@@ -30,7 +30,7 @@ export function formatDate(date: number | string | null): string {
     d = new Date(date);
   }
   if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 export function formatDateLong(date: number | string | null): string {

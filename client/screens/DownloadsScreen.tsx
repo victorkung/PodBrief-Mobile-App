@@ -36,7 +36,7 @@ function formatFileSize(bytes: number): string {
 
 function formatDate(dateString: string): string {
   const d = new Date(dateString);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 export default function DownloadsScreen() {

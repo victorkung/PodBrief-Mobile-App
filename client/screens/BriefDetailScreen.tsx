@@ -434,21 +434,50 @@ export default function BriefDetailScreen() {
             transition={200}
           />
           <View style={styles.headerInfo}>
-            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.textSecondary }}>
-              {masterBrief?.podcast_name}
-            </ThemedText>
             <ThemedText type="h3" numberOfLines={3} style={styles.title}>
               {masterBrief?.episode_name || "Brief"}
             </ThemedText>
-            <View style={styles.metaRow}>
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                {brief?.created_at ? formatDateLong(brief.created_at) : ""}
-              </ThemedText>
-              <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                {formatAudioDuration(audioDuration)} summary
-              </ThemedText>
-            </View>
+            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.gold, marginBottom: Spacing.xs }}>
+              {masterBrief?.podcast_name}
+            </ThemedText>
+            {masterBrief?.episode_published_at ? (
+              <View style={styles.metaRow}>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  Original Episode: {formatDateLong(masterBrief.episode_published_at)}
+                </ThemedText>
+                {masterBrief.total_duration_minutes ? (
+                  <>
+                    <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {formatDuration(masterBrief.total_duration_minutes * 60)}
+                    </ThemedText>
+                  </>
+                ) : null}
+              </View>
+            ) : null}
+            {brief?.created_at ? (
+              <View style={styles.metaRow}>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  Summary: {formatDateLong(brief.created_at)}
+                </ThemedText>
+                {audioDuration > 0 ? (
+                  <>
+                    <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {formatDuration(audioDuration)}
+                    </ThemedText>
+                  </>
+                ) : null}
+                {masterBrief?.language ? (
+                  <>
+                    <View style={[styles.dot, { backgroundColor: theme.textTertiary }]} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {getLanguageLabel(masterBrief.language)}
+                    </ThemedText>
+                  </>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -569,7 +598,9 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: Spacing.sm,
+    marginTop: 2,
   },
   dot: {
     width: 3,
