@@ -132,17 +132,21 @@ export default function EpisodeDetailScreen() {
     enabled: !!user,
   });
 
+  const preferredLanguage = profile?.preferred_language || "en";
+
   const { data: userBriefs } = useQuery({
-    queryKey: ["userBriefs"],
+    queryKey: ["userBriefs", preferredLanguage],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from("user_briefs")
-        .select("master_briefs!inner(taddy_episode_uuid)")
+        .select("master_briefs!inner(taddy_episode_uuid, language)")
         .eq("user_id", user.id)
         .eq("is_hidden", false);
       if (error) throw error;
-      return data?.map((b: any) => ({ taddy_episode_uuid: b.master_briefs?.taddy_episode_uuid })) || [];
+      return (data || [])
+        .filter((b: any) => b.master_briefs?.language === preferredLanguage)
+        .map((b: any) => ({ taddy_episode_uuid: b.master_briefs?.taddy_episode_uuid }));
     },
     enabled: !!user,
   });
