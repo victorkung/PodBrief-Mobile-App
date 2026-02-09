@@ -1,0 +1,51 @@
+## 14. Analytics Event Tracking — Verification & UUID Sanitization (Critical)
+
+Full episode analytics were silently failing on web because `analytics_events.brief_id` and `audio_engagement_events.master_brief_id` are `uuid` columns, but full episodes used `episode-{uuid}` as their ID — an invalid UUID format. This caused all `full_episode_played` and `full_episode` engagement events to silently fail on insert.
+
+### Web Fix Applied
+
+A `sanitizeBriefId()` helper strips the `episode-` prefix before database inserts:
+
+```typescript
+function sanitizeBriefId(id: string | undefined): string | null {
+  if (!id) return null;
+  return id.replace(/^episode-/, '') || null;
+}
+```
+
+Applied in two places:
+- `logAnalyticsEvent()` → `brief_id: sanitizeBriefId(briefId)`
+- `logEngagementEvent()` → `master_brief_id: sanitizeBriefId(params.masterBriefId)`
+
+### Events the Mobile App Should Be Logging
+
+| Event | Table | Trigger | Notes |
+|-------|-------|---------|-------|
+| `site_visit` | `analytics_events` | Once per app session (cold start) | Include `{ source: 'mobile' }` in metadata |
+| `podcast_searched` | `analytics_events` | Debounced (5-min gap between logs) | Include `{ source: 'mobile' }` in metadata |
+| `summary_generated` | `analytics_events` | After brief pipeline completes | `brief_id` = master_brief_id (UUID) |
+| `audio_played` | `analytics_events` | First time a summary starts playing | `brief_id` = master_brief_id (UUID) |
+| `full_episode_played` | `analytics_events` | First time a full episode starts playing | `brief_id` = taddy_episode_uuid (UUID, **no prefix**) |
+| `share_initiated` | `analytics_events` | When user opens/uses share sheet | Include `{ source: 'mobile', contentType }` in metadata |
+| Engagement `start` | `audio_engagement_events` | After 30s accumulated listening | See rules below |
+| Engagement `completion` | `audio_engagement_events` | When playback reaches 75% position | See rules below |
+
+### Critical Rule: UUID Sanitization
+
+When logging to `analytics_events.brief_id` or `audio_engagement_events.master_brief_id`, the value **must be a valid UUID**. If the mobile app uses the `episode-{uuid}` convention for full episode IDs, strip the prefix before inserting:
+
+```typescript
+const cleanId = masterBriefId.replace(/^episode-/, '');
+```
+
+### Engagement Tracking Rules (Must Match Web)
+
+- **Start event:** Fire after **30 seconds of accumulated listening time** (not 30s position — track elapsed time while audio is playing, excluding seeks)
+- **Completion event:** Fire when playback position reaches **75%**
+- Both events require a `session_id` (unique per track play session) for server-side deduplication
+- One `start` event per user per brief/episode (deduplicated via query before insert)
+- `audio_type` must be `'summary'` or `'full_episode'`
+
+### Source Metadata
+
+Mobile events should include `{ source: 'mobile' }` in the metadata field to distinguish from web events in the admin dashboard.
