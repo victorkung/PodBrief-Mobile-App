@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { sanitizeBriefId, logAnalyticsEvent } from "@/lib/analytics";
 import { AudioItem } from "@/lib/types";
 import { Platform, AppState, AppStateStatus } from "react-native";
 
@@ -175,19 +176,46 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const audioType = item.type === "summary" ? "summary" : "full_episode";
+      const cleanId = item.type === "summary"
+        ? item.masterBriefId || null
+        : sanitizeBriefId(item.id);
+
+      if (!cleanId) {
+        console.warn("[AudioPlayer] No valid ID for engagement event, skipping");
+        return;
+      }
+
+      if (eventType === "start") {
+        const { data: existing } = await supabase
+          .from("audio_engagement_events")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("master_brief_id", cleanId)
+          .eq("audio_type", audioType)
+          .eq("event_type", "start")
+          .maybeSingle();
+
+        if (existing) {
+          console.log("[AudioPlayer] Start event already exists, skipping");
+          return;
+        }
+      }
+
       const progressPercentage = durationSeconds > 0 
-        ? Math.round((progressSeconds / durationSeconds) * 100) 
+        ? Math.round((progressSeconds / durationSeconds) * 10000) / 100
         : 0;
 
       await supabase.from("audio_engagement_events").insert({
         user_id: user.id,
-        master_brief_id: item.masterBriefId || null,
-        audio_type: item.type === "summary" ? "summary" : "full_episode",
+        master_brief_id: cleanId,
+        audio_type: audioType,
         event_type: eventType,
         duration_seconds: Math.round(durationSeconds),
         progress_seconds: Math.round(progressSeconds),
         progress_percentage: progressPercentage,
         session_id: sessionId,
+        client_platform: "mobile",
       });
       console.log(`[AudioPlayer] Logged ${eventType} event for session ${sessionId}`);
     } catch (error) {
@@ -727,6 +755,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         lastPositionForAccumulation.current = item.progress || 0;
         lastDbSyncPosition.current = item.progress || 0;
         lastSavedPosition.current = item.progress || 0;
+
+        if (item.type === "episode") {
+          const episodeUuid = sanitizeBriefId(item.id);
+          if (episodeUuid) {
+            logAnalyticsEvent({
+              eventType: "full_episode_played",
+              briefId: episodeUuid,
+            });
+          }
+        } else if (item.type === "summary" && item.masterBriefId) {
+          logAnalyticsEvent({
+            eventType: "audio_played",
+            briefId: item.masterBriefId,
+          });
+        }
 
         let audioUrl = item.audioUrl;
 

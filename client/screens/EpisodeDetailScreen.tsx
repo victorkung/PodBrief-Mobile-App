@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabase";
 import { TaddyEpisode, SavedEpisode, AudioItem } from "@/lib/types";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import { stripHtml, formatDateLong, formatDuration } from "@/lib/utils";
+import { logAnalyticsEvent } from "@/lib/analytics";
 
 const placeholderImage = require("../../assets/images/podcast-placeholder.png");
 
@@ -313,6 +314,8 @@ export default function EpisodeDetailScreen() {
         message: `Check out this podcast episode on PodBrief: "${name}" - ${podcastName}\n${shareUrl}`,
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      logAnalyticsEvent({ eventType: "share_initiated" });
 
       if (userId) {
         supabase.functions.invoke("log-share-visit", {

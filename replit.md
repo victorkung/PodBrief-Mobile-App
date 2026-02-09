@@ -19,7 +19,8 @@ Preferred communication style: Simple, everyday language.
 - **Animation**: React Native Reanimated for performant UI animations.
 - **Audio**: `expo-audio` for podcast and summary playback, including background audio support and lock screen controls.
 - **UI/UX Decisions**: Consistent screen layouts, specific button and input styling, two-column podcast detail headers, SegmentedControl, and a 4-slide onboarding carousel. Library screen features Spotify-style item cards with integrated actions and optimistic updates.
-- **Audio Progress Tracking**: Implemented `audio_engagement_events` to log listening duration and completion, syncing progress to the database and automatically marking content as complete at 75% playback.
+- **Audio Progress Tracking**: Implemented `audio_engagement_events` to log listening duration and completion, syncing progress to the database and automatically marking content as complete at 75% playback. Engagement events include `client_platform: 'mobile'`, UUID sanitization for episodes (strips `episode-` prefix), and deduplication checks for start events.
+- **Analytics Event Tracking**: Centralized via `client/lib/analytics.ts`. Tracks 6 event types in `analytics_events` table: `site_visit` (cold start), `podcast_searched` (5-min debounce), `summary_generated`, `audio_played`, `full_episode_played`, `share_initiated`. All events include `client_platform: 'mobile'`. Reference: `docs/Mobile_Analytics_Reference.md`.
 - **Expanded Player UX**: Includes skip labels, a "Next" button for queue progression, and local state for progress bar seeking.
 - **Playlist Queue System**: `playWithQueue` function for playing with a queue, with Library tabs auto-populating queues.
 - **Autoplay Next Item**: Uses `expo-audio`'s `didJustFinish` for reliable end detection, marking items complete and handling app state recovery.

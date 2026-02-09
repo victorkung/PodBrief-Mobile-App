@@ -8,6 +8,7 @@ import React, {
 import { Session, User } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
+import { logSiteVisit, resetSiteVisitFlag } from "@/lib/analytics";
 import { Profile } from "@/lib/types";
 
 interface AuthContextType {
@@ -67,12 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Defer Supabase calls to avoid deadlock
         setTimeout(() => {
           fetchProfile(session.user.id);
+          logSiteVisit();
         }, 0);
       } else {
         setProfile(null);
+        resetSiteVisitFlag();
       }
       setIsLoading(false);
     });

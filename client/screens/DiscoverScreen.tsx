@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { TaddyPodcast, FollowedPodcast } from "@/lib/types";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { logSearchEvent } from "@/lib/analytics";
 
 export default function DiscoverScreen() {
   const { theme } = useTheme();
@@ -100,6 +101,7 @@ export default function DiscoverScreen() {
     const term = searchTerm.trim();
     if (term && term !== submittedTerm) {
       setSubmittedTerm(term);
+      logSearchEvent(term);
     }
   }, [searchTerm, submittedTerm]);
 

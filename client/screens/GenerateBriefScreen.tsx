@@ -13,6 +13,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
+import { logAnalyticsEvent } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { TaddyEpisode, TaddyPodcast } from "@/lib/types";
@@ -67,8 +68,15 @@ export default function GenerateBriefScreen() {
       await refreshProfile();
       queryClient.invalidateQueries({ queryKey: ["userBriefs"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      if (data.masterBriefId) {
+        logAnalyticsEvent({
+          eventType: "summary_generated",
+          briefId: data.masterBriefId,
+          language: profile?.preferred_language || "en",
+        });
+      }
       
-      // Only sync engagement for NEW brief generations
       const isNewGeneration = data.status === "processing";
       
       if (user?.email && isNewGeneration) {

@@ -21,6 +21,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { SavedEpisode, UserBrief, Download } from "@/lib/types";
 import { formatDate as formatDateUtil, getLanguageLabel } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { logAnalyticsEvent } from "@/lib/analytics";
 
 type ItemType = "episode" | "summary" | "download";
 
@@ -216,6 +217,8 @@ export function LibraryItemCard({
           message: `Check out this ${shareLabel} on PodBrief: "${getTitle()}" - ${getPodcastName()}\n${shareUrl}`,
         });
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+        logAnalyticsEvent({ eventType: "share_initiated" });
 
         if (userId && contentId) {
           supabase.functions.invoke("log-share-visit", {

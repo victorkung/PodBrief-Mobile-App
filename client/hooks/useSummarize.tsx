@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { logAnalyticsEvent } from "@/lib/analytics";
 import { TaddyEpisode, TaddyPodcast } from "@/lib/types";
 
 const SKIP_GENERATE_CONFIRMATION_KEY = "@podbrief_skip_generate_confirmation";
@@ -66,6 +67,14 @@ export function useSummarize(options?: UseSummarizeOptions) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         const isNewGeneration = data.status === "processing";
+
+        if (data.masterBriefId) {
+          logAnalyticsEvent({
+            eventType: "summary_generated",
+            briefId: data.masterBriefId,
+            language: profile?.preferred_language || "en",
+          });
+        }
 
         if (user?.email && isNewGeneration) {
           const { count } = await supabase

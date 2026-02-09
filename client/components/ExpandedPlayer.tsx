@@ -28,6 +28,7 @@ import Animated, {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { useQueryClient } from "@tanstack/react-query";
+import { logAnalyticsEvent } from "@/lib/analytics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -189,6 +190,8 @@ export function ExpandedPlayer({ visible, onClose }: ExpandedPlayerProps) {
         message: `Check out this ${shareType} on PodBrief: "${currentItem.title}" - ${currentItem.podcast}\n${shareUrl}`,
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      logAnalyticsEvent({ eventType: "share_initiated" });
 
       if (userId) {
         const contentId = currentItem.type === "episode"
